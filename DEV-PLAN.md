@@ -137,7 +137,7 @@ These are inherited from CK.00/CK.01 and must remain the v0.1 baseline:
 | ID | Task | Priority | Status |
 | --- | --- | --- | --- |
 | CKP.01 | Add standalone planning docs | P0 | Done |
-| CKP.02 | Audit current eco Cockpit files against CK.01 and CK.02 | P0 | Planned |
+| CKP.02 | Audit current eco Cockpit files against CK.01 and CK.02 | P0 | Done - correction pass applied in eco |
 | CKP.03 | Decide extraction shape: package, extension module, or standalone app shell | P0 | Planned |
 | CKP.04 | Define public API surface for Cockpit consumers | P1 | Planned |
 | CKP.05 | Produce packaging checklist for Track B B.2-02 | P1 | Planned |
