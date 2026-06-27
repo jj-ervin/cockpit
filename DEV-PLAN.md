@@ -145,6 +145,43 @@ These are inherited from CK.00/CK.01 and must remain the v0.1 baseline:
 
 ---
 
+## CKP.03 Decision — Extraction Shape
+
+**Decided:** 2026-06-26
+
+Cockpit ships in three sequential forms, each building on the previous:
+
+| Phase | Form | What it is |
+| --- | --- | --- |
+| 1 | Python package | Core adapter logic, data models, backend API surface — installable via pip, no UI dependency |
+| 2 | VS Code extension module | Wraps the Python package; adds WebviewPanel UI host and VS Code bridge |
+| 3 | Universal standalone shell | Electron or web app host; no VS Code dependency; same adapter API as phases 1 and 2 |
+
+**Dependency rule:** Phase 2 depends on Phase 1. Phase 3 depends on Phase 1. Phase 2 and Phase 3 are parallel consumers of the same Python package API.
+
+**Consequence for CKP.04:** The public API surface must be defined against the Python package boundary first. VS Code bridge and standalone shell are adapters on top of it, not separate APIs.
+
+**Consequence for CKP.05:** There will be three packaging checklists — one per form — produced in phase order.
+
+**Platform targets:** Windows, Linux, and macOS are all Phase 3 build targets. Python package and VS Code extension inherit cross-platform from their respective runtimes. Standalone shell uses Electron; explicit platform build targets declared in CKP.05 round 3.
+
+---
+
+## Phase 1 API Constraint — Multi-Agent-Capable Adapter Interface
+
+**Decided:** 2026-06-26  
+**Applies to:** CKP.04 and all adapter implementations
+
+Every backend adapter in the Python package must accept a workspace/node identifier as a first-class parameter. No adapter may assume a single workspace.
+
+**Rule:** `adapter.query(backend, workspace_id, ...)` — not `adapter.query(backend, ...)`
+
+**Why:** Phase 1 operates single-workspace. v2.0 multi-agent orchestration passes multiple workspace/node identifiers to the same adapters without API change. Retrofitting this after Phase 1 ships breaks consumers.
+
+**Consequence:** The adapter interface is multi-agent-capable from day one, even though the Phase 1 host only connects to one workspace at a time. v2.0 adds fleet aggregation at the host layer, not the adapter layer.
+
+---
+
 ## Non-Goals
 
 - Do not turn Cockpit into the runtime.

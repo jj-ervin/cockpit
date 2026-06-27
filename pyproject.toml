@@ -1,0 +1,16 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "cockpit"
+version = "0.1.0"
+description = "Operator control surface for eco-governed AI workspaces"
+requires-python = ">=3.11"
+dependencies = []
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/cockpit"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src/cockpit"]
