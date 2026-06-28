@@ -1,5 +1,6 @@
-# DEV-PATH - Cockpit
+# DEV-PATH — Cockpit
 
+**AUTHORITY LEVEL: AL:1**
 **Status:** ACTIVE PRODUCT DIRECTION / STANDALONE REPO SCAFFOLD
 **Updated:** 2026-06-21
 **Authority:** CK.00, CK.01, CK.02 in `C:\dev\eco`

@@ -1,5 +1,6 @@
-# DEV-PLAN - Cockpit
+# DEV-PLAN — Cockpit
 
+**AUTHORITY LEVEL: AL:1**
 **Status:** SCAFFOLD / ACTIVE PRODUCT DIRECTION
 **Updated:** 2026-06-21
 **Authority:** CK.00, CK.01, CK.02 in `C:\dev\eco`
