@@ -39,9 +39,12 @@ a new scope. It should extract and package the already-governed Cockpit surface 
 
 ## Product Definition
 
-Cockpit is where one operator manages one eco workspace.
+Cockpit is the universal UI/UX host for the portfolio. Its primary surface is eco's
+operator control plane — one operator managing one eco workspace. It is also the GUI
+home for portfolio governance tooling and any other portfolio product that needs a
+visual surface.
 
-Cockpit provides:
+**eco operator surface (primary):**
 
 - run lifecycle monitoring
 - PASS run launching
@@ -51,6 +54,11 @@ Cockpit provides:
 - diagnostics and validation status
 - environment setup and readiness views
 - integration surfaces for DevXToolkit, eco.vs, HELM, and eco runtime records
+
+**Universal UI host (capability):**
+
+- Marlin governance panel — install, audit, status surfaces backed by Marlin-DXP core
+- future portfolio modules as needed
 
 Cockpit is the external product/interface name.
 
@@ -68,6 +76,7 @@ Cockpit owns:
 - display of runtime, governance, metadata, diagnostics, and artifact state
 - human-in-the-loop approval UI
 - extension points for views, panels, validators, inspectors, and logs
+- universal UI host role — governance and portfolio tooling panels (Marlin, future)
 
 Cockpit does not own:
 
@@ -104,6 +113,7 @@ Cockpit does not own:
 | CKP.3 | Embed Cockpit cleanly in eco.vs sidebar/panel flow | Planned |
 | CKP.4 | Wire HELM mode integration against Cockpit state | Planned |
 | CKP.5 | Define standalone plugin/extension contract | Planned |
+| CKP.6 | Marlin governance panel — embed Marlin-DXP core; expose install/audit/status surfaces in Cockpit | Planned |
 
 ---
 
@@ -126,7 +136,7 @@ These are inherited from CK.00/CK.01 and must remain the v0.1 baseline:
 | Version | Responsibility |
 | --- | --- |
 | v0.1 | VS Code Cockpit panel; five CK.01 surfaces; workspace-local governance |
-| v1.0 | Environment emergence UI, diagnostics dashboard, Quick-Bar, mode switching, setup wizard |
+| v1.0 | Environment emergence UI, diagnostics dashboard, Quick-Bar, mode switching, Marlin governance setup panel |
 | v2.0 | Developer OS controls, multi-agent orchestration console display, workspace graph, profile management |
 | v3.0 | Semantic workspace controls, semantic search/diff/template workflows, AI-augmented diagnostics |
 | v4.0 | Full developer OS shell, enterprise-grade identity and automation orchestration surfaces |
