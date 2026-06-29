@@ -156,6 +156,8 @@ governance lineage or duplicating eco internals.
 | CKP-P1-01 | Define Cockpit public API and extension points | planned | cockpit-ui-spec |
 | CKP-P1-02 | Define standalone install/demo path | planned | release packaging |
 | CKP-P1-03 | Define screenshots and product positioning | planned | product readiness |
+| CKP-P1-04 | Establish universal UI host framing — Cockpit is eco's operator surface AND the portfolio's universal UI host | done | DEV-PLAN.md 2026-06-21 |
+| CKP-P1-05 | CKP.6 — Marlin governance panel: embed Marlin-DXP core; expose install/audit/status surfaces in Cockpit | planned | DEV-PLAN.md CKP.6 |
 
 ---
 
@@ -178,3 +180,29 @@ Before implementation work in this repo:
 - decide package form
 - keep `projects.yaml` pointed at these docs
 - keep eco Track B as the release/SKU source until standalone packaging is real
+
+---
+
+## Phase 4 — Universal UI Host Expansion
+
+**Recorded:** 2026-06-29
+**Source:** DEV-PLAN.md Product Definition (2026-06-21)
+
+### Decision
+
+Cockpit's canonical scope was expanded from "eco's operator surface" to a dual role:
+
+1. **eco operator surface (primary)** — unchanged: run lifecycle, PASS launching, escalation approval, artifact browsing, policy visibility, diagnostics.
+2. **Universal UI host (capability)** — Cockpit is the GUI home for portfolio governance tooling and any portfolio product that needs a visual surface.
+
+The universal UI host role does not replace or dilute the eco operator surface. It adds a governed extension point for portfolio-level panels.
+
+### CKP.6 — Marlin Governance Panel
+
+The first concrete use of the universal UI host role. Marlin-DXP (`dxp-init/`) exposes install, audit validate, and status operations via CLI. CKP.6 surfaces these inside Cockpit as a governance panel — removing the need for a standalone GUI for Marlin.
+
+This was already recorded in DEV-PLAN.md's Release Targets table (CKP.6) and Product Ladder (v1.0). Recording here so DEV-PATH.md captures the decision lineage.
+
+### Anti-Drift Addition
+
+Do not treat Cockpit's universal UI host role as a reason to absorb unrelated product scope. New panels must be portfolio-level governance tooling, not arbitrary applications.
