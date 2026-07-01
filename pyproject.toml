@@ -11,6 +11,9 @@ dependencies = [
     "pyyaml>=6.0",
 ]
 
+[project.scripts]
+cockpit-install-phase1 = "cockpit.install_phase1:main"
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/cockpit"]
 
