@@ -1,0 +1,442 @@
+"""Tests for EcoAdapter."""
+
+from __future__ import annotations
+
+import json
+from pathlib import Path
+from typing import Any
+from unittest.mock import MagicMock
+
+import pytest
+
+from cockpit.adapters.eco import EcoAdapter
+from cockpit.core.adapter import RecordNotFoundError, ValidationError, WriteNotSupportedError
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def _write_run(runs_dir: Path, run_id: str, final_state: str, **extra: Any) -> Path:
+    payload: dict[str, Any] = {"run_id": run_id, "pass_id": "INIT.01.00", "final_state": final_state}
+    payload.update(extra)
+    path = runs_dir / f"run-{run_id}.json"
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    return path
+
+
+def _write_policy(eco_dir: Path, **overrides: Any) -> None:
+    policy = {
+        "version": "1.0",
+        "human_escalation": True,
+        "validation_rules": [],
+        "allowlist": [],
+        "denylist": [],
+        **overrides,
+    }
+    (eco_dir / "policy.json").write_text(json.dumps(policy), encoding="utf-8")
+
+
+# ---------------------------------------------------------------------------
+# Fixtures
+# ---------------------------------------------------------------------------
+
+@pytest.fixture()
+def workspace(tmp_path: Path) -> Path:
+    ws = tmp_path / "workspace"
+    ws.mkdir()
+    return ws
+
+
+@pytest.fixture()
+def eco_dir(workspace: Path) -> Path:
+    d = workspace / ".eco"
+    d.mkdir()
+    return d
+
+
+@pytest.fixture()
+def runs_dir(eco_dir: Path) -> Path:
+    d = eco_dir / "runs"
+    d.mkdir()
+    return d
+
+
+@pytest.fixture()
+def artifacts_dir(eco_dir: Path) -> Path:
+    d = eco_dir / "artifacts"
+    d.mkdir()
+    return d
+
+
+@pytest.fixture()
+def adapter(workspace: Path) -> EcoAdapter:
+    return EcoAdapter(workspace_id=str(workspace))
+
+
+@pytest.fixture()
+def full_workspace(workspace: Path, eco_dir: Path, runs_dir: Path, artifacts_dir: Path) -> Path:
+    _write_policy(eco_dir)
+    return workspace
+
+
+@pytest.fixture()
+def runtime_client() -> MagicMock:
+    client = MagicMock()
+    client.resume_run = MagicMock(return_value=None)
+    client.build_run_request = MagicMock(return_value=MagicMock(run_id="new-run-001"))
+    client.execute_run = MagicMock(return_value=MagicMock())
+    return client
+
+
+# ---------------------------------------------------------------------------
+# health()
+# ---------------------------------------------------------------------------
+
+def test_health_ok(full_workspace: Path) -> None:
+    a = EcoAdapter(workspace_id=str(full_workspace))
+    result = a.health()
+    assert result.data["status"] == "ok"
+    assert result.data["reachable"] is True
+    assert result.data["eco_root_present"] is True
+    assert result.data["runs_root_present"] is True
+    assert result.data["artifacts_root_present"] is True
+    assert result.data["policy_present"] is True
+    assert result.data["runtime_client_configured"] is False
+    assert result.origin.backend == "eco"
+
+
+def test_health_degraded_no_workspace(tmp_path: Path) -> None:
+    a = EcoAdapter(workspace_id=str(tmp_path / "nonexistent"))
+    result = a.health()
+    assert result.data["status"] == "degraded"
+    assert result.data["reachable"] is False
+
+
+def test_health_degraded_no_eco_dir(workspace: Path) -> None:
+    a = EcoAdapter(workspace_id=str(workspace))
+    result = a.health()
+    assert result.data["status"] == "degraded"
+    assert result.data["eco_root_present"] is False
+
+
+def test_health_runtime_client_configured(full_workspace: Path, runtime_client: MagicMock) -> None:
+    a = EcoAdapter(workspace_id=str(full_workspace), runtime_client=runtime_client)
+    assert a.health().data["runtime_client_configured"] is True
+
+
+# ---------------------------------------------------------------------------
+# get_state()
+# ---------------------------------------------------------------------------
+
+def test_get_state_empty_workspace(full_workspace: Path) -> None:
+    a = EcoAdapter(workspace_id=str(full_workspace))
+    result = a.get_state()
+    assert result.data["total_runs"] == 0
+    assert result.data["escalation_queue_depth"] == 0
+    assert result.data["average_duration_s"] is None
+    assert result.data["policy_violation_rate"] == 0.0
+
+
+def test_get_state_run_counts(full_workspace: Path, runs_dir: Path) -> None:
+    _write_run(runs_dir, "r1", "COMPLETE")
+    _write_run(runs_dir, "r2", "COMPLETE")
+    _write_run(runs_dir, "r3", "FAILED")
+    a = EcoAdapter(workspace_id=str(full_workspace))
+    result = a.get_state()
+    assert result.data["total_runs"] == 3
+    assert result.data["run_counts"]["COMPLETE"] == 2
+    assert result.data["run_counts"]["FAILED"] == 1
+
+
+def test_get_state_escalation_depth_only_unresolved(full_workspace: Path, runs_dir: Path) -> None:
+    _write_run(runs_dir, "e1", "ESCALATED", escalation={})
+    _write_run(runs_dir, "e2", "ESCALATED", escalation={"decision": "approved", "resolution": "approved"})
+    _write_run(runs_dir, "e3", "ESCALATED", escalation={"resolution": "aborted"})
+    a = EcoAdapter(workspace_id=str(full_workspace))
+    result = a.get_state()
+    assert result.data["escalation_queue_depth"] == 1
+
+
+def test_get_state_average_duration(full_workspace: Path, runs_dir: Path) -> None:
+    _write_run(runs_dir, "d1", "COMPLETE", result={"timings": {"duration_s": 10.0}})
+    _write_run(runs_dir, "d2", "COMPLETE", result={"timings": {"duration_s": 30.0}})
+    a = EcoAdapter(workspace_id=str(full_workspace))
+    result = a.get_state()
+    assert result.data["average_duration_s"] == pytest.approx(20.0)
+
+
+def test_get_state_policy_info(full_workspace: Path, eco_dir: Path) -> None:
+    _write_policy(eco_dir, version="2.0", human_escalation=False)
+    a = EcoAdapter(workspace_id=str(full_workspace))
+    result = a.get_state()
+    assert result.data["policy_version"] == "2.0"
+    assert result.data["human_escalation_enabled"] is False
+
+
+def test_get_state_policy_violation_rate(full_workspace: Path, runs_dir: Path) -> None:
+    _write_run(runs_dir, "c1", "COMPLETE")
+    _write_run(runs_dir, "c2", "COMPLETE")
+    _write_run(runs_dir, "e1", "ESCALATED")
+    a = EcoAdapter(workspace_id=str(full_workspace))
+    result = a.get_state()
+    assert result.data["policy_violation_rate"] == pytest.approx(1 / 3)
+
+
+# ---------------------------------------------------------------------------
+# list_records()
+# ---------------------------------------------------------------------------
+
+def test_list_records_all_runs(full_workspace: Path, runs_dir: Path) -> None:
+    _write_run(runs_dir, "r1", "COMPLETE")
+    _write_run(runs_dir, "r2", "FAILED")
+    a = EcoAdapter(workspace_id=str(full_workspace))
+    result = a.list_records("run")
+    assert len(result.data) == 2
+    states = {r["final_state"] for r in result.data}
+    assert states == {"COMPLETE", "FAILED"}
+
+
+def test_list_records_escalation_excludes_resolved(full_workspace: Path, runs_dir: Path) -> None:
+    _write_run(runs_dir, "e1", "ESCALATED", escalation={})
+    _write_run(runs_dir, "e2", "ESCALATED", escalation={"decision": "denied"})
+    _write_run(runs_dir, "e3", "COMPLETE")
+    a = EcoAdapter(workspace_id=str(full_workspace))
+    result = a.list_records("escalation")
+    assert len(result.data) == 1
+    assert result.data[0]["run_id"] == "e1"
+
+
+def test_list_records_artifacts(full_workspace: Path, artifacts_dir: Path) -> None:
+    (artifacts_dir / "output.json").write_text('{"key": "val"}', encoding="utf-8")
+    (artifacts_dir / "report.md").write_text("# Report", encoding="utf-8")
+    a = EcoAdapter(workspace_id=str(full_workspace))
+    result = a.list_records("artifact")
+    assert len(result.data) == 2
+    paths = {Path(e["artifact_path"]).name for e in result.data}
+    assert paths == {"output.json", "report.md"}
+
+
+def test_list_records_artifact_has_hash(full_workspace: Path, artifacts_dir: Path) -> None:
+    (artifacts_dir / "file.txt").write_text("hello", encoding="utf-8")
+    a = EcoAdapter(workspace_id=str(full_workspace))
+    result = a.list_records("artifact")
+    assert result.data[0]["hash"]  # non-empty sha256
+
+
+def test_list_records_policy(full_workspace: Path, eco_dir: Path) -> None:
+    _write_policy(eco_dir, version="1.5")
+    a = EcoAdapter(workspace_id=str(full_workspace))
+    result = a.list_records("policy")
+    assert len(result.data) == 1
+    assert result.data[0]["version"] == "1.5"
+
+
+def test_list_records_unknown_type_raises(full_workspace: Path) -> None:
+    a = EcoAdapter(workspace_id=str(full_workspace))
+    with pytest.raises(ValidationError, match="unknown record type"):
+        a.list_records("invoice")
+
+
+def test_list_records_empty_runs_dir(full_workspace: Path) -> None:
+    a = EcoAdapter(workspace_id=str(full_workspace))
+    result = a.list_records("run")
+    assert result.data == []
+
+
+# ---------------------------------------------------------------------------
+# get_record()
+# ---------------------------------------------------------------------------
+
+def test_get_record_run_found(full_workspace: Path, runs_dir: Path) -> None:
+    _write_run(runs_dir, "abc123", "COMPLETE")
+    a = EcoAdapter(workspace_id=str(full_workspace))
+    result = a.get_record("run", "abc123")
+    assert result.data["run_id"] == "abc123"
+    assert result.data["final_state"] == "COMPLETE"
+
+
+def test_get_record_run_not_found(full_workspace: Path) -> None:
+    a = EcoAdapter(workspace_id=str(full_workspace))
+    with pytest.raises(RecordNotFoundError, match="not found"):
+        a.get_record("run", "nonexistent")
+
+
+def test_get_record_artifact_found(full_workspace: Path, artifacts_dir: Path) -> None:
+    p = artifacts_dir / "out.json"
+    p.write_text('{}', encoding="utf-8")
+    a = EcoAdapter(workspace_id=str(full_workspace))
+    result = a.get_record("artifact", str(p))
+    assert Path(result.data["artifact_path"]) == p
+
+
+def test_get_record_artifact_not_found(full_workspace: Path) -> None:
+    a = EcoAdapter(workspace_id=str(full_workspace))
+    with pytest.raises(RecordNotFoundError):
+        a.get_record("artifact", "/nonexistent/path/file.json")
+
+
+def test_get_record_policy(full_workspace: Path, eco_dir: Path) -> None:
+    _write_policy(eco_dir, version="3.0")
+    a = EcoAdapter(workspace_id=str(full_workspace))
+    result = a.get_record("policy", "policy")
+    assert result.data["version"] == "3.0"
+
+
+def test_get_record_unknown_type_raises(full_workspace: Path) -> None:
+    a = EcoAdapter(workspace_id=str(full_workspace))
+    with pytest.raises(ValidationError):
+        a.get_record("invoice", "123")
+
+
+# ---------------------------------------------------------------------------
+# approve()
+# ---------------------------------------------------------------------------
+
+def test_approve_without_runtime_client_raises(full_workspace: Path, runs_dir: Path) -> None:
+    _write_run(runs_dir, "e1", "ESCALATED")
+    a = EcoAdapter(workspace_id=str(full_workspace))
+    with pytest.raises(WriteNotSupportedError, match="read-only"):
+        a.approve("e1", "approved")
+
+
+def test_approve_invalid_decision_raises(full_workspace: Path, runtime_client: MagicMock) -> None:
+    a = EcoAdapter(workspace_id=str(full_workspace), runtime_client=runtime_client)
+    with pytest.raises(ValidationError, match="'approved' or 'denied'"):
+        a.approve("e1", "maybe")
+
+
+def test_approve_calls_runtime_client(full_workspace: Path, runs_dir: Path, runtime_client: MagicMock) -> None:
+    _write_run(runs_dir, "e1", "ESCALATED", escalation={})
+    a = EcoAdapter(workspace_id=str(full_workspace), runtime_client=runtime_client)
+    result = a.approve("e1", "approved", reason="looks good")
+    assert result.data["decision"] == "approved"
+    runtime_client.resume_run.assert_called_once()
+
+
+def test_approve_persists_decision_to_run_file(full_workspace: Path, runs_dir: Path, runtime_client: MagicMock) -> None:
+    _write_run(runs_dir, "e1", "ESCALATED", escalation={})
+    a = EcoAdapter(workspace_id=str(full_workspace), runtime_client=runtime_client)
+    a.approve("e1", "approved", reason="ok")
+    updated = json.loads((runs_dir / "run-e1.json").read_text(encoding="utf-8"))
+    assert updated["escalation"]["decision"] == "approved"
+    assert updated["escalation"]["resolution"] == "approved"
+
+
+def test_deny_sets_final_state_aborted(full_workspace: Path, runs_dir: Path, runtime_client: MagicMock) -> None:
+    _write_run(runs_dir, "e2", "ESCALATED", escalation={})
+    a = EcoAdapter(workspace_id=str(full_workspace), runtime_client=runtime_client)
+    a.approve("e2", "denied", reason="nope")
+    updated = json.loads((runs_dir / "run-e2.json").read_text(encoding="utf-8"))
+    assert updated["final_state"] == "ABORTED"
+    assert updated["escalation"]["resolution"] == "aborted"
+
+
+# ---------------------------------------------------------------------------
+# submit()
+# ---------------------------------------------------------------------------
+
+def test_submit_without_runtime_client_raises(full_workspace: Path) -> None:
+    a = EcoAdapter(workspace_id=str(full_workspace))
+    with pytest.raises(WriteNotSupportedError):
+        a.submit("run", {"pass_name_or_id": "X", "artifact_type": "y", "objective": "z"})
+
+
+def test_submit_wrong_record_type_raises(full_workspace: Path, runtime_client: MagicMock) -> None:
+    a = EcoAdapter(workspace_id=str(full_workspace), runtime_client=runtime_client)
+    with pytest.raises(WriteNotSupportedError, match="record_type='run'"):
+        a.submit("policy", {})
+
+
+def test_submit_missing_fields_raises(full_workspace: Path, runtime_client: MagicMock) -> None:
+    a = EcoAdapter(workspace_id=str(full_workspace), runtime_client=runtime_client)
+    with pytest.raises(ValidationError, match="missing required fields"):
+        a.submit("run", {"pass_name_or_id": "X"})
+
+
+def test_submit_calls_runtime_client(full_workspace: Path, runtime_client: MagicMock) -> None:
+    a = EcoAdapter(workspace_id=str(full_workspace), runtime_client=runtime_client)
+    result = a.submit("run", {
+        "pass_name_or_id": "INIT.01.00",
+        "artifact_type": "analysis",
+        "objective": "test run",
+    })
+    assert result.data["run_id"] == "new-run-001"
+    runtime_client.build_run_request.assert_called_once()
+    runtime_client.execute_run.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# update_record() — policy only
+# ---------------------------------------------------------------------------
+
+def test_update_record_wrong_type_raises(full_workspace: Path) -> None:
+    a = EcoAdapter(workspace_id=str(full_workspace))
+    with pytest.raises(WriteNotSupportedError, match="record_type='policy'"):
+        a.update_record("run", "r1", {})
+
+
+def test_update_record_invalid_policy_raises(full_workspace: Path) -> None:
+    a = EcoAdapter(workspace_id=str(full_workspace))
+    with pytest.raises(ValidationError, match="version is required"):
+        a.update_record("policy", "policy", {"human_escalation": True})
+
+
+def test_update_record_writes_policy(full_workspace: Path, eco_dir: Path) -> None:
+    a = EcoAdapter(workspace_id=str(full_workspace))
+    new_policy = {
+        "version": "2.0",
+        "human_escalation": False,
+        "validation_rules": ["rule-a"],
+        "allowlist": [],
+        "denylist": [],
+    }
+    result = a.update_record("policy", "policy", new_policy)
+    assert result.data["version"] == "2.0"
+    assert result.data["human_escalation"] is False
+    on_disk = json.loads((eco_dir / "policy.json").read_text(encoding="utf-8"))
+    assert on_disk["version"] == "2.0"
+    assert on_disk["validation_rules"] == ["rule-a"]
+
+
+def test_update_record_creates_eco_dir_if_missing(workspace: Path) -> None:
+    a = EcoAdapter(workspace_id=str(workspace))
+    policy = {
+        "version": "1.0",
+        "human_escalation": True,
+        "validation_rules": [],
+        "allowlist": [],
+        "denylist": [],
+    }
+    a.update_record("policy", "policy", policy)
+    assert (workspace / ".eco" / "policy.json").exists()
+
+
+# ---------------------------------------------------------------------------
+# Provenance
+# ---------------------------------------------------------------------------
+
+def test_origin_on_all_read_methods(full_workspace: Path, runs_dir: Path, artifacts_dir: Path, eco_dir: Path) -> None:
+    _write_run(runs_dir, "r1", "COMPLETE")
+    (artifacts_dir / "f.txt").write_text("x", encoding="utf-8")
+    _write_policy(eco_dir)
+    a = EcoAdapter(workspace_id=str(full_workspace), node_id=None)
+
+    for result in [
+        a.health(),
+        a.get_state(),
+        a.list_records("run"),
+        a.list_records("artifact"),
+        a.list_records("policy"),
+        a.get_record("run", "r1"),
+        a.get_record("policy", "policy"),
+    ]:
+        assert result.origin.backend == "eco"
+        assert result.origin.workspace_id == str(full_workspace)
+        assert result.origin.node_id is None
+        assert result.origin.timestamp
+
+
+def test_node_id_flows_to_origin(full_workspace: Path) -> None:
+    a = EcoAdapter(workspace_id=str(full_workspace), node_id="node-42")
+    assert a.health().origin.node_id == "node-42"

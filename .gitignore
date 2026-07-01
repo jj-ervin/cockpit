@@ -7,3 +7,20 @@ DEV-PLAN.md
 DEV-RELEASE.md
 DEV-TRACKS.md
 REVIEW-GRAMMAR.md
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+
+# Build / package output
+build/
+dist/
+*.egg-info/
+
+# Local environments
+.venv/
+venv/
+.env

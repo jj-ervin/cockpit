@@ -7,7 +7,9 @@ name = "cockpit"
 version = "0.1.0"
 description = "Operator control surface for eco-governed AI workspaces"
 requires-python = ">=3.11"
-dependencies = []
+dependencies = [
+    "pyyaml>=6.0",
+]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/cockpit"]

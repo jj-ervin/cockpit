@@ -1,0 +1,168 @@
+"""Tests for MarlinAdapter."""
+
+from __future__ import annotations
+
+import yaml
+from pathlib import Path
+
+import pytest
+
+from cockpit.adapters.marlin import MarlinAdapter
+from cockpit.core.adapter import RecordNotFoundError, ValidationError, WriteNotSupportedError
+
+
+@pytest.fixture()
+def marlin_home(tmp_path: Path) -> Path:
+    return tmp_path / "marlin"
+
+
+@pytest.fixture()
+def populated_home(marlin_home: Path) -> Path:
+    marlin_home.mkdir()
+    state = {
+        "version": "1",
+        "packages": {
+            "niji": {
+                "name": "niji",
+                "version": "1.0.0",
+                "platform": "windows",
+                "installed_at": "2026-07-01T08:46:45.828Z",
+                "install_dir": str(marlin_home / "apps" / "niji" / "1.0.0"),
+                "bins": ["niji"],
+            },
+            "widget": {
+                "name": "widget",
+                "version": "0.2.1",
+                "platform": "windows",
+                "installed_at": "2026-06-15T10:00:00.000Z",
+                "install_dir": str(marlin_home / "apps" / "widget" / "0.2.1"),
+                "bins": ["widget"],
+            },
+        },
+    }
+    (marlin_home / "state.yaml").write_text(yaml.dump(state), encoding="utf-8")
+    return marlin_home
+
+
+# ---------------------------------------------------------------------------
+# health()
+# ---------------------------------------------------------------------------
+
+def test_health_ok(populated_home: Path) -> None:
+    adapter = MarlinAdapter(workspace_id=str(populated_home))
+    result = adapter.health()
+    assert result.data["status"] == "ok"
+    assert result.data["reachable"] is True
+    assert result.data["state_present"] is True
+    assert result.origin.backend == "marlin"
+
+
+def test_health_degraded_missing_home(marlin_home: Path) -> None:
+    adapter = MarlinAdapter(workspace_id=str(marlin_home))
+    result = adapter.health()
+    assert result.data["status"] == "degraded"
+    assert result.data["reachable"] is False
+
+
+def test_health_degraded_missing_state(marlin_home: Path) -> None:
+    marlin_home.mkdir()
+    adapter = MarlinAdapter(workspace_id=str(marlin_home))
+    result = adapter.health()
+    assert result.data["status"] == "degraded"
+    assert result.data["state_present"] is False
+
+
+# ---------------------------------------------------------------------------
+# get_state()
+# ---------------------------------------------------------------------------
+
+def test_get_state_counts_packages(populated_home: Path) -> None:
+    adapter = MarlinAdapter(workspace_id=str(populated_home))
+    result = adapter.get_state()
+    assert result.data["installed_package_count"] == 2
+    assert set(result.data["packages"]) == {"niji", "widget"}
+
+
+def test_get_state_last_installed(populated_home: Path) -> None:
+    adapter = MarlinAdapter(workspace_id=str(populated_home))
+    result = adapter.get_state()
+    assert result.data["last_installed_at"] == "2026-07-01T08:46:45.828Z"
+
+
+def test_get_state_empty(marlin_home: Path) -> None:
+    marlin_home.mkdir()
+    adapter = MarlinAdapter(workspace_id=str(marlin_home))
+    result = adapter.get_state()
+    assert result.data["installed_package_count"] == 0
+    assert result.data["packages"] == []
+    assert result.data["last_installed_at"] is None
+
+
+# ---------------------------------------------------------------------------
+# list_records()
+# ---------------------------------------------------------------------------
+
+def test_list_records_packages(populated_home: Path) -> None:
+    adapter = MarlinAdapter(workspace_id=str(populated_home))
+    result = adapter.list_records("package")
+    assert len(result.data) == 2
+    names = {p["name"] for p in result.data}
+    assert names == {"niji", "widget"}
+
+
+def test_list_records_unknown_type(populated_home: Path) -> None:
+    adapter = MarlinAdapter(workspace_id=str(populated_home))
+    with pytest.raises(ValidationError, match="unknown record type"):
+        adapter.list_records("run")
+
+
+# ---------------------------------------------------------------------------
+# get_record()
+# ---------------------------------------------------------------------------
+
+def test_get_record_found(populated_home: Path) -> None:
+    adapter = MarlinAdapter(workspace_id=str(populated_home))
+    result = adapter.get_record("package", "niji")
+    assert result.data["name"] == "niji"
+    assert result.data["version"] == "1.0.0"
+
+
+def test_get_record_not_found(populated_home: Path) -> None:
+    adapter = MarlinAdapter(workspace_id=str(populated_home))
+    with pytest.raises(RecordNotFoundError, match="not installed"):
+        adapter.get_record("package", "does-not-exist")
+
+
+# ---------------------------------------------------------------------------
+# Write operations — all must raise WriteNotSupportedError
+# ---------------------------------------------------------------------------
+
+def test_submit_raises(populated_home: Path) -> None:
+    adapter = MarlinAdapter(workspace_id=str(populated_home))
+    with pytest.raises(WriteNotSupportedError):
+        adapter.submit("package", {"name": "new-pkg"})
+
+
+def test_approve_raises(populated_home: Path) -> None:
+    adapter = MarlinAdapter(workspace_id=str(populated_home))
+    with pytest.raises(WriteNotSupportedError):
+        adapter.approve("niji", "approved")
+
+
+def test_update_record_raises(populated_home: Path) -> None:
+    adapter = MarlinAdapter(workspace_id=str(populated_home))
+    with pytest.raises(WriteNotSupportedError):
+        adapter.update_record("package", "niji", {"version": "2.0.0"})
+
+
+# ---------------------------------------------------------------------------
+# Provenance
+# ---------------------------------------------------------------------------
+
+def test_origin_provenance(populated_home: Path) -> None:
+    adapter = MarlinAdapter(workspace_id=str(populated_home))
+    result = adapter.get_state()
+    assert result.origin.backend == "marlin"
+    assert result.origin.workspace_id == str(populated_home)
+    assert result.origin.node_id is None
+    assert result.origin.timestamp  # non-empty ISO string
