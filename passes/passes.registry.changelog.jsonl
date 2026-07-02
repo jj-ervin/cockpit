@@ -1,0 +1,13 @@
+{"action":"create","id":"CKP:0001","alias":"CKP.01.00","timestamp":"2026-07-02T00:00:00Z","actor":"claude","reason":"Retroactive registration migrating legacy CKP.01 to CANON.02 registry per DEV-ACCORD.02 numbering correction"}
+{"action":"create","id":"CKP:0002","alias":"CKP.02.00","timestamp":"2026-07-02T00:00:00Z","actor":"claude","reason":"Retroactive registration migrating legacy CKP.02"}
+{"action":"create","id":"CKP:0003","alias":"CKP.03.00","timestamp":"2026-07-02T00:00:00Z","actor":"claude","reason":"Retroactive registration migrating legacy CKP.03"}
+{"action":"create","id":"CKP:0004","alias":"CKP.04.00","timestamp":"2026-07-02T00:00:00Z","actor":"claude","reason":"Retroactive registration migrating legacy CKP.04"}
+{"action":"create","id":"CKP:0005","alias":"CKP.05.00","timestamp":"2026-07-02T00:00:00Z","actor":"claude","reason":"Retroactive registration migrating legacy CKP.05 as primary PASS"}
+{"action":"create","id":"CKP:0006","alias":"CKP.05.01","timestamp":"2026-07-02T00:00:00Z","actor":"claude","reason":"Retroactive registration migrating legacy CKP.05A to conformant sub-PASS form"}
+{"action":"create","id":"CKP:0007","alias":"CKP.05.02","timestamp":"2026-07-02T00:00:00Z","actor":"claude","reason":"Retroactive registration migrating legacy CKP.05B to conformant sub-PASS form"}
+{"action":"create","id":"CKP:0008","alias":"CKP.05.03","timestamp":"2026-07-02T00:00:00Z","actor":"claude","reason":"Retroactive registration migrating legacy CKP.05C to conformant sub-PASS form"}
+{"action":"create","id":"CKP:0009","alias":"CKP.05.04","timestamp":"2026-07-02T00:00:00Z","actor":"claude","reason":"Retroactive registration migrating legacy CKP.05D to conformant sub-PASS form"}
+{"action":"create","id":"CKP:0010","alias":"CKP.06.00","timestamp":"2026-07-02T00:00:00Z","actor":"claude","reason":"Retroactive registration migrating legacy CKP.06"}
+{"action":"create","id":"CKP:1001","alias":"CKP.07.00","timestamp":"2026-07-02T00:00:00Z","actor":"claude","reason":"Retroactive registration migrating legacy roadmap CKP.6 (Marlin governance panel), resolving its collision with the unrelated CKP.06 demo-flow item"}
+{"action":"create","id":"CKP:1002","alias":"CKP.07.01","timestamp":"2026-07-02T00:00:00Z","actor":"claude","reason":"Retroactive registration migrating legacy CKP.6A to conformant sub-PASS form"}
+{"action":"create","id":"CKP:1003","alias":"CKP.08.00","timestamp":"2026-07-02T00:00:00Z","actor":"claude","reason":"New primary PASS: Cockpit UI extraction, registered from creation per DEV-ACCORD-CI-41"}

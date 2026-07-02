@@ -1,0 +1,21 @@
+# CKP: Namespace Declaration
+# Governed by CANON.01 (external adopter model: self-declared prefix, no GC
+# registration required). Self-declared 2026-07-02 as part of packaging Cockpit
+# as a standalone product independent of the ECO: namespace.
+
+prefix: CKP
+owner: Cockpit (standalone UI/UX host)
+allocation_authority: jj-ervin
+description: >
+  Governance records for Cockpit as a standalone product: the portable
+  operator command surface and universal UI host that works with eco, Marlin,
+  and future backends via the adapter/bridge pattern. CKP: identifiers are
+  Cockpit-specific and independent of eco's ECO: namespace, even though
+  Cockpit's original implementation and CK.00/CK.01/CK.02 specs were recovered
+  from inside eco. See DEV-PATH.md "Phase 7 - CKP Numbering Correction" for the
+  migration from the pre-CANON informal CKP.NN[A-D] numbering to this registry.
+registry_file: passes/passes.registry.json
+layers_file: passes/layers.yaml
+changelog_file: passes/passes.registry.changelog.jsonl
+created_at: "2026-07-02T00:00:00Z"
+canon_version: CANON.01

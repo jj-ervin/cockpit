@@ -1,0 +1,18 @@
+# CKP: Layer Bands Declaration
+# Governed by CANON.01 R-LY-1 through R-LY-7. Layer bands are per-namespace.
+
+namespace: CKP
+
+layers:
+  - range: "0001-0999"
+    name: standards
+    description: >
+      Cockpit product definition, packaging decisions, API surface, and
+      cross-cutting standards (extraction shape, adapter contract, host
+      loader contract).
+
+  - range: "1000-1999"
+    name: domain
+    description: >
+      Backend-specific and panel-specific work: Marlin governance panel,
+      eco panel, future backend panels, and UI extraction/hosting.
