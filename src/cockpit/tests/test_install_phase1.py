@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from cockpit.install_phase1 import build_steps, run_install
+from cockpit.install_phase1 import build_steps, main, run_install
 
 
 @pytest.fixture()
@@ -55,6 +55,24 @@ def test_dry_run_returns_skipped_results(project_root: Path, workspace: Path) ->
     assert all(result.ok for result in results)
 
 
+def test_run_install_defaults_to_preview(project_root: Path, workspace: Path) -> None:
+    calls: list[list[str]] = []
+
+    def runner(command: list[str], **_: object) -> subprocess.CompletedProcess[str]:
+        calls.append(command)
+        return subprocess.CompletedProcess(command, 0, "", "")
+
+    results = run_install(
+        project_root=project_root,
+        workspace=workspace,
+        python="python",
+        runner=runner,
+    )
+
+    assert calls == []
+    assert all(result.skipped for result in results)
+
+
 def test_run_install_stops_on_failed_step(project_root: Path, workspace: Path) -> None:
     calls: list[list[str]] = []
 
@@ -66,6 +84,7 @@ def test_run_install_stops_on_failed_step(project_root: Path, workspace: Path) -
         project_root=project_root,
         workspace=workspace,
         python="python",
+        dry_run=False,
         runner=runner,
     )
 
@@ -85,6 +104,7 @@ def test_bridge_smoke_requires_ok_health(project_root: Path, workspace: Path) ->
         project_root=project_root,
         workspace=workspace,
         python="python",
+        dry_run=False,
         runner=runner,
     )
 
@@ -104,8 +124,44 @@ def test_bridge_smoke_can_allow_degraded_health(project_root: Path, workspace: P
         project_root=project_root,
         workspace=workspace,
         python="python",
+        dry_run=False,
         runner=runner,
         allow_degraded_bridge=True,
     )
 
     assert all(result.ok for result in results)
+
+
+def test_cli_defaults_to_preview(project_root: Path, workspace: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    exit_code = main([
+        "--project-root",
+        str(project_root),
+        "--workspace",
+        str(workspace),
+        "--python",
+        "python",
+        "--json",
+    ])
+
+    payload = json.loads(capsys.readouterr().out)
+    assert exit_code == 0
+    assert payload["mode"] == "preview"
+    assert all(step["skipped"] for step in payload["steps"])
+
+
+def test_cli_accepts_dry_run_preview_alias(project_root: Path, workspace: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    exit_code = main([
+        "--project-root",
+        str(project_root),
+        "--workspace",
+        str(workspace),
+        "--python",
+        "python",
+        "--dry-run",
+        "--json",
+    ])
+
+    payload = json.loads(capsys.readouterr().out)
+    assert exit_code == 0
+    assert payload["mode"] == "preview"
+    assert all(step["skipped"] for step in payload["steps"])

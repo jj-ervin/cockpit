@@ -32,11 +32,13 @@ Automated Phase 1 install:
 ```powershell
 cd C:\dev\cockpit
 python -m cockpit.install_phase1 --workspace C:\dev\eco
+python -m cockpit.install_phase1 --workspace C:\dev\eco --apply
 ```
 
-The automation performs editable package install, Python tests, and a read-only
-`cockpit.host_bridge` health smoke against the selected eco workspace. It does not
-perform Marlin package writes or Cockpit policy/run mutations.
+The automation previews by default. With `--apply`, it performs editable package
+install, Python tests, and a read-only `cockpit.host_bridge` health smoke against
+the selected eco workspace. It does not perform Marlin package writes or Cockpit
+policy/run mutations.
 
 Bridge smoke:
 
@@ -112,7 +114,8 @@ VSIX packaging must exclude:
 ## Done Criteria
 
 - Python tests pass.
-- `python -m cockpit.install_phase1 --workspace C:\dev\eco` passes.
+- `python -m cockpit.install_phase1 --workspace C:\dev\eco` previews the install steps.
+- `python -m cockpit.install_phase1 --workspace C:\dev\eco --apply` passes.
 - VS Code extension build passes.
 - `eco: Cockpit Bridge Health` reports OK.
 - `eco: Open Cockpit` visually loads against `C:\dev\eco`.

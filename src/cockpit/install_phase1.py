@@ -100,7 +100,7 @@ def run_install(
     editable: bool = True,
     include_tests: bool = True,
     include_bridge: bool = True,
-    dry_run: bool = False,
+    dry_run: bool = True,
     allow_degraded_bridge: bool = False,
     runner: Runner = subprocess.run,
 ) -> list[StepResult]:
@@ -157,6 +157,7 @@ def run_install(
 def main(argv: Sequence[str] | None = None) -> int:
     args = _parse_args(argv)
     workspace = args.workspace or _default_workspace(args.project_root)
+    dry_run = not args.apply
     results = run_install(
         project_root=args.project_root,
         workspace=workspace,
@@ -164,12 +165,13 @@ def main(argv: Sequence[str] | None = None) -> int:
         editable=not args.no_editable,
         include_tests=not args.skip_tests,
         include_bridge=not args.skip_bridge,
-        dry_run=args.dry_run,
+        dry_run=dry_run,
         allow_degraded_bridge=args.allow_degraded_bridge,
     )
 
     payload = {
         "ok": all(result.ok for result in results),
+        "mode": "apply" if args.apply else "preview",
         "project_root": str(args.project_root.resolve()),
         "workspace": str(workspace.resolve()),
         "steps": [_result_to_dict(result) for result in results],
@@ -193,7 +195,17 @@ def _parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
     parser.add_argument("--skip-tests", action="store_true")
     parser.add_argument("--skip-bridge", action="store_true")
     parser.add_argument("--allow-degraded-bridge", action="store_true")
-    parser.add_argument("--dry-run", action="store_true")
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument(
+        "--apply",
+        action="store_true",
+        help="Run the install, test, and bridge smoke steps. Omit for preview.",
+    )
+    mode.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Preview the install, test, and bridge smoke steps. This is the default.",
+    )
     parser.add_argument("--json", action="store_true")
     return parser.parse_args(argv)
 
@@ -247,7 +259,7 @@ def _result_to_dict(result: StepResult) -> dict[str, Any]:
 
 
 def _print_human(payload: dict[str, Any]) -> None:
-    print(f"Cockpit Phase 1 install: {'ok' if payload['ok'] else 'failed'}")
+    print(f"Cockpit Phase 1 install ({payload['mode']}): {'ok' if payload['ok'] else 'failed'}")
     print(f"Project: {payload['project_root']}")
     print(f"Workspace: {payload['workspace']}")
     for step in payload["steps"]:

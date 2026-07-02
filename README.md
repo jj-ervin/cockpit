@@ -33,13 +33,17 @@ Phase 1 package install automation:
 ```powershell
 cd C:\dev\cockpit
 python -m cockpit.install_phase1 --workspace C:\dev\eco
+python -m cockpit.install_phase1 --workspace C:\dev\eco --apply
 ```
 
 After installation, the console entrypoint is also available:
 
 ```powershell
-cockpit-install-phase1 --workspace C:\dev\eco
+cockpit-install-phase1 --workspace C:\dev\eco --apply
 ```
+
+The command previews by default. Use `--apply` to perform the editable package
+install, tests, and bridge smoke.
 
 VS Code host verification:
 
