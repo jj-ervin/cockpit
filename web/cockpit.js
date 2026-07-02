@@ -17,7 +17,24 @@
     runFilter: 'all',
     policyOriginal: '{}',
     lastDeletedArtifact: null,
+    wizardStep: 0,
   };
+
+  // CKP.09.04 - environment setup wizard shell. Steps are generic (id, title,
+  // render, isComplete); today only one real step exists (Marlin install
+  // readiness, per CKP.07). Future wizard steps (environment verification,
+  // other provider setup flows) plug in here without changing the shell.
+  const WIZARD_STEPS = [
+    {
+      id: 'marlin-install',
+      title: 'Marlin Install Readiness',
+      render: renderWizardMarlinStep,
+      isComplete: function (snapshot) {
+        const readiness = snapshot.marlin && snapshot.marlin.installReadiness;
+        return Boolean(readiness && (readiness.status === 'ready' || readiness.mode === 'preview'));
+      },
+    },
+  ];
 
   const elements = {
     refresh: byId('refresh'),
@@ -70,6 +87,11 @@
     epActivePass: byId('ep-active-pass'),
     epRunState: byId('ep-run-state'),
     epGovState: byId('ep-gov-state'),
+    wizardStepLabel: byId('wizard-step-label'),
+    wizardStepIndicator: byId('wizard-step-indicator'),
+    wizardContent: byId('wizard-content'),
+    wizardBack: byId('wizard-back'),
+    wizardNext: byId('wizard-next'),
   };
 
   elements.refresh.addEventListener('click', function () {
@@ -129,6 +151,20 @@
 
   elements.openPolicy.addEventListener('click', function () {
     post({ type: 'eco.cockpit.openPolicy' });
+  });
+
+  elements.wizardBack.addEventListener('click', function () {
+    if (state.wizardStep > 0) {
+      state.wizardStep -= 1;
+      renderWizard();
+    }
+  });
+
+  elements.wizardNext.addEventListener('click', function () {
+    if (state.wizardStep < WIZARD_STEPS.length - 1) {
+      state.wizardStep += 1;
+      renderWizard();
+    }
   });
 
   elements.undoDeleteArtifact.addEventListener('click', function () {
@@ -217,6 +253,7 @@
     renderPolicy();
     renderGovernance(state.snapshot.governance);
     renderEditorPlaneBar(records.runs, state.snapshot.governance);
+    renderWizard();
 
     if (workspace.bridgeError) {
       elements.footer.textContent = workspace.bridgeError;
@@ -451,6 +488,78 @@
       : '-';
     elements.epRunState.textContent = latest ? (latest.state || latest.status || '-') : '-';
     elements.epGovState.textContent = computeGovernanceState(governance);
+  }
+
+  function renderWizard() {
+    if (state.wizardStep >= WIZARD_STEPS.length) {
+      state.wizardStep = WIZARD_STEPS.length - 1;
+    }
+    if (state.wizardStep < 0) {
+      state.wizardStep = 0;
+    }
+
+    elements.wizardStepLabel.textContent = 'Step ' + (state.wizardStep + 1) + ' of ' + WIZARD_STEPS.length;
+
+    clear(elements.wizardStepIndicator);
+    WIZARD_STEPS.forEach(function (step, index) {
+      const li = document.createElement('li');
+      li.textContent = (index + 1) + '. ' + step.title;
+      if (index === state.wizardStep) {
+        li.classList.add('is-active');
+      }
+      if (step.isComplete(state.snapshot)) {
+        li.classList.add('is-complete');
+      }
+      elements.wizardStepIndicator.appendChild(li);
+    });
+
+    const current = WIZARD_STEPS[state.wizardStep];
+    clear(elements.wizardContent);
+    current.render(elements.wizardContent, state.snapshot);
+
+    elements.wizardBack.disabled = state.wizardStep === 0;
+    elements.wizardNext.disabled = state.wizardStep === WIZARD_STEPS.length - 1;
+  }
+
+  function renderWizardMarlinStep(container, snapshot) {
+    const marlin = snapshot.marlin || {};
+    const readiness = marlin.installReadiness;
+
+    if (!readiness) {
+      const note = document.createElement('p');
+      note.className = 'panel-note';
+      note.textContent = marlin.error || 'Install readiness is not available.';
+      container.appendChild(note);
+      return;
+    }
+
+    const status = document.createElement('p');
+    status.textContent = 'Status: ' + (readiness.status || readiness.mode || 'preview');
+    container.appendChild(status);
+
+    const stepsHost = document.createElement('div');
+    stepsHost.className = 'list';
+    container.appendChild(stepsHost);
+    const previewSteps = Array.isArray(readiness.preview_steps) ? readiness.preview_steps : [];
+    renderList(stepsHost, previewSteps.map(function (step) {
+      return {
+        title: step.name || 'step',
+        detail: Array.isArray(step.command) ? step.command.join(' ') : '',
+      };
+    }));
+
+    const approval = document.createElement('p');
+    approval.className = 'panel-note';
+    approval.textContent = readiness.requires_human_apply
+      ? 'Ready to preview. Apply remains disabled until an approval execution path is implemented.'
+      : 'Readiness did not declare human approval; apply is blocked.';
+    container.appendChild(approval);
+
+    const applyCommand = document.createElement('code');
+    applyCommand.textContent = Array.isArray(readiness.apply_command)
+      ? readiness.apply_command.join(' ')
+      : 'No apply command returned.';
+    container.appendChild(applyCommand);
   }
 
   function syncRunFilterOptions(runs) {

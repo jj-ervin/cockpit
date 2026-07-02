@@ -39,6 +39,7 @@
       <button class="tab" type="button" data-tab="launcher">Launcher</button>
       <button class="tab" type="button" data-tab="policy">Policy</button>
       <button class="tab" type="button" data-tab="governance">Governance</button>
+      <button class="tab" type="button" data-tab="wizard">Setup Wizard</button>
     </nav>
 
     <section class="tab-panel is-active" id="dashboard">
@@ -190,6 +191,21 @@
             <thead><tr><th>Severity</th><th>Rule</th><th>Message</th><th>File</th></tr></thead>
             <tbody id="governance-issue-table"></tbody>
           </table>
+        </div>
+      </section>
+    </section>
+
+    <section class="tab-panel" id="wizard">
+      <section class="panel">
+        <div class="panel-header">
+          <h2>Environment Setup Wizard</h2>
+          <span id="wizard-step-label">Step 1 of 1</span>
+        </div>
+        <ol class="wizard-steps" id="wizard-step-indicator"></ol>
+        <div class="wizard-content" id="wizard-content"></div>
+        <div class="button-row wizard-nav">
+          <button id="wizard-back" type="button" disabled>Back</button>
+          <button id="wizard-next" type="button" disabled>Next</button>
         </div>
       </section>
     </section>

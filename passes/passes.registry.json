@@ -377,6 +377,23 @@
       "superseded_by": null,
       "depends_on": ["CKP:1003"],
       "originating_pass": "CKP.09.00"
+    },
+    {
+      "id": "CKP:1012",
+      "alias": "CKP.09.04",
+      "legacy_ids": [],
+      "title": "Environment Setup Wizard Shell",
+      "description": "Generic wizard shell in the extracted bundle: step sequence, progress state (step indicator with active/complete states), and Back/Next navigation. Steps are pluggable (id, title, render, isComplete) so future provider setup flows can register without changing the shell. CKP.07's Marlin install-readiness preview is wired in as the one real step today - same read-only/preview data as the dashboard's existing Marlin panel, rendered independently for the wizard so the dashboard panel is unchanged. Built per the CKP.09.00 durable boundary: this is Marlin's environment-setup UI hosted as a provider surface inside Cockpit's universal wizard shell, not a narrowing of Cockpit to Marlin.",
+      "layer": "domain",
+      "cluster": "CKP",
+      "parent": "CKP:1011",
+      "status": "accepted",
+      "timestamp": "2026-07-02T00:00:00Z",
+      "path": "web/cockpit.js",
+      "supersedes": [],
+      "superseded_by": null,
+      "depends_on": ["CKP:1011", "CKP:1002"],
+      "originating_pass": "CKP.09.04"
     }
   ]
 }
