@@ -61,6 +61,15 @@
     policyEditor: byId('policy-editor'),
     notice: byId('notice'),
     footer: byId('footer'),
+    governanceStatus: byId('governance-status'),
+    govMode: byId('gov-mode'),
+    govHealth: byId('gov-health'),
+    govHashMatch: byId('gov-hash-match'),
+    govIssueCount: byId('gov-issue-count'),
+    govIssueTable: byId('governance-issue-table'),
+    epActivePass: byId('ep-active-pass'),
+    epRunState: byId('ep-run-state'),
+    epGovState: byId('ep-gov-state'),
   };
 
   elements.refresh.addEventListener('click', function () {
@@ -206,6 +215,8 @@
     renderEscalations();
     renderArtifacts();
     renderPolicy();
+    renderGovernance(state.snapshot.governance);
+    renderEditorPlaneBar(records.runs, state.snapshot.governance);
 
     if (workspace.bridgeError) {
       elements.footer.textContent = workspace.bridgeError;
@@ -392,6 +403,56 @@
     }));
   }
 
+  function renderGovernance(governance) {
+    const gov = governance || {};
+    const issues = Array.isArray(gov.issues) ? gov.issues : [];
+
+    elements.governanceStatus.textContent = gov.diagnostics_present ? 'Loaded' : 'No diagnostics found';
+    elements.govMode.textContent = gov.governance_mode || '-';
+    elements.govHealth.textContent = typeof gov.health_score === 'number' ? String(gov.health_score) : '-';
+    elements.govHashMatch.textContent = gov.hash_match === true ? 'yes' : gov.hash_match === false ? 'no' : '-';
+    elements.govIssueCount.textContent = String(issues.length);
+
+    clear(elements.govIssueTable);
+    if (!issues.length) {
+      elements.govIssueTable.appendChild(emptyTableRow(4, 'No governance issues found.'));
+      return;
+    }
+    issues.forEach(function (issue) {
+      const row = document.createElement('tr');
+      row.appendChild(cell(issue.severity || '-'));
+      row.appendChild(cell(issue.rule || '-'));
+      row.appendChild(cell(issue.message || '-'));
+      row.appendChild(cell(issue.file || '-'));
+      elements.govIssueTable.appendChild(row);
+    });
+  }
+
+  function computeGovernanceState(governance) {
+    const gov = governance || {};
+    if (!gov.diagnostics_present) {
+      return 'unknown';
+    }
+    const issues = Array.isArray(gov.issues) ? gov.issues : [];
+    const errors = issues.filter(function (issue) { return issue.severity === 'ERROR'; });
+    if (!errors.length) {
+      return 'clean';
+    }
+    const contained = errors.some(function (issue) {
+      return typeof issue.rule === 'string' && issue.rule.indexOf('containment') === 0;
+    });
+    return contained ? 'contained' : 'violation';
+  }
+
+  function renderEditorPlaneBar(runs, governance) {
+    const latest = (runs && runs[0]) || null;
+    elements.epActivePass.textContent = latest
+      ? (latest.pass_name_or_id || latest.pass_id || latest.pass || '-')
+      : '-';
+    elements.epRunState.textContent = latest ? (latest.state || latest.status || '-') : '-';
+    elements.epGovState.textContent = computeGovernanceState(governance);
+  }
+
   function syncRunFilterOptions(runs) {
     const states = Array.from(new Set(runs.map(function (run) {
       return run.state || run.status || '';
@@ -479,6 +540,7 @@
       health: snapshot.health || {},
       marlin: snapshot.marlin || {},
       records: Object.assign(emptyRecords(), snapshot.records || {}),
+      governance: snapshot.governance || null,
     };
   }
 
@@ -488,6 +550,7 @@
       health: {},
       marlin: {},
       records: emptyRecords(),
+      governance: null,
     };
   }
 

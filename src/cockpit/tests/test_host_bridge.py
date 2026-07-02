@@ -192,6 +192,22 @@ def test_execute_restore_record_missing_trash_ref_raises(workspace: Path) -> Non
         })
 
 
+def test_execute_get_governance_record(workspace: Path) -> None:
+    _write_policy(workspace)
+    (workspace / "health-report.json").write_text(json.dumps({"overall_score": 88}), encoding="utf-8")
+
+    result = execute({
+        "backend": "eco",
+        "workspace_id": str(workspace),
+        "operation": "get_record",
+        "record_type": "governance",
+        "record_id": "diagnostics",
+    })
+
+    assert result["data"]["health_score"] == 88
+    assert result["data"]["governance_mode"] == "unknown"
+
+
 def test_module_entrypoint_outputs_json(workspace: Path) -> None:
     _write_policy(workspace)
     request: dict[str, Any] = {

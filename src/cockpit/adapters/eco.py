@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from pathlib import Path
 from typing import Any
 
@@ -49,7 +50,7 @@ class EcoAdapter(CockpitAdapter):
     """
 
     BACKEND_ID = "eco"
-    RECORD_TYPES = frozenset({"run", "escalation", "artifact", "policy"})
+    RECORD_TYPES = frozenset({"run", "escalation", "artifact", "policy", "governance"})
 
     def __init__(
         self,
@@ -64,6 +65,9 @@ class EcoAdapter(CockpitAdapter):
         self._artifacts_root = self._eco_root / "artifacts"
         self._trash_root = self._eco_root / ".trash" / "artifacts"
         self._policy_path = self._eco_root / "policy.json"
+        self._governance_diagnostics_path = self._root / "governance-diagnostics.json"
+        self._project_yaml_path = self._root / "project.yaml"
+        self._health_report_path = self._root / "health-report.json"
         self._runtime_client = runtime_client
 
     @property
@@ -154,6 +158,8 @@ class EcoAdapter(CockpitAdapter):
                 data = self._load_artifacts()
             case "policy":
                 data = [self._read_policy()]
+            case "governance":
+                data = [self._read_governance()]
         return AdapterResult(data=data, origin=self._origin())
 
     def get_record(
@@ -179,6 +185,8 @@ class EcoAdapter(CockpitAdapter):
                 return AdapterResult(data=artifact, origin=self._origin())
             case "policy":
                 return AdapterResult(data=self._read_policy(), origin=self._origin())
+            case "governance":
+                return AdapterResult(data=self._read_governance(), origin=self._origin())
 
     # ---------------------------------------------------------------------------
     # Write operations
@@ -426,6 +434,55 @@ class EcoAdapter(CockpitAdapter):
             "created_at": path.stat().st_mtime,
             "hash": _sha256(path),
         }
+
+    def _read_governance(self) -> dict[str, Any]:
+        """Merge governance-diagnostics.json, project.yaml's governance_mode,
+        and health-report.json's overall_score at the workspace root - the
+        same three sources the old eco-vs Governance tab read directly,
+        combined into one record matching what that tab needs in one call."""
+        diagnostics = self._read_governance_diagnostics()
+        return {
+            "governance_mode": self._read_governance_mode(),
+            "governance_state_hash": diagnostics.get("governance_state_hash") if diagnostics else None,
+            "computed_hash": diagnostics.get("computed_hash") if diagnostics else None,
+            "hash_match": diagnostics.get("hash_match") if diagnostics else None,
+            "issues": diagnostics.get("issues", []) if diagnostics else [],
+            "diagnostics_present": diagnostics is not None,
+            "health_score": self._read_health_score(),
+        }
+
+    def _read_governance_diagnostics(self) -> dict[str, Any] | None:
+        if not self._governance_diagnostics_path.exists():
+            return None
+        try:
+            raw = self._governance_diagnostics_path.read_text(encoding="utf-8")
+            parsed = json.loads(raw)
+            return parsed if isinstance(parsed, dict) else None
+        except (json.JSONDecodeError, OSError):
+            return None
+
+    def _read_governance_mode(self) -> str:
+        if not self._project_yaml_path.exists():
+            return "unknown"
+        try:
+            text = self._project_yaml_path.read_text(encoding="utf-8")
+        except OSError:
+            return "unknown"
+        match = re.search(r'^\s*governance_mode:\s*["\']?(\w+)["\']?', text, re.MULTILINE)
+        return match.group(1).lower() if match else "full"
+
+    def _read_health_score(self) -> float | None:
+        if not self._health_report_path.exists():
+            return None
+        try:
+            raw = self._health_report_path.read_text(encoding="utf-8")
+            data = json.loads(raw)
+        except (json.JSONDecodeError, OSError):
+            return None
+        score = data.get("overall_score") if isinstance(data, dict) else None
+        if isinstance(score, bool) or not isinstance(score, (int, float)):
+            return None
+        return score
 
     def _read_policy(self) -> dict[str, Any]:
         if not self._policy_path.exists():

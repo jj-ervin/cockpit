@@ -290,6 +290,77 @@ def test_get_record_unknown_type_raises(full_workspace: Path) -> None:
 
 
 # ---------------------------------------------------------------------------
+# governance record type
+# ---------------------------------------------------------------------------
+
+def test_governance_defaults_when_no_sources_present(full_workspace: Path) -> None:
+    a = EcoAdapter(workspace_id=str(full_workspace))
+    result = a.get_record("governance", "diagnostics")
+    assert result.data["governance_mode"] == "unknown"
+    assert result.data["diagnostics_present"] is False
+    assert result.data["issues"] == []
+    assert result.data["health_score"] is None
+
+
+def test_governance_reads_diagnostics_file(workspace: Path) -> None:
+    diagnostics = {
+        "governance_mode": "full",
+        "governance_state_hash": "abc",
+        "computed_hash": "abc",
+        "hash_match": True,
+        "issues": [{"severity": "ERROR", "message": "bad thing", "file": "x.py", "line": 3, "rule": "R1"}],
+    }
+    (workspace / "governance-diagnostics.json").write_text(json.dumps(diagnostics), encoding="utf-8")
+    a = EcoAdapter(workspace_id=str(workspace))
+    result = a.get_record("governance", "diagnostics")
+    assert result.data["diagnostics_present"] is True
+    assert result.data["hash_match"] is True
+    assert result.data["issues"][0]["rule"] == "R1"
+
+
+def test_governance_reads_mode_from_project_yaml(workspace: Path) -> None:
+    (workspace / "project.yaml").write_text('name: demo\ngovernance_mode: "soft"\n', encoding="utf-8")
+    a = EcoAdapter(workspace_id=str(workspace))
+    result = a.get_record("governance", "diagnostics")
+    assert result.data["governance_mode"] == "soft"
+
+
+def test_governance_mode_defaults_to_full_when_key_missing(workspace: Path) -> None:
+    (workspace / "project.yaml").write_text("name: demo\n", encoding="utf-8")
+    a = EcoAdapter(workspace_id=str(workspace))
+    result = a.get_record("governance", "diagnostics")
+    assert result.data["governance_mode"] == "full"
+
+
+def test_governance_reads_health_score(workspace: Path) -> None:
+    (workspace / "health-report.json").write_text(json.dumps({"overall_score": 92.5}), encoding="utf-8")
+    a = EcoAdapter(workspace_id=str(workspace))
+    result = a.get_record("governance", "diagnostics")
+    assert result.data["health_score"] == 92.5
+
+
+def test_governance_health_score_ignores_non_numeric(workspace: Path) -> None:
+    (workspace / "health-report.json").write_text(json.dumps({"overall_score": "not-a-number"}), encoding="utf-8")
+    a = EcoAdapter(workspace_id=str(workspace))
+    result = a.get_record("governance", "diagnostics")
+    assert result.data["health_score"] is None
+
+
+def test_governance_malformed_diagnostics_json_treated_as_absent(workspace: Path) -> None:
+    (workspace / "governance-diagnostics.json").write_text("not json", encoding="utf-8")
+    a = EcoAdapter(workspace_id=str(workspace))
+    result = a.get_record("governance", "diagnostics")
+    assert result.data["diagnostics_present"] is False
+
+
+def test_list_records_governance_returns_single_item(full_workspace: Path) -> None:
+    a = EcoAdapter(workspace_id=str(full_workspace))
+    result = a.list_records("governance")
+    assert len(result.data) == 1
+    assert "governance_mode" in result.data[0]
+
+
+# ---------------------------------------------------------------------------
 # approve()
 # ---------------------------------------------------------------------------
 

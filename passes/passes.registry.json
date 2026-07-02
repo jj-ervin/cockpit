@@ -292,6 +292,40 @@
       "superseded_by": null,
       "depends_on": ["CKP:1004"],
       "originating_pass": "CKP.08.06"
+    },
+    {
+      "id": "CKP:1007",
+      "alias": "CKP.08.07",
+      "legacy_ids": ["CKP.08.04c"],
+      "title": "Governance Diagnostics Record Type",
+      "description": "Adds a governance record type to CockpitAdapter/EcoAdapter, merging governance-diagnostics.json, project.yaml's governance_mode, and health-report.json's overall_score into one record - the three sources the old eco-vs Governance tab read directly. Flows through the existing generic list_records/get_record dispatch (no host_bridge.py changes needed). Relayed through cockpitApi.ts/webviewHost.ts and rendered as a Governance tab in the extracted bundle. Closes the second of the two real backend gaps identified in the CKP.08.04 audit.",
+      "layer": "domain",
+      "cluster": "CKP",
+      "parent": "CKP:1003",
+      "status": "accepted",
+      "timestamp": "2026-07-02T00:00:00Z",
+      "path": "src/cockpit/adapters/eco.py",
+      "supersedes": [],
+      "superseded_by": null,
+      "depends_on": ["CKP:1004"],
+      "originating_pass": "CKP.08.07"
+    },
+    {
+      "id": "CKP:1008",
+      "alias": "CKP.08.08",
+      "legacy_ids": [],
+      "title": "Editor-Plane Sync via Polling",
+      "description": "Live active-PASS/run-state/governance-state status bar in the extracted bundle dashboard, kept current by the VS Code host loader polling getState()/diagnostics on an interval while the panel is visible and pushing only on change - deliberately not the old eco-vs push-on-file-change model, decided as a portfolio-owner architecture call to fit the existing request/response bridge contract without new adapter or host-side watcher plumbing.",
+      "layer": "domain",
+      "cluster": "CKP",
+      "parent": "CKP:1003",
+      "status": "accepted",
+      "timestamp": "2026-07-02T00:00:00Z",
+      "path": "DEV-PATH.md",
+      "supersedes": [],
+      "superseded_by": null,
+      "depends_on": ["CKP:1004"],
+      "originating_pass": "CKP.08.08"
     }
   ]
 }
