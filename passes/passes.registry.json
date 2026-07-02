@@ -360,6 +360,23 @@
       "superseded_by": null,
       "depends_on": ["CKP:1005", "CKP:1006", "CKP:1007", "CKP:1008"],
       "originating_pass": "CKP.08.10"
+    },
+    {
+      "id": "CKP:1011",
+      "alias": "CKP.09.00",
+      "legacy_ids": [],
+      "title": "v1.0 Scoping and Durable Cockpit/Marlin Boundary (Primary)",
+      "description": "Breaks eco-ui-spec's five locked v1.0 items into real, estimable PASSes (mode switching, diagnostics dashboard, Quick-Bar, environment setup wizard, environment emergence UI); corrects a discrepancy between that locked spec and cockpit's own Product Ladder table. Records the durable Cockpit/Marlin boundary the portfolio owner set after flagging that planning-doc language had drifted toward framing Cockpit as Marlin's UI: Cockpit is the universal UI/UX host (identity, not narrowed to any one backend); Marlin owns install/scaffold/audit/package/governance-setup logic; adapters own the typed contract between them. Verified the actual MarlinAdapter/install_phase1.py code already respects this boundary - the drift was in planning-doc language, not the implementation. Sets Marlin's environment-setup UI as the priority build target inside Cockpit's universal scope, not a narrowing of that scope.",
+      "layer": "standards",
+      "cluster": "CKP",
+      "parent": null,
+      "status": "accepted",
+      "timestamp": "2026-07-02T00:00:00Z",
+      "path": "docs/specifications/CKP.v1.0-scoping.md",
+      "supersedes": [],
+      "superseded_by": null,
+      "depends_on": ["CKP:1003"],
+      "originating_pass": "CKP.09.00"
     }
   ]
 }
