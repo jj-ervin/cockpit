@@ -54,3 +54,18 @@ Response data contains one record:
 - Host bridge exposes the preview through `list_records`.
 - Host bridge rejects apply attempts through the read-only query.
 - Tests cover adapter and bridge behavior.
+
+## VS Code Host Slice
+
+The first host implementation lives in `eco-vscode`.
+
+The Cockpit webview renders:
+
+- readiness status
+- previewed install/test/bridge-smoke steps
+- the explicit apply command
+- a disabled Apply button
+- approval copy explaining that package mutation requires a separate human
+  approval execution path
+
+The VS Code host does not run the apply command in this slice.
