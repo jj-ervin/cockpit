@@ -11,3 +11,4 @@
 {"action":"create","id":"CKP:1001","alias":"CKP.07.00","timestamp":"2026-07-02T00:00:00Z","actor":"claude","reason":"Retroactive registration migrating legacy roadmap CKP.6 (Marlin governance panel), resolving its collision with the unrelated CKP.06 demo-flow item"}
 {"action":"create","id":"CKP:1002","alias":"CKP.07.01","timestamp":"2026-07-02T00:00:00Z","actor":"claude","reason":"Retroactive registration migrating legacy CKP.6A to conformant sub-PASS form"}
 {"action":"create","id":"CKP:1003","alias":"CKP.08.00","timestamp":"2026-07-02T00:00:00Z","actor":"claude","reason":"New primary PASS: Cockpit UI extraction, registered from creation per DEV-ACCORD-CI-41"}
+{"action":"create","id":"CKP:1004","alias":"CKP.08.04","timestamp":"2026-07-02T00:00:00Z","actor":"codex","reason":"Feature-parity audit comparing older eco-vs Cockpit against extracted host-agnostic bundle and current eco-vscode loader"}

@@ -241,6 +241,23 @@
       "superseded_by": null,
       "depends_on": ["CKP:1001", "CKP:0006"],
       "originating_pass": "CKP.08.00"
+    },
+    {
+      "id": "CKP:1004",
+      "alias": "CKP.08.04",
+      "legacy_ids": [],
+      "title": "Feature-Parity Audit - eco-vs vs Extracted Bundle",
+      "description": "Audit comparing the older embedded eco-vs Cockpit implementation against the extracted host-agnostic Cockpit bundle and current eco-vscode host loader, classifying parity gaps and the next compound restoration PASS.",
+      "layer": "domain",
+      "cluster": "CKP",
+      "parent": "CKP:1003",
+      "status": "accepted",
+      "timestamp": "2026-07-02T00:00:00Z",
+      "path": "docs/specifications/CKP.08.04-feature-parity-audit.md",
+      "supersedes": [],
+      "superseded_by": null,
+      "depends_on": ["CKP:1003"],
+      "originating_pass": "CKP.08.04"
     }
   ]
 }
