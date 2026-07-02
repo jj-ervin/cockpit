@@ -10,6 +10,7 @@ from typing import Any
 
 import pytest
 
+from cockpit.core.adapter import ValidationError
 from cockpit.host_bridge import execute
 
 
@@ -60,6 +61,43 @@ def test_execute_list_records_passes_record_type(workspace: Path) -> None:
     })
 
     assert result["data"][0]["version"] == "1.0"
+
+
+def test_execute_marlin_install_readiness_is_preview(workspace: Path, tmp_path: Path) -> None:
+    project_root = tmp_path / "cockpit"
+    project_root.mkdir()
+
+    result = execute({
+        "backend": "marlin",
+        "workspace_id": str(workspace),
+        "operation": "list_records",
+        "record_type": "install-readiness",
+        "filters": {
+            "project_root": str(project_root),
+            "workspace": str(workspace),
+            "python": "python",
+        },
+    })
+
+    readiness = result["data"][0]
+    assert result["origin"]["backend"] == "marlin"
+    assert readiness["mode"] == "preview"
+    assert readiness["requires_human_apply"] is True
+    assert readiness["mutation_allowed_from_bridge"] is False
+    assert "--apply" in readiness["apply_command"]
+
+
+def test_execute_marlin_install_readiness_rejects_apply(workspace: Path) -> None:
+    with pytest.raises(ValidationError, match="read-only"):
+        execute({
+            "backend": "marlin",
+            "workspace_id": str(workspace),
+            "operation": "list_records",
+            "record_type": "install-readiness",
+            "filters": {
+                "apply": True,
+            },
+        })
 
 
 def test_execute_rejects_write_operations(workspace: Path) -> None:

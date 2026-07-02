@@ -116,6 +116,65 @@ def test_list_records_unknown_type(populated_home: Path) -> None:
         adapter.list_records("run")
 
 
+def test_list_records_install_readiness_preview(populated_home: Path, tmp_path: Path) -> None:
+    project_root = tmp_path / "cockpit"
+    workspace = tmp_path / "eco"
+    project_root.mkdir()
+    workspace.mkdir()
+    adapter = MarlinAdapter(workspace_id=str(populated_home))
+
+    result = adapter.list_records(
+        "install-readiness",
+        project_root=str(project_root),
+        workspace=str(workspace),
+        python="python",
+    )
+
+    readiness = result.data[0]
+    assert readiness["id"] == "phase1"
+    assert readiness["panel"] == "marlin-governance"
+    assert readiness["mode"] == "preview"
+    assert readiness["requires_human_apply"] is True
+    assert readiness["mutation_allowed_from_bridge"] is False
+    assert [step["name"] for step in readiness["preview_steps"]] == [
+        "install",
+        "pytest",
+        "bridge-smoke",
+    ]
+    assert "--apply" in readiness["apply_command"]
+    assert str(project_root.resolve()) in readiness["apply_command"]
+    assert str(workspace.resolve()) in readiness["apply_command"]
+
+
+def test_install_readiness_rejects_apply_filter(populated_home: Path) -> None:
+    adapter = MarlinAdapter(workspace_id=str(populated_home))
+
+    with pytest.raises(ValidationError, match="read-only"):
+        adapter.list_records("install-readiness", apply=True)
+
+
+def test_install_readiness_can_preview_without_tests(populated_home: Path, tmp_path: Path) -> None:
+    project_root = tmp_path / "cockpit"
+    workspace = tmp_path / "eco"
+    project_root.mkdir()
+    workspace.mkdir()
+    adapter = MarlinAdapter(workspace_id=str(populated_home))
+
+    result = adapter.list_records(
+        "install-readiness",
+        project_root=str(project_root),
+        workspace=str(workspace),
+        include_tests=False,
+    )
+
+    readiness = result.data[0]
+    assert [step["name"] for step in readiness["preview_steps"]] == [
+        "install",
+        "bridge-smoke",
+    ]
+    assert "--skip-tests" in readiness["apply_command"]
+
+
 # ---------------------------------------------------------------------------
 # get_record()
 # ---------------------------------------------------------------------------
@@ -131,6 +190,19 @@ def test_get_record_not_found(populated_home: Path) -> None:
     adapter = MarlinAdapter(workspace_id=str(populated_home))
     with pytest.raises(RecordNotFoundError, match="not installed"):
         adapter.get_record("package", "does-not-exist")
+
+
+def test_get_record_install_readiness(populated_home: Path) -> None:
+    adapter = MarlinAdapter(workspace_id=str(populated_home))
+    result = adapter.get_record("install-readiness", "phase1")
+    assert result.data["id"] == "phase1"
+    assert result.data["requires_human_apply"] is True
+
+
+def test_get_record_install_readiness_not_found(populated_home: Path) -> None:
+    adapter = MarlinAdapter(workspace_id=str(populated_home))
+    with pytest.raises(RecordNotFoundError, match="does not exist"):
+        adapter.get_record("install-readiness", "unknown")
 
 
 # ---------------------------------------------------------------------------

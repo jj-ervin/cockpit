@@ -14,6 +14,14 @@ Current package surfaces:
 - `src/cockpit/adapters/marlin.py` - Marlin state adapter
 - `src/cockpit/host_bridge.py` - `python -m cockpit.host_bridge` JSON host bridge
 
+Marlin governance panel slice:
+
+- `backend: "marlin"` + `record_type: "install-readiness"` returns a read-only
+  preview of Cockpit Phase 1 install steps and an explicit `--apply` command for
+  a human-approved host action.
+- The bridge rejects attempts to pass `apply: true` through `install-readiness`.
+  Package mutation stays outside the read-only panel query.
+
 The governing specs and original implementation lineage include:
 
 - `eco/passes/ck/CK.00.md` - Cockpit cluster header and scope boundary
