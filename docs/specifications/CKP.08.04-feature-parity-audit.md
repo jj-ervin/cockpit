@@ -133,6 +133,32 @@ Do not mark the old `eco-vs` Cockpit panel superseded yet. Supersession should
 wait until the extracted bundle plus host loader covers the CK.01 required
 surfaces or explicitly documents replacements for each one.
 
+## Update — 2026-07-02 — Supersession Gate Met (CKP.08.10)
+
+All 5 CK.01 required surfaces (Run Record Viewer, Escalation Queue, Artifact
+Index, PASS Run Launcher, Policy Viewer) plus `eco-vs`'s two extras
+(Governance, editor-plane sync) are now covered by the extracted bundle and
+`eco-vscode` host loader — `CKP.08.05` (UI-only port), `CKP.08.06` (artifact
+trash/restore), `CKP.08.07` (governance diagnostics), `CKP.08.08` (editor-plane
+sync via polling).
+
+Verification behind this: `tsc --noEmit` clean, `npm run build` clean with
+byte-identical bundle copy, Python 96/96 tests passing, plus a manual
+Extension Development Host smoke test against `C:\dev\eco` (portfolio owner
+confirmed 2026-07-02) — all tabs render, no console errors, Governance tab
+degrades gracefully with no `governance-diagnostics.json` present in that
+workspace. Not exhaustively verified: artifact delete/undo round-trip was not
+explicitly confirmed to complete in that manual pass, and the Governance
+tab's non-empty-data path (a workspace that actually has diagnostics) was
+never exercised live. Recorded honestly as a residual gap, not a blocker to
+this decision.
+
+**Decision: `eco-vs`'s Cockpit panel is superseded.** Marked in
+`eco/surfaces/vscode/eco-vs/src/app/cockpit.ts` and its webview files.
+`eco-vscode/DEV-PLAN.md`'s Cockpit convergence note updated accordingly.
+This does not affect `eco-vs`'s HELM or PASS surfaces, which are out of
+scope for this audit and remain active.
+
 ## Recommended Next Step
 
 `Single PASS — CKP.08.04a: UI-Only Operator Parity Port`

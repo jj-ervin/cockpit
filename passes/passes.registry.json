@@ -326,6 +326,40 @@
       "superseded_by": null,
       "depends_on": ["CKP:1004"],
       "originating_pass": "CKP.08.08"
+    },
+    {
+      "id": "CKP:1009",
+      "alias": "CKP.08.09",
+      "legacy_ids": [],
+      "title": "PASS-ID Citation Gate Wiring",
+      "description": "Wires governance-commons/gc-audit/tools/validate-pass-citations.ps1 into this repo's git hooks (pre-commit + commit-msg, via .pre-commit-config.yaml) for the first time - this repo had no git hooks at all before this. Companion fix in governance-commons widened the validator's heading regex to recognize this repo's leading-alias '## CKP.NN Closure' convention. Found via a portfolio-wide dirty/sync scan during the CKP.08.06 PLAY. Registered after the fact - cited informally in commit messages and DEV-PATH.md before this registration, using Pass-ID: standalone in the actual commit trailers rather than a false PASS-ID claim.",
+      "layer": "domain",
+      "cluster": "CKP",
+      "parent": "CKP:1003",
+      "status": "accepted",
+      "timestamp": "2026-07-02T00:00:00Z",
+      "path": "DEV-PATH.md",
+      "supersedes": [],
+      "superseded_by": null,
+      "depends_on": ["CKP:1006"],
+      "originating_pass": "CKP.08.09"
+    },
+    {
+      "id": "CKP:1010",
+      "alias": "CKP.08.10",
+      "legacy_ids": [],
+      "title": "eco-vs Cockpit Panel Superseded",
+      "description": "Decision: eco/surfaces/vscode/eco-vs's Cockpit panel is superseded by the extracted cockpit/web bundle plus eco-vscode host loader, now that all 5 CK.01 required surfaces and eco-vs's two extras (Governance, editor-plane sync) are covered - see CKP.08.05 through CKP.08.08. Verified by tsc/build/pytest plus a manual Extension Development Host smoke test against C:\\dev\\eco (portfolio owner, 2026-07-02): all tabs render, no console errors, Governance tab degrades gracefully. Not exhaustively verified: artifact delete/undo round-trip and the Governance tab's non-empty-data path were not explicitly exercised live - recorded as a known residual gap, not a blocker. Does not affect eco-vs's HELM or PASS surfaces, which remain active and out of scope.",
+      "layer": "domain",
+      "cluster": "CKP",
+      "parent": "CKP:1003",
+      "status": "accepted",
+      "timestamp": "2026-07-02T00:00:00Z",
+      "path": "docs/specifications/CKP.08.04-feature-parity-audit.md",
+      "supersedes": [],
+      "superseded_by": null,
+      "depends_on": ["CKP:1005", "CKP:1006", "CKP:1007", "CKP:1008"],
+      "originating_pass": "CKP.08.10"
     }
   ]
 }
