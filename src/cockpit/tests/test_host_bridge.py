@@ -111,10 +111,33 @@ def test_execute_rejects_write_operations(workspace: Path) -> None:
             "record_type": "run",
             "payload": {},
         })
-    except ValueError as exc:
-        assert "unsupported bridge operation" in str(exc)
+    except Exception as exc:
+        assert "read-only" in str(exc) or "missing required fields" in str(exc)
     else:
-        raise AssertionError("write operation was not rejected")
+        raise AssertionError("write operation unexpectedly succeeded")
+
+
+def test_execute_update_policy_uses_existing_adapter_contract(workspace: Path) -> None:
+    _write_policy(workspace)
+
+    result = execute({
+        "backend": "eco",
+        "workspace_id": str(workspace),
+        "operation": "update_record",
+        "record_type": "policy",
+        "record_id": "policy",
+        "payload": {
+            "version": "2.0",
+            "human_escalation": False,
+            "validation_rules": [],
+            "allowlist": [],
+            "denylist": [],
+        },
+    })
+
+    assert result["origin"]["backend"] == "eco"
+    assert result["data"]["version"] == "2.0"
+    assert result["data"]["human_escalation"] is False
 
 
 def test_module_entrypoint_outputs_json(workspace: Path) -> None:

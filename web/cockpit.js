@@ -11,58 +11,157 @@
     throw new Error('cockpit.js requires window.cockpitHost.postMessage to be set by the host loader before this script runs');
   }
 
+  const state = {
+    snapshot: emptySnapshot(),
+    selectedRunId: '',
+    runFilter: 'all',
+    policyOriginal: '{}',
+  };
+
   const elements = {
-    refresh: document.getElementById('refresh'),
-    status: document.getElementById('status'),
-    totalRuns: document.getElementById('total-runs'),
-    escalations: document.getElementById('escalations'),
-    artifacts: document.getElementById('artifacts'),
-    health: document.getElementById('health'),
-    ecoRoot: document.getElementById('eco-root'),
-    backend: document.getElementById('backend'),
-    workspace: document.getElementById('workspace'),
-    runCounts: document.getElementById('run-counts'),
-    runStateCount: document.getElementById('run-state-count'),
-    records: document.getElementById('records'),
-    marlinStatus: document.getElementById('marlin-status'),
-    marlinSteps: document.getElementById('marlin-steps'),
-    marlinApplyCommand: document.getElementById('marlin-apply-command'),
-    marlinApply: document.getElementById('marlin-apply'),
-    marlinApproval: document.getElementById('marlin-approval'),
-    footer: document.getElementById('footer'),
+    refresh: byId('refresh'),
+    status: byId('status'),
+    totalRuns: byId('total-runs'),
+    escalations: byId('escalations'),
+    artifacts: byId('artifacts'),
+    health: byId('health'),
+    ecoRoot: byId('eco-root'),
+    backend: byId('backend'),
+    workspace: byId('workspace'),
+    tabs: Array.from(document.querySelectorAll('.tab')),
+    panels: Array.from(document.querySelectorAll('.tab-panel')),
+    runCounts: byId('run-counts'),
+    runStateCount: byId('run-state-count'),
+    records: byId('records'),
+    marlinStatus: byId('marlin-status'),
+    marlinSteps: byId('marlin-steps'),
+    marlinApplyCommand: byId('marlin-apply-command'),
+    marlinApply: byId('marlin-apply'),
+    marlinApproval: byId('marlin-approval'),
+    runFilter: byId('run-filter'),
+    runTable: byId('run-table'),
+    runDetailTitle: byId('run-detail-title'),
+    copyRun: byId('copy-run'),
+    rerunRecord: byId('rerun-record'),
+    runJson: byId('run-json'),
+    escalationCount: byId('escalation-count'),
+    escalationList: byId('escalation-list'),
+    artifactCount: byId('artifact-count'),
+    artifactTable: byId('artifact-table'),
+    launcherForm: byId('launcher-form'),
+    launcherPass: byId('launcher-pass'),
+    launcherArtifactType: byId('launcher-artifact-type'),
+    launcherObjective: byId('launcher-objective'),
+    validatePolicy: byId('validate-policy'),
+    savePolicy: byId('save-policy'),
+    revertPolicy: byId('revert-policy'),
+    openPolicy: byId('open-policy'),
+    policyEditor: byId('policy-editor'),
+    notice: byId('notice'),
+    footer: byId('footer'),
   };
 
   elements.refresh.addEventListener('click', function () {
-    host.postMessage({ type: 'eco.cockpit.refresh' });
+    post({ type: 'eco.cockpit.refresh' });
+  });
+
+  elements.tabs.forEach(function (tab) {
+    tab.addEventListener('click', function () {
+      setActiveTab(tab.dataset.tab);
+    });
+  });
+
+  elements.runFilter.addEventListener('change', function () {
+    state.runFilter = elements.runFilter.value;
+    renderRuns();
+  });
+
+  elements.copyRun.addEventListener('click', function () {
+    if (state.selectedRunId) {
+      post({ type: 'eco.cockpit.copyRunJson', runId: state.selectedRunId });
+    }
+  });
+
+  elements.rerunRecord.addEventListener('click', function () {
+    if (state.selectedRunId) {
+      post({ type: 'eco.cockpit.rerunRecord', runId: state.selectedRunId });
+    }
+  });
+
+  elements.launcherForm.addEventListener('submit', function (event) {
+    event.preventDefault();
+    post({
+      type: 'eco.cockpit.submitRun',
+      payload: {
+        pass_name_or_id: elements.launcherPass.value.trim(),
+        artifact_type: elements.launcherArtifactType.value.trim(),
+        objective: elements.launcherObjective.value.trim(),
+      },
+    });
+  });
+
+  elements.validatePolicy.addEventListener('click', function () {
+    parsePolicy();
+  });
+
+  elements.savePolicy.addEventListener('click', function () {
+    const parsed = parsePolicy();
+    if (parsed.ok) {
+      post({ type: 'eco.cockpit.savePolicy', payload: parsed.value });
+    }
+  });
+
+  elements.revertPolicy.addEventListener('click', function () {
+    elements.policyEditor.value = state.policyOriginal;
+    showNotice('Policy editor reverted to the latest loaded snapshot.', false);
+  });
+
+  elements.openPolicy.addEventListener('click', function () {
+    post({ type: 'eco.cockpit.openPolicy' });
   });
 
   window.addEventListener('message', function (event) {
     const message = event.data;
-    if (!message || message.type !== 'eco.cockpit.state') {
+    if (!message || !message.type) {
       return;
     }
-    renderSnapshot(message.payload);
+    if (message.type === 'eco.cockpit.state') {
+      renderSnapshot(message.payload);
+      return;
+    }
+    if (message.type === 'eco.cockpit.actionResult') {
+      const payload = message.payload || {};
+      showNotice(payload.message || 'Action completed.', payload.ok === false);
+      if (payload.refresh !== false) {
+        post({ type: 'eco.cockpit.refresh' });
+      }
+      return;
+    }
+    if (message.type === 'eco.cockpit.error') {
+      const payload = message.payload || {};
+      showNotice(payload.message || 'Cockpit host error.', true);
+    }
   });
 
-  host.postMessage({ type: 'eco.cockpit.ready' });
+  post({ type: 'eco.cockpit.ready' });
 
   function renderSnapshot(payload) {
-    const state = payload && payload.state ? payload.state : {};
-    const backendState = state.backendState || {};
-    const health = payload && payload.health ? payload.health : {};
-    const records = payload && payload.records ? payload.records : emptyRecords();
-    const marlin = payload && payload.marlin ? payload.marlin : {};
+    state.snapshot = normalizeSnapshot(payload);
+    const workspace = state.snapshot.state || {};
+    const backendState = workspace.backendState || {};
+    const health = state.snapshot.health || {};
+    const records = state.snapshot.records || emptyRecords();
     const runCounts = backendState.run_counts || {};
 
-    elements.status.textContent = state.detected ? 'Detected' : 'Not detected';
-    elements.totalRuns.textContent = String(backendState.total_runs || 0);
+    elements.status.textContent = workspace.detected ? 'Detected' : 'Not detected';
+    elements.totalRuns.textContent = String(backendState.total_runs || records.runs.length || 0);
     elements.escalations.textContent = String(backendState.escalation_queue_depth || records.escalations.length || 0);
     elements.artifacts.textContent = String(records.artifacts.length || 0);
     elements.health.textContent = health.status || '-';
     elements.ecoRoot.textContent = yesNo(health.eco_root_present);
-    elements.backend.textContent = state.adapter ? state.adapter.backend : '-';
-    elements.workspace.textContent = state.adapter && state.adapter.workspaceId
-      ? state.adapter.workspaceId
+    elements.backend.textContent = workspace.adapter ? workspace.adapter.backend : '-';
+    elements.workspace.textContent = workspace.adapter && workspace.adapter.workspaceId
+      ? workspace.adapter.workspaceId
       : '-';
 
     const runCountRows = Object.keys(runCounts).sort().map(function (key) {
@@ -71,35 +170,168 @@
         detail: String(runCounts[key]),
       };
     });
-    elements.runStateCount.textContent = String(runCountRows.length);
+    elements.runStateCount.textContent = String(runCountRows.length) + ' states';
     renderList(elements.runCounts, runCountRows);
 
     renderList(elements.records, [
-      {
-        title: 'Runs',
-        detail: String(records.runs.length),
-      },
-      {
-        title: 'Escalations',
-        detail: String(records.escalations.length),
-      },
-      {
-        title: 'Artifacts',
-        detail: String(records.artifacts.length),
-      },
-      {
-        title: 'Policies',
-        detail: String(records.policies.length),
-      },
+      { title: 'Runs', detail: String(records.runs.length) },
+      { title: 'Escalations', detail: String(records.escalations.length) },
+      { title: 'Artifacts', detail: String(records.artifacts.length) },
+      { title: 'Policies', detail: String(records.policies.length) },
     ]);
-    renderMarlinReadiness(marlin);
 
-    if (state.bridgeError) {
-      elements.footer.textContent = state.bridgeError;
-    } else if (state.workspaceRoot) {
-      elements.footer.textContent = state.workspaceRoot + ' | refreshed ' + state.refreshedAt;
+    renderMarlinReadiness(state.snapshot.marlin || {});
+    syncRunFilterOptions(records.runs);
+    renderRuns();
+    renderEscalations();
+    renderArtifacts();
+    renderPolicy();
+
+    if (workspace.bridgeError) {
+      elements.footer.textContent = workspace.bridgeError;
+    } else if (workspace.workspaceRoot) {
+      elements.footer.textContent = workspace.workspaceRoot + ' | refreshed ' + workspace.refreshedAt;
     } else {
       elements.footer.textContent = 'Open an eco-governed workspace to load Cockpit state.';
+    }
+  }
+
+  function renderRuns() {
+    const runs = filteredRuns();
+    clear(elements.runTable);
+    if (!runs.length) {
+      elements.runTable.appendChild(emptyTableRow(4, 'No run records found.'));
+      renderSelectedRun(null);
+      return;
+    }
+
+    if (!state.selectedRunId || !runs.some(function (run) { return recordId(run) === state.selectedRunId; })) {
+      state.selectedRunId = recordId(runs[0]);
+    }
+
+    runs.forEach(function (run) {
+      const id = recordId(run);
+      const row = document.createElement('tr');
+      row.className = id === state.selectedRunId ? 'is-selected' : '';
+      row.tabIndex = 0;
+      row.appendChild(cell(id));
+      row.appendChild(cell(run.state || run.status || '-'));
+      row.appendChild(cell(run.updated_at || run.completed_at || run.started_at || '-'));
+      row.appendChild(cell(run.pass_name_or_id || run.pass_id || run.pass || '-'));
+      row.addEventListener('click', function () {
+        state.selectedRunId = id;
+        renderRuns();
+      });
+      row.addEventListener('keydown', function (event) {
+        if (event.key === 'Enter' || event.key === ' ') {
+          state.selectedRunId = id;
+          renderRuns();
+        }
+      });
+      elements.runTable.appendChild(row);
+    });
+
+    renderSelectedRun(runs.find(function (run) { return recordId(run) === state.selectedRunId; }) || runs[0]);
+  }
+
+  function renderSelectedRun(run) {
+    if (!run) {
+      state.selectedRunId = '';
+      elements.runDetailTitle.textContent = 'Run Detail';
+      elements.runJson.textContent = '{}';
+      elements.copyRun.disabled = true;
+      elements.rerunRecord.disabled = true;
+      return;
+    }
+
+    elements.runDetailTitle.textContent = recordId(run);
+    elements.runJson.textContent = JSON.stringify(run, null, 2);
+    elements.copyRun.disabled = false;
+    elements.rerunRecord.disabled = false;
+  }
+
+  function renderEscalations() {
+    const escalations = state.snapshot.records.escalations || [];
+    elements.escalationCount.textContent = String(escalations.length) + ' open';
+    clear(elements.escalationList);
+    if (!escalations.length) {
+      renderList(elements.escalationList, []);
+      return;
+    }
+
+    escalations.forEach(function (item) {
+      const id = recordId(item);
+      const row = document.createElement('div');
+      const title = document.createElement('strong');
+      const detail = document.createElement('span');
+      const reason = document.createElement('input');
+      const actions = document.createElement('div');
+      const approve = document.createElement('button');
+      const deny = document.createElement('button');
+
+      row.className = 'item action-item';
+      title.textContent = id;
+      detail.textContent = item.reason || item.message || item.state || 'Escalation requires operator decision.';
+      reason.type = 'text';
+      reason.placeholder = 'Decision reason';
+      actions.className = 'button-row';
+      approve.type = 'button';
+      approve.textContent = 'Approve';
+      deny.type = 'button';
+      deny.textContent = 'Deny';
+      approve.addEventListener('click', function () {
+        post({ type: 'eco.cockpit.approveEscalation', runId: id, decision: 'approved', reason: reason.value.trim() });
+      });
+      deny.addEventListener('click', function () {
+        post({ type: 'eco.cockpit.approveEscalation', runId: id, decision: 'denied', reason: reason.value.trim() });
+      });
+
+      actions.appendChild(approve);
+      actions.appendChild(deny);
+      row.appendChild(title);
+      row.appendChild(detail);
+      row.appendChild(reason);
+      row.appendChild(actions);
+      elements.escalationList.appendChild(row);
+    });
+  }
+
+  function renderArtifacts() {
+    const artifacts = state.snapshot.records.artifacts || [];
+    elements.artifactCount.textContent = String(artifacts.length) + ' artifacts';
+    clear(elements.artifactTable);
+    if (!artifacts.length) {
+      elements.artifactTable.appendChild(emptyTableRow(4, 'No artifacts found.'));
+      return;
+    }
+
+    artifacts.forEach(function (artifact) {
+      const artifactPath = artifact.path || artifact.file || artifact.uri || artifact.id || '';
+      const row = document.createElement('tr');
+      const actionCell = document.createElement('td');
+      const open = document.createElement('button');
+      row.appendChild(cell(artifactPath || '-'));
+      row.appendChild(cell(artifact.type || artifact.kind || '-'));
+      row.appendChild(cell(artifact.updated_at || artifact.created_at || '-'));
+      open.type = 'button';
+      open.textContent = 'Open';
+      open.disabled = !artifactPath;
+      open.addEventListener('click', function () {
+        post({ type: 'eco.cockpit.openArtifact', artifactPath: artifactPath });
+      });
+      actionCell.appendChild(open);
+      row.appendChild(actionCell);
+      elements.artifactTable.appendChild(row);
+    });
+  }
+
+  function renderPolicy() {
+    const policies = state.snapshot.records.policies || [];
+    const policy = policies[0] || {};
+    const nextValue = JSON.stringify(policy, null, 2);
+    state.policyOriginal = nextValue;
+    if (!elements.policyEditor.matches(':focus')) {
+      elements.policyEditor.value = nextValue;
     }
   }
 
@@ -132,8 +364,52 @@
     }));
   }
 
+  function syncRunFilterOptions(runs) {
+    const states = Array.from(new Set(runs.map(function (run) {
+      return run.state || run.status || '';
+    }).filter(Boolean))).sort();
+    const current = state.runFilter;
+    clear(elements.runFilter);
+    elements.runFilter.appendChild(option('all', 'All'));
+    states.forEach(function (item) {
+      elements.runFilter.appendChild(option(item, item));
+    });
+    state.runFilter = states.indexOf(current) >= 0 ? current : 'all';
+    elements.runFilter.value = state.runFilter;
+  }
+
+  function filteredRuns() {
+    const runs = state.snapshot.records.runs || [];
+    if (state.runFilter === 'all') {
+      return runs;
+    }
+    return runs.filter(function (run) {
+      return (run.state || run.status || '') === state.runFilter;
+    });
+  }
+
+  function parsePolicy() {
+    try {
+      const value = JSON.parse(elements.policyEditor.value || '{}');
+      showNotice('Policy JSON is valid.', false);
+      return { ok: true, value: value };
+    } catch (error) {
+      showNotice(error instanceof Error ? error.message : String(error), true);
+      return { ok: false, value: null };
+    }
+  }
+
+  function setActiveTab(id) {
+    elements.tabs.forEach(function (tab) {
+      tab.classList.toggle('is-active', tab.dataset.tab === id);
+    });
+    elements.panels.forEach(function (panel) {
+      panel.classList.toggle('is-active', panel.id === id);
+    });
+  }
+
   function renderList(container, items) {
-    container.textContent = '';
+    clear(container);
     if (!items.length) {
       const empty = document.createElement('div');
       empty.className = 'item';
@@ -159,6 +435,34 @@
     });
   }
 
+  function showNotice(message, isError) {
+    elements.notice.textContent = message;
+    elements.notice.classList.toggle('is-error', Boolean(isError));
+  }
+
+  function post(message) {
+    host.postMessage(message);
+  }
+
+  function normalizeSnapshot(payload) {
+    const snapshot = payload || {};
+    return {
+      state: snapshot.state || {},
+      health: snapshot.health || {},
+      marlin: snapshot.marlin || {},
+      records: Object.assign(emptyRecords(), snapshot.records || {}),
+    };
+  }
+
+  function emptySnapshot() {
+    return {
+      state: {},
+      health: {},
+      marlin: {},
+      records: emptyRecords(),
+    };
+  }
+
   function emptyRecords() {
     return {
       runs: [],
@@ -166,6 +470,43 @@
       artifacts: [],
       policies: [],
     };
+  }
+
+  function recordId(record) {
+    if (!record) {
+      return '';
+    }
+    return String(record.id || record.run_id || record.record_id || record.path || record.file || 'record');
+  }
+
+  function emptyTableRow(colspan, text) {
+    const row = document.createElement('tr');
+    const td = document.createElement('td');
+    td.colSpan = colspan;
+    td.textContent = text;
+    row.appendChild(td);
+    return row;
+  }
+
+  function cell(text) {
+    const td = document.createElement('td');
+    td.textContent = String(text);
+    return td;
+  }
+
+  function option(value, text) {
+    const item = document.createElement('option');
+    item.value = value;
+    item.textContent = text;
+    return item;
+  }
+
+  function clear(element) {
+    element.textContent = '';
+  }
+
+  function byId(id) {
+    return document.getElementById(id);
   }
 
   function yesNo(value) {

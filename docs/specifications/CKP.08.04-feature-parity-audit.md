@@ -149,3 +149,43 @@ Follow-on single PASSes:
 
 Done for CKP.08.04a when the extracted bundle has the old operator tabs and uses
 only host-agnostic rendering plus existing bridge/adapter calls.
+
+## CKP.08.04a Implementation Note
+
+Status: implemented
+Updated: 2026-07-02
+
+CKP.08.04a ports the seven UI-only parity surfaces into the extracted
+`cockpit/web` bundle:
+
+- dashboard with existing status, record counts, and Marlin install readiness
+- run records table with detail pane, raw JSON, copy, and re-run actions
+- escalation queue with approve/deny and decision reason
+- artifact index with host-mediated open action only
+- PASS run launcher form
+- policy JSON viewer/editor with validate, save, revert, and open actions
+
+The bundle remains host-agnostic. It still talks only through
+`window.cockpitHost.postMessage()` and receives host messages through
+`window.postMessage`. Clipboard, editor opening, bridge calls, and mutation
+authority are owned by the host.
+
+The VS Code host now relays these UI actions to the existing Cockpit adapter
+contract:
+
+- `get_record("run", id)` for copy and re-run seed data
+- `submit("run", payload)` for re-run and launcher submission
+- `approve(id, decision, reason)` for escalation decisions
+- `update_record("policy", "policy", payload)` for policy saves
+- VS Code clipboard and editor APIs for copy/open handoff
+
+Zero-trust boundary: artifact and policy open actions are resolved by the host
+and constrained to the active workspace. The web bundle does not perform direct
+filesystem reads or writes, and this pass does not implement artifact
+delete/trash, governance diagnostics, or editor-plane live sync.
+
+Remaining follow-on work:
+
+- `CKP.08.04b` — artifact trash/restore backend contract
+- `CKP.08.04c` — governance diagnostics record type
+- `CKP.08.06+` — editor-plane sync architecture decision and test harness

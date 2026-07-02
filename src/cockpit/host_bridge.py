@@ -1,9 +1,9 @@
 """JSON bridge for host adapters such as the VS Code extension.
 
-The bridge intentionally exposes only the Phase 1 adapter contract. Hosts send a
-single JSON request on stdin and receive one JSON AdapterResult envelope on
-stdout. Write operations stay out of this bridge until Cockpit explicitly adds
-host-mediated authority.
+The bridge exposes the Phase 1 adapter contract through host-mediated requests.
+Hosts send a single JSON request on stdin and receive one JSON AdapterResult
+envelope on stdout. Individual adapters still decide whether a write is
+supported or requires runtime authority.
 """
 
 from __future__ import annotations
@@ -18,17 +18,25 @@ from cockpit.adapters.marlin import MarlinAdapter
 from cockpit.core.adapter import CockpitAdapter
 
 
-_READ_OPERATIONS = frozenset({"health", "get_state", "list_records", "get_record"})
+_OPERATIONS = frozenset({
+    "health",
+    "get_state",
+    "list_records",
+    "get_record",
+    "submit",
+    "approve",
+    "update_record",
+})
 
 
 def execute(request: dict[str, Any]) -> dict[str, Any]:
-    """Execute one read-only adapter request and return a JSON-safe payload."""
+    """Execute one adapter request and return a JSON-safe payload."""
     backend = str(request.get("backend") or "eco")
     workspace_id = request.get("workspace_id")
     node_id = request.get("node_id")
     operation = str(request.get("operation") or "")
 
-    if operation not in _READ_OPERATIONS:
+    if operation not in _OPERATIONS:
         raise ValueError(f"unsupported bridge operation: {operation}")
 
     adapter = _build_adapter(backend, workspace_id, node_id)
@@ -47,6 +55,22 @@ def execute(request: dict[str, Any]) -> dict[str, Any]:
         record_type = _require_string(request, "record_type")
         record_id = _require_string(request, "record_id")
         return _serialize_result(adapter.get_record(record_type, record_id))
+    if operation == "submit":
+        record_type = _require_string(request, "record_type")
+        payload = _require_object(request, "payload")
+        return _serialize_result(adapter.submit(record_type, payload))
+    if operation == "approve":
+        record_id = _require_string(request, "record_id")
+        decision = _require_string(request, "decision")
+        reason = request.get("reason")
+        if reason is not None and not isinstance(reason, str):
+            raise ValueError("reason must be a string when provided")
+        return _serialize_result(adapter.approve(record_id, decision, reason))
+    if operation == "update_record":
+        record_type = _require_string(request, "record_type")
+        record_id = _require_string(request, "record_id")
+        payload = _require_object(request, "payload")
+        return _serialize_result(adapter.update_record(record_type, record_id, payload))
 
     raise AssertionError(f"unhandled operation: {operation}")
 
@@ -102,6 +126,13 @@ def _require_string(request: dict[str, Any], key: str) -> str:
 def _require_string_value(value: Any, key: str) -> str:
     if not isinstance(value, str) or not value:
         raise ValueError(f"{key} is required")
+    return value
+
+
+def _require_object(request: dict[str, Any], key: str) -> dict[str, Any]:
+    value = request.get(key)
+    if not isinstance(value, dict):
+        raise ValueError(f"{key} must be an object")
     return value
 
 
