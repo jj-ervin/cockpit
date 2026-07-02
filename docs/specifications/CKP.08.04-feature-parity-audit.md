@@ -10,7 +10,7 @@ This audit compares the older embedded Cockpit implementation in
 `cockpit/web` and the current `eco-vscode` host loader.
 
 The audit does not restore missing features. It classifies parity gaps so the
-next compound PASS can port the right capabilities onto the Cockpit adapter and
+next PASS can port the right capabilities onto the Cockpit adapter and
 host-loader contracts instead of copying the old direct `.eco/` filesystem
 implementation.
 
@@ -22,78 +22,106 @@ implementation.
 | `eco/surfaces/vscode/eco-vs/src/webview/cockpit.html` | Older tabbed Cockpit UI |
 | `eco/surfaces/vscode/eco-vs/src/webview/cockpit.js` | Older webview interaction logic |
 | `eco/surfaces/vscode/eco-vs/src/webview/cockpit.css` | Older Cockpit visual system |
+| `cockpit/src/cockpit/adapters/eco.py` | Current eco adapter read/write support |
 | `cockpit/web/cockpit.html` | Extracted host-agnostic bundle markup |
 | `cockpit/web/cockpit.js` | Extracted host-agnostic bundle logic |
 | `cockpit/web/cockpit.css` | Extracted host-agnostic bundle styles |
 | `eco-vscode/src/webviewHost.ts` | Current VS Code host loader and bridge relay |
 | `eco-vscode/src/cockpitApi.ts` | Current Python bridge client |
 
+## Current Extracted Bundle
+
+`cockpit/web/` currently renders one read-only dashboard view:
+
+- eight stat tiles: status, total runs, escalations, artifacts, health,
+  `.eco` root, backend, workspace
+- run-state-count list
+- records-count list
+- Marlin install-readiness panel
+- one Refresh button
+
+## Older eco-vs Surface
+
+`eco/surfaces/vscode/eco-vs` renders a six-tab read/write operator interface:
+
+- Run Record Viewer
+- Escalation Queue
+- Artifact Index
+- PASS Run Launcher
+- Policy Viewer
+- Governance
+
+It also includes live editor-plane sync.
+
 ## Summary
 
 The extracted bundle is host-agnostic and correctly removes VS Code-only calls
 from `cockpit/web`. That part of CKP.08 is working.
 
-Feature parity is not complete. The current extracted bundle is closer to a
-dashboard/readiness view than the older embedded Cockpit operator panel. The
-largest missing class is not visual polish; it is action parity. The old
-`eco-vs` implementation includes run submission, escalation approval, artifact
-open/delete/undo, policy edit/save/revert, and record copy/rerun actions. The
-current extracted bundle deliberately does not expose those write paths.
+Feature parity is not complete, but most of the gap is UI-only. The current
+Cockpit adapter/bridge already exposes the read and action contracts needed for
+run records, escalation approval, artifact listing/open handoff, PASS run
+submission, and policy updates. The true backend/architecture gaps are
+artifact trash/restore, governance diagnostics as a modeled record, and live
+editor-plane sync.
 
-The correct restoration path is to add governed adapter/bridge operations and
-host-mediated approval gates, then render the richer UI against those contracts.
-Do not port the old direct `.eco/` filesystem reads and writes into the bundle.
+The correct restoration path is to port the seven UI-only panels first against
+existing adapter calls, then handle the real backend gaps as smaller follow-on
+PASSes. Do not port the old direct `.eco/` filesystem reads and writes into the
+bundle.
 
-## Parity Matrix
+## Gap Table
 
-| Capability | Older `eco-vs` implementation | Extracted bundle / `eco-vscode` host | Status | Next action |
-| --- | --- | --- | --- | --- |
-| Host-agnostic rendering | VS Code-specific webview; `acquireVsCodeApi()` inside bundled JS | `cockpit/web` uses `window.cockpitHost.postMessage`; VS Code-specific call is isolated in host loader | parity improved | Keep contract; test with headless DOM harness |
-| Workspace health/status | Status text and run-state updates | Status grid with health, `.eco` root, backend, workspace | partial parity | Add richer state labels if needed |
-| Run state counts | Fixed summary cards for pending/validating/executing/escalated/complete/failed | Dynamic Run State Counts list | parity | Keep dynamic list |
-| Run record viewer | Tabbed table with filter, selected row, JSON details, copy JSON, rerun | Record count summary only; no run table or details | missing | Add run table/detail view backed by adapter records |
-| Escalation queue | Shows escalated runs with approve/deny/comment actions | Escalation count only | missing | Add read model first, then approval action gate |
-| Artifact index | Artifact table with open/delete/undo actions | Artifact count only | missing | Add artifact table; keep destructive actions host-approved |
-| PASS run launcher | Form submits pass name, artifact type, objective through runtime runner | Not present | missing | Add governed submit operation after adapter contract exists |
-| Policy viewer/editor | Loads policy JSON, validates, saves, reverts, opens in editor | Not present | missing | Add read-only policy view first; gate writes separately |
-| Governance diagnostics | Mode, health, error/warning counts, hash status, issue table | Not present in bundle; eco-vscode still has diagnostics elsewhere | missing in Cockpit | Add diagnostics record type or host snapshot field |
-| Editor-plane sync | Active PASS, run state, governance state badges | Not present | missing | Add to host snapshot after source-of-truth contract is decided |
-| HELM mode display | HELM mode pill and mode activation message | Not present | deferred | Restore only when HELM bridge contract is active |
-| Marlin install readiness | Not present | Present: readiness status, preview steps, explicit apply command, disabled apply button | new capability | Keep; next add approval execution path |
-| Direct filesystem mutation | Old host directly reads/writes `.eco` files and artifacts | Bundle is read-only; bridge enforces read-only for current exposed operations | intentionally changed | Preserve zero-trust boundary |
-| CSP/packaging | VS Code-local assets | Host-loader contract plus copied `out/webview` bundle | parity improved | Add package-time parity check |
+| eco-vs feature | Adapter support today | Gap type |
+| --- | --- | --- |
+| Run list plus detail pane with raw JSON view | `list_records("run")`, `get_record("run", id)` | UI-only |
+| Copy run JSON to clipboard | `get_record("run", id)` plus host clipboard API | UI-only |
+| Re-run a record | `submit("run", payload)`; required field names already match adapter contract | UI-only |
+| Escalation queue plus approve/deny | `list_records("escalation")`, `approve(id, decision, reason)` | UI-only |
+| Artifact index plus open in editor | `list_records("artifact")`; open is host-side editor API | UI-only |
+| Delete / undo-delete artifact | No adapter method; CockpitAdapter has no delete/trash concept | Real backend gap |
+| PASS Run Launcher form | `submit("run", payload)` | UI-only |
+| Policy viewer/editor validate/save/revert/open | `list_records("policy")`, `update_record("policy", payload)` with validation | UI-only |
+| Governance tab diagnostics/mode/health/issue table | No `EcoAdapter.RECORD_TYPES` entry; old implementation reads `governance-diagnostics.json`, `project.yaml`, `health-report.json` directly | Real backend gap |
+| Editor-plane live sync | No equivalent; old model pushes on file change while bridge model is request/response | Real architectural gap |
 
 ## Findings
 
-### Finding 1 — Operator feature parity is incomplete
+### Finding 1 — Operator feature parity is incomplete, but mostly UI-only
 
 The old embedded panel was an operator console. The extracted bundle is currently
 a bridge-backed dashboard plus Marlin readiness panel. It does not yet meet the
 old CK.01 surface set: Run Record Viewer, Escalation Queue, Artifact Index, PASS
 Run Launcher, and Policy Viewer.
 
-Severity: high for CKP.08 parity; not a blocker for host-agnostic extraction.
+Seven of the ten audited rows can be restored through UI and host-message wiring
+against existing adapter calls. That makes the first restoration pass bounded and
+low backend risk.
 
-### Finding 2 — Missing features should not be restored by copying old host code
+Severity: high for CKP.08 parity; moderate implementation risk.
 
-The old `eco-vs` host owns direct filesystem reads/writes, artifact mutation,
-policy writes, and runtime calls. Copying that into `cockpit/web` would violate
-the CKP.08 host-agnostic boundary. Restoration should happen through Cockpit
-adapter methods and explicit host-mediated action gates.
+### Finding 2 — Three gaps are real backend or architecture gaps
+
+Artifact delete/trash, governance diagnostics, and editor-plane live sync are not
+just missing markup. They need either adapter contract expansion or an explicit
+architecture decision:
+
+- Artifact delete/trash needs a delete or trash/restore contract.
+- Governance diagnostics needs a modeled record type or adapter method.
+- Editor-plane sync needs a polling-vs-streaming decision.
 
 Severity: high for zero-trust portability.
 
-### Finding 3 — CKP.08 needs a compound parity-restoration PASS
+### Finding 3 — Restore UI-only parity before backend expansion
 
-The next work should not be one micro-PLAY per feature. The missing parity items
-cluster naturally into a compound PASS:
+The next work should not wait on the backend gaps. The UI-only features should be
+ported first as one bounded single PASS:
 
-- read-model restoration: runs, escalations, artifacts, policy, diagnostics
-- UI restoration: tabs/tables/details using host-agnostic rendering
-- action-gate restoration: copy/rerun/approve/deny/open/delete/save/submit
-- tests: bundle DOM tests, bridge contract tests, VS Code build smoke
-- docs/release: mark old `eco-vs` Cockpit superseded only after parity reaches
-  the accepted threshold
+- run list/detail/copy/rerun
+- escalation queue approve/deny
+- artifact list/open
+- PASS run launcher
+- policy viewer/editor
 
 Severity: process improvement; recommended next step.
 
@@ -105,21 +133,19 @@ Do not mark the old `eco-vs` Cockpit panel superseded yet. Supersession should
 wait until the extracted bundle plus host loader covers the CK.01 required
 surfaces or explicitly documents replacements for each one.
 
-## Recommended Next Compound PASS
+## Recommended Next Step
 
-`CKP.08.10 — Compound PASS: Operator Parity Restoration`
+`Single PASS — CKP.08.04a: UI-Only Operator Parity Port`
 
-Suggested sub-PASS lanes:
+This should port the seven UI-only tabs/panels into the extracted bundle against
+existing adapter calls. It is bounded and should not require backend contract
+changes.
 
-| Lane | Scope | Primary repo |
-| --- | --- | --- |
-| `CKP.08.11` | Run record table, filter, selected JSON detail, copy command surface | `cockpit`, `eco-vscode` |
-| `CKP.08.12` | Escalation queue read model and guarded approve/deny UX | `cockpit`, `eco-vscode` |
-| `CKP.08.13` | Artifact index read model and guarded open/delete/undo UX | `cockpit`, `eco-vscode` |
-| `CKP.08.14` | Policy viewer/editor read model, validation, guarded save/revert/open | `cockpit`, `eco-vscode` |
-| `CKP.08.15` | Governance diagnostics and editor-plane sync restoration | `cockpit`, `eco-vscode` |
-| `CKP.08.16` | Headless bundle DOM tests and packaged host-loader parity checks | `cockpit`, `eco-vscode` |
+Follow-on single PASSes:
 
-Done when the extracted bundle can replace the old `eco-vs` Cockpit panel for
-the CK.01 required surfaces without direct bundle-level filesystem or VS Code
-API dependencies.
+- `CKP.08.04b` — artifact trash/restore backend contract
+- `CKP.08.04c` — governance diagnostics record type
+- deferred architecture call — editor-plane sync polling vs streaming
+
+Done for CKP.08.04a when the extracted bundle has the old operator tabs and uses
+only host-agnostic rendering plus existing bridge/adapter calls.
