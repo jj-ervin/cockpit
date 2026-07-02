@@ -16,6 +16,7 @@
     selectedRunId: '',
     runFilter: 'all',
     policyOriginal: '{}',
+    lastDeletedArtifact: null,
   };
 
   const elements = {
@@ -48,6 +49,7 @@
     escalationList: byId('escalation-list'),
     artifactCount: byId('artifact-count'),
     artifactTable: byId('artifact-table'),
+    undoDeleteArtifact: byId('undo-delete-artifact'),
     launcherForm: byId('launcher-form'),
     launcherPass: byId('launcher-pass'),
     launcherArtifactType: byId('launcher-artifact-type'),
@@ -120,6 +122,19 @@
     post({ type: 'eco.cockpit.openPolicy' });
   });
 
+  elements.undoDeleteArtifact.addEventListener('click', function () {
+    if (!state.lastDeletedArtifact) {
+      return;
+    }
+    post({
+      type: 'eco.cockpit.undoDeleteArtifact',
+      originalPath: state.lastDeletedArtifact.original_path,
+      trashPath: state.lastDeletedArtifact.trash_path,
+    });
+    state.lastDeletedArtifact = null;
+    elements.undoDeleteArtifact.disabled = true;
+  });
+
   window.addEventListener('message', function (event) {
     const message = event.data;
     if (!message || !message.type) {
@@ -135,6 +150,11 @@
       if (payload.refresh !== false) {
         post({ type: 'eco.cockpit.refresh' });
       }
+      return;
+    }
+    if (message.type === 'eco.cockpit.artifactDeleted') {
+      state.lastDeletedArtifact = message.payload || null;
+      elements.undoDeleteArtifact.disabled = !state.lastDeletedArtifact;
       return;
     }
     if (message.type === 'eco.cockpit.error') {
@@ -306,10 +326,11 @@
     }
 
     artifacts.forEach(function (artifact) {
-      const artifactPath = artifact.path || artifact.file || artifact.uri || artifact.id || '';
+      const artifactPath = artifact.artifact_path || artifact.path || artifact.file || artifact.uri || artifact.id || '';
       const row = document.createElement('tr');
       const actionCell = document.createElement('td');
       const open = document.createElement('button');
+      const del = document.createElement('button');
       row.appendChild(cell(artifactPath || '-'));
       row.appendChild(cell(artifact.type || artifact.kind || '-'));
       row.appendChild(cell(artifact.updated_at || artifact.created_at || '-'));
@@ -319,7 +340,14 @@
       open.addEventListener('click', function () {
         post({ type: 'eco.cockpit.openArtifact', artifactPath: artifactPath });
       });
+      del.type = 'button';
+      del.textContent = 'Delete';
+      del.disabled = !artifactPath;
+      del.addEventListener('click', function () {
+        post({ type: 'eco.cockpit.deleteArtifact', artifactPath: artifactPath });
+      });
       actionCell.appendChild(open);
+      actionCell.appendChild(del);
       row.appendChild(actionCell);
       elements.artifactTable.appendChild(row);
     });
