@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${cspSource}; script-src 'nonce-${nonce}';">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link nonce="${nonce}" href="${cockpitCssUri}" rel="stylesheet">
+  <title>eco Cockpit</title>
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">eco Cockpit</p>
+        <h1>Workspace Governance</h1>
+      </div>
+      <button id="refresh" type="button">Refresh</button>
+    </header>
+
+    <section class="status-grid" aria-label="Governance summary">
+      <article>
+        <span>Status</span>
+        <strong id="status">Loading</strong>
+      </article>
+      <article>
+        <span>Total Runs</span>
+        <strong id="total-runs">-</strong>
+      </article>
+      <article>
+        <span>Escalations</span>
+        <strong id="escalations">-</strong>
+      </article>
+      <article>
+        <span>Artifacts</span>
+        <strong id="artifacts">-</strong>
+      </article>
+      <article>
+        <span>Health</span>
+        <strong id="health">-</strong>
+      </article>
+      <article>
+        <span>.eco Root</span>
+        <strong id="eco-root">-</strong>
+      </article>
+      <article>
+        <span>Backend</span>
+        <strong id="backend">-</strong>
+      </article>
+      <article>
+        <span>Workspace</span>
+        <strong id="workspace">-</strong>
+      </article>
+    </section>
+
+    <section class="panel">
+      <div class="panel-header">
+        <h2>Run State Counts</h2>
+        <span id="run-state-count">0</span>
+      </div>
+      <div id="run-counts" class="list"></div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-header">
+        <h2>Recent Records</h2>
+      </div>
+      <div id="records" class="list"></div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-header">
+        <h2>Marlin Install Readiness</h2>
+        <span id="marlin-status">Loading</span>
+      </div>
+      <div id="marlin-steps" class="list"></div>
+      <div class="command-row">
+        <code id="marlin-apply-command">Waiting for readiness.</code>
+        <button id="marlin-apply" type="button" disabled title="Requires a future human approval execution path">Apply</button>
+      </div>
+      <p id="marlin-approval" class="panel-note">Package mutation requires explicit human approval.</p>
+    </section>
+
+    <footer id="footer">Waiting for workspace state.</footer>
+  </main>
+  ${cockpitHostBootstrap}
+  <script nonce="${nonce}" src="${cockpitJsUri}"></script>
+</body>
+</html>
