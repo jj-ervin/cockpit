@@ -62,6 +62,7 @@ class EcoAdapter(CockpitAdapter):
         self._eco_root = self._root / ".eco"
         self._runs_root = self._eco_root / "runs"
         self._artifacts_root = self._eco_root / "artifacts"
+        self._trash_root = self._eco_root / ".trash" / "artifacts"
         self._policy_path = self._eco_root / "policy.json"
         self._runtime_client = runtime_client
 
@@ -277,9 +278,88 @@ class EcoAdapter(CockpitAdapter):
         )
         return AdapterResult(data=normalized, origin=self._origin())
 
+    def delete_record(
+        self,
+        record_type: str,
+        record_id: str,
+    ) -> AdapterResult[dict[str, Any]]:
+        """Move an artifact to .eco/.trash/artifacts. record_type must be
+        'artifact'; record_id is the artifact path (absolute, or relative to
+        the artifacts root). Never a hard delete - see restore_record."""
+        if record_type != "artifact":
+            raise WriteNotSupportedError(
+                "eco adapter delete_record only supports record_type='artifact'"
+            )
+        artifact_path = self._resolve_contained_path(
+            self._artifacts_root, record_id, "artifact_path"
+        )
+        if not artifact_path.exists() or not artifact_path.is_file():
+            raise RecordNotFoundError(f"artifact '{record_id}' not found")
+
+        self._trash_root.mkdir(parents=True, exist_ok=True)
+        trash_path = self._trash_root / artifact_path.name
+        suffix = 1
+        while trash_path.exists():
+            trash_path = self._trash_root / f"{artifact_path.stem}-{suffix}{artifact_path.suffix}"
+            suffix += 1
+        artifact_path.rename(trash_path)
+
+        return AdapterResult(
+            data={
+                "original_path": str(artifact_path),
+                "trash_path": str(trash_path),
+            },
+            origin=self._origin(),
+        )
+
+    def restore_record(
+        self,
+        record_type: str,
+        record_id: str,
+        trash_ref: str,
+    ) -> AdapterResult[dict[str, Any]]:
+        """Undo delete_record. record_id is the original artifact path
+        returned by delete_record; trash_ref is the trash_path it returned."""
+        if record_type != "artifact":
+            raise WriteNotSupportedError(
+                "eco adapter restore_record only supports record_type='artifact'"
+            )
+        original_path = self._resolve_contained_path(
+            self._artifacts_root, record_id, "artifact_path"
+        )
+        trash_path = self._resolve_contained_path(
+            self._trash_root, trash_ref, "trash_path"
+        )
+        if not trash_path.exists() or not trash_path.is_file():
+            raise RecordNotFoundError(f"deleted artifact not found in trash: '{trash_ref}'")
+        if original_path.exists():
+            raise ValidationError(
+                f"cannot restore: an artifact already exists at '{record_id}'"
+            )
+
+        original_path.parent.mkdir(parents=True, exist_ok=True)
+        trash_path.rename(original_path)
+
+        return AdapterResult(
+            data={"restored_path": str(original_path)},
+            origin=self._origin(),
+        )
+
     # ---------------------------------------------------------------------------
     # Private helpers
     # ---------------------------------------------------------------------------
+
+    def _resolve_contained_path(self, base: Path, candidate: str, label: str) -> Path:
+        """Resolve candidate relative to base if not absolute, then assert the
+        result stays inside base. Prevents path traversal via record_id/
+        trash_ref values crossing outside the artifacts or trash roots."""
+        raw = Path(candidate)
+        resolved = raw if raw.is_absolute() else (base / raw)
+        try:
+            resolved.resolve().relative_to(base.resolve())
+        except ValueError as exc:
+            raise ValidationError(f"{label} must stay inside {base}") from exc
+        return resolved
 
     def _require_runtime_client(self, operation: str) -> None:
         if self._runtime_client is None:

@@ -140,6 +140,58 @@ def test_execute_update_policy_uses_existing_adapter_contract(workspace: Path) -
     assert result["data"]["human_escalation"] is False
 
 
+def test_execute_delete_and_restore_record_round_trip(workspace: Path) -> None:
+    _write_policy(workspace)
+    artifacts_dir = workspace / ".eco" / "artifacts"
+    artifacts_dir.mkdir()
+    artifact = artifacts_dir / "report.txt"
+    artifact.write_text("data", encoding="utf-8")
+
+    deleted = execute({
+        "backend": "eco",
+        "workspace_id": str(workspace),
+        "operation": "delete_record",
+        "record_type": "artifact",
+        "record_id": str(artifact),
+    })
+    assert not artifact.exists()
+    assert deleted["data"]["trash_path"]
+
+    restored = execute({
+        "backend": "eco",
+        "workspace_id": str(workspace),
+        "operation": "restore_record",
+        "record_type": "artifact",
+        "record_id": deleted["data"]["original_path"],
+        "trash_ref": deleted["data"]["trash_path"],
+    })
+    assert artifact.exists()
+    assert restored["data"]["restored_path"] == str(artifact)
+
+
+def test_execute_delete_record_missing_record_id_raises(workspace: Path) -> None:
+    _write_policy(workspace)
+    with pytest.raises(ValueError, match="record_id"):
+        execute({
+            "backend": "eco",
+            "workspace_id": str(workspace),
+            "operation": "delete_record",
+            "record_type": "artifact",
+        })
+
+
+def test_execute_restore_record_missing_trash_ref_raises(workspace: Path) -> None:
+    _write_policy(workspace)
+    with pytest.raises(ValueError, match="trash_ref"):
+        execute({
+            "backend": "eco",
+            "workspace_id": str(workspace),
+            "operation": "restore_record",
+            "record_type": "artifact",
+            "record_id": "report.txt",
+        })
+
+
 def test_module_entrypoint_outputs_json(workspace: Path) -> None:
     _write_policy(workspace)
     request: dict[str, Any] = {

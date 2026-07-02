@@ -258,6 +258,40 @@
       "superseded_by": null,
       "depends_on": ["CKP:1003"],
       "originating_pass": "CKP.08.04"
+    },
+    {
+      "id": "CKP:1005",
+      "alias": "CKP.08.05",
+      "legacy_ids": ["CKP.08.04a"],
+      "title": "UI-Only Operator Parity Port",
+      "description": "Retroactive registration: ports the seven UI-only parity surfaces (run list/detail/copy/rerun, escalation approve/deny, artifact list/open, PASS run launcher, policy viewer/editor) into the extracted cockpit/web bundle against existing adapter calls, per the CKP.08.04 audit's Finding 3. Implemented and closed under the informal, unregistered name CKP.08.04a before this correction - DEV-ACCORD.02 does not permit letter-suffixed sub-passes (three-level CLUSTER.NN.NN.letter form); this is a sibling sub-pass of CKP.08.04 under CKP.08.00, not a child of CKP.08.04.",
+      "layer": "domain",
+      "cluster": "CKP",
+      "parent": "CKP:1003",
+      "status": "accepted",
+      "timestamp": "2026-07-02T00:00:00Z",
+      "path": "docs/specifications/CKP.08.04-feature-parity-audit.md",
+      "supersedes": [],
+      "superseded_by": null,
+      "depends_on": ["CKP:1004"],
+      "originating_pass": "CKP.08.05"
+    },
+    {
+      "id": "CKP:1006",
+      "alias": "CKP.08.06",
+      "legacy_ids": ["CKP.08.04b"],
+      "title": "Artifact Trash/Restore Backend Contract",
+      "description": "Adds delete_record/restore_record to the CockpitAdapter ABC and implements soft-delete (move to .eco/.trash/artifacts) plus restore for EcoAdapter, with path-containment checks matching the proven eco-vs deleteArtifact/restoreArtifact semantics. Wired into host_bridge.py as delete_record/restore_record operations. Closes the first of the two real backend gaps identified in the CKP.08.04 audit (governance diagnostics and editor-plane sync remain open). Cited as CKP.08.04b before this correction, per the same DEV-ACCORD.02 letter-suffix issue as CKP.08.05.",
+      "layer": "domain",
+      "cluster": "CKP",
+      "parent": "CKP:1003",
+      "status": "accepted",
+      "timestamp": "2026-07-02T00:00:00Z",
+      "path": "src/cockpit/adapters/eco.py",
+      "supersedes": [],
+      "superseded_by": null,
+      "depends_on": ["CKP:1004"],
+      "originating_pass": "CKP.08.06"
     }
   ]
 }

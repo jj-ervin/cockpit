@@ -189,3 +189,28 @@ Remaining follow-on work:
 - `CKP.08.04b` — artifact trash/restore backend contract
 - `CKP.08.04c` — governance diagnostics record type
 - `CKP.08.06+` — editor-plane sync architecture decision and test harness
+
+## Correction — 2026-07-02 — Letter-Suffixed Sub-Pass Names Never Registered
+
+`CKP.08.04a`, `CKP.08.04b`, and `CKP.08.04c` above were used as informal names
+before being registered, and are not valid `CLUSTER.NN.NN` identities per
+DEV-ACCORD.02 (no letter suffixes, no three-level nesting under a sub-pass —
+the same issue corrected for `CKP.05A`-`CKP.05D` earlier this session). Found
+during a portfolio-wide dirty/sync scan, one turn after the citation-resolution
+gate (`validate-pass-citations.ps1`, DEV-ACCORD-CI-41) was built specifically
+to catch this failure class — the gate is not yet wired into this repo, and
+its heading-pattern matcher does not yet recognize this repo's `## CKP.NN
+Closure — Title` convention, so it would not have caught this even if it were.
+
+Corrected identities (siblings under `CKP.08.00`, not nested under `CKP.08.04`):
+
+| Informal name | Corrected identity |
+| --- | --- |
+| `CKP.08.04a` (UI-Only Operator Parity Port, implemented) | `CKP.08.05` |
+| `CKP.08.04b` (Artifact Trash/Restore Backend Contract) | `CKP.08.06` |
+| `CKP.08.04c` (Governance diagnostics record type, not yet started) | reserve `CKP.08.07` when started |
+
+Both `CKP.08.05` and `CKP.08.06` are now registered in
+`passes/passes.registry.json` with `legacy_ids` preserving the informal names
+used above and in `DEV-PATH.md`/`DEV-PLAN.md`. Existing text elsewhere in this
+document and those files is left as historical record, not rewritten.

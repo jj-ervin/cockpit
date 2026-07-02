@@ -413,6 +413,122 @@ def test_update_record_creates_eco_dir_if_missing(workspace: Path) -> None:
 
 
 # ---------------------------------------------------------------------------
+# delete_record() / restore_record()
+# ---------------------------------------------------------------------------
+
+def _write_artifact(artifacts_dir: Path, name: str, content: str = "data") -> Path:
+    path = artifacts_dir / name
+    path.write_text(content, encoding="utf-8")
+    return path
+
+
+def test_delete_record_wrong_type_raises(full_workspace: Path) -> None:
+    a = EcoAdapter(workspace_id=str(full_workspace))
+    with pytest.raises(WriteNotSupportedError):
+        a.delete_record("run", "some-run")
+
+
+def test_delete_record_missing_artifact_raises(full_workspace: Path) -> None:
+    a = EcoAdapter(workspace_id=str(full_workspace))
+    with pytest.raises(RecordNotFoundError):
+        a.delete_record("artifact", "does-not-exist.txt")
+
+
+def test_delete_record_moves_file_to_trash(full_workspace: Path, artifacts_dir: Path, eco_dir: Path) -> None:
+    artifact = _write_artifact(artifacts_dir, "report.txt")
+    a = EcoAdapter(workspace_id=str(full_workspace))
+    result = a.delete_record("artifact", str(artifact))
+
+    assert not artifact.exists()
+    trash_path = Path(result.data["trash_path"])
+    assert trash_path.exists()
+    assert trash_path.parent == eco_dir / ".trash" / "artifacts"
+    assert result.data["original_path"] == str(artifact)
+
+
+def test_delete_record_accepts_relative_path(full_workspace: Path, artifacts_dir: Path) -> None:
+    _write_artifact(artifacts_dir, "report.txt")
+    a = EcoAdapter(workspace_id=str(full_workspace))
+    result = a.delete_record("artifact", "report.txt")
+    assert Path(result.data["trash_path"]).exists()
+
+
+def test_delete_record_collision_gets_suffixed_name(full_workspace: Path, artifacts_dir: Path, eco_dir: Path) -> None:
+    a = EcoAdapter(workspace_id=str(full_workspace))
+    trash_dir = eco_dir / ".trash" / "artifacts"
+    trash_dir.mkdir(parents=True)
+    (trash_dir / "report.txt").write_text("already here", encoding="utf-8")
+
+    artifact = _write_artifact(artifacts_dir, "report.txt", "new content")
+    result = a.delete_record("artifact", str(artifact))
+
+    trash_path = Path(result.data["trash_path"])
+    assert trash_path.name == "report-1.txt"
+    assert trash_path.read_text(encoding="utf-8") == "new content"
+
+
+def test_delete_record_rejects_path_outside_artifacts_root(full_workspace: Path, eco_dir: Path) -> None:
+    outside = eco_dir / "policy.json"
+    outside.write_text("{}", encoding="utf-8")
+    a = EcoAdapter(workspace_id=str(full_workspace))
+    with pytest.raises(ValidationError):
+        a.delete_record("artifact", str(outside))
+
+
+def test_restore_record_wrong_type_raises(full_workspace: Path) -> None:
+    a = EcoAdapter(workspace_id=str(full_workspace))
+    with pytest.raises(WriteNotSupportedError):
+        a.restore_record("run", "some-run", "trash-ref")
+
+
+def test_restore_record_missing_trash_entry_raises(full_workspace: Path, artifacts_dir: Path) -> None:
+    a = EcoAdapter(workspace_id=str(full_workspace))
+    with pytest.raises(RecordNotFoundError):
+        a.restore_record("artifact", str(artifacts_dir / "report.txt"), "never-deleted.txt")
+
+
+def test_restore_record_moves_file_back(full_workspace: Path, artifacts_dir: Path) -> None:
+    artifact = _write_artifact(artifacts_dir, "report.txt")
+    a = EcoAdapter(workspace_id=str(full_workspace))
+    deleted = a.delete_record("artifact", str(artifact))
+
+    restored = a.restore_record(
+        "artifact", deleted.data["original_path"], deleted.data["trash_path"]
+    )
+
+    assert artifact.exists()
+    assert artifact.read_text(encoding="utf-8") == "data"
+    assert restored.data["restored_path"] == str(artifact)
+    assert not Path(deleted.data["trash_path"]).exists()
+
+
+def test_restore_record_refuses_when_original_path_occupied(full_workspace: Path, artifacts_dir: Path) -> None:
+    artifact = _write_artifact(artifacts_dir, "report.txt")
+    a = EcoAdapter(workspace_id=str(full_workspace))
+    deleted = a.delete_record("artifact", str(artifact))
+    _write_artifact(artifacts_dir, "report.txt", "someone recreated this")
+
+    with pytest.raises(ValidationError):
+        a.restore_record("artifact", deleted.data["original_path"], deleted.data["trash_path"])
+
+
+def test_restore_record_rejects_trash_ref_outside_trash_root(full_workspace: Path, artifacts_dir: Path, eco_dir: Path) -> None:
+    outside = eco_dir / "policy.json"
+    outside.write_text("{}", encoding="utf-8")
+    a = EcoAdapter(workspace_id=str(full_workspace))
+    with pytest.raises(ValidationError):
+        a.restore_record("artifact", str(artifacts_dir / "report.txt"), str(outside))
+
+
+def test_delete_then_restore_round_trip_preserves_content(full_workspace: Path, artifacts_dir: Path) -> None:
+    artifact = _write_artifact(artifacts_dir, "notes.md", "important content")
+    a = EcoAdapter(workspace_id=str(full_workspace))
+    deleted = a.delete_record("artifact", str(artifact))
+    a.restore_record("artifact", deleted.data["original_path"], deleted.data["trash_path"])
+    assert artifact.read_text(encoding="utf-8") == "important content"
+
+
+# ---------------------------------------------------------------------------
 # Provenance
 # ---------------------------------------------------------------------------
 

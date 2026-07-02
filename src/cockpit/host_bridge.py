@@ -26,6 +26,8 @@ _OPERATIONS = frozenset({
     "submit",
     "approve",
     "update_record",
+    "delete_record",
+    "restore_record",
 })
 
 
@@ -71,6 +73,15 @@ def execute(request: dict[str, Any]) -> dict[str, Any]:
         record_id = _require_string(request, "record_id")
         payload = _require_object(request, "payload")
         return _serialize_result(adapter.update_record(record_type, record_id, payload))
+    if operation == "delete_record":
+        record_type = _require_string(request, "record_type")
+        record_id = _require_string(request, "record_id")
+        return _serialize_result(adapter.delete_record(record_type, record_id))
+    if operation == "restore_record":
+        record_type = _require_string(request, "record_type")
+        record_id = _require_string(request, "record_id")
+        trash_ref = _require_string(request, "trash_ref")
+        return _serialize_result(adapter.restore_record(record_type, record_id, trash_ref))
 
     raise AssertionError(f"unhandled operation: {operation}")
 

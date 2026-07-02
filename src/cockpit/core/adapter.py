@@ -203,3 +203,35 @@ class CockpitAdapter(ABC):
         raise WriteNotSupportedError(
             f"'{self.backend_id}' adapter does not support update_record"
         )
+
+    def delete_record(
+        self,
+        record_type: str,
+        record_id: str,
+    ) -> AdapterResult[dict[str, Any]]:
+        """Soft-delete a record: move it to a recoverable trash location, not
+        a hard delete. Must return enough information (e.g. an original
+        location and a trash location) for a matching restore_record call to
+        undo it.
+
+        Used for: artifact trash (eco).
+        """
+        raise WriteNotSupportedError(
+            f"'{self.backend_id}' adapter does not support delete_record"
+        )
+
+    def restore_record(
+        self,
+        record_type: str,
+        record_id: str,
+        trash_ref: str,
+    ) -> AdapterResult[dict[str, Any]]:
+        """Undo a prior delete_record call. record_id is the original
+        location/identifier; trash_ref is the trash-side reference returned
+        by delete_record.
+
+        Used for: artifact undo-delete (eco).
+        """
+        raise WriteNotSupportedError(
+            f"'{self.backend_id}' adapter does not support restore_record"
+        )
