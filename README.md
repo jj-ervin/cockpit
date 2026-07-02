@@ -33,6 +33,8 @@ The governing specs and original implementation lineage include:
 Local verification:
 
 ```powershell
+pip install -e ".[test]"
+python -m playwright install chromium  # one-time, needed for the web bundle smoke tests
 python -m pytest
 ```
 
