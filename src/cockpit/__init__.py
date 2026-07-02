@@ -17,6 +17,7 @@ from cockpit.core.adapter import (
 )
 from cockpit.adapters.eco import EcoAdapter
 from cockpit.adapters.marlin import MarlinAdapter
+from cockpit.adapters.niji import NijiAdapter
 
 __all__ = [
     # Adapter contract
@@ -33,4 +34,5 @@ __all__ = [
     # Adapters
     "EcoAdapter",
     "MarlinAdapter",
+    "NijiAdapter",
 ]

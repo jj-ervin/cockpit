@@ -171,3 +171,21 @@ on work outside Cockpit's control (`devxtoolkit-v2-x` maturity) or a decision
 only the portfolio owner can make (what "environment emergence UI" means).
 Claiming a full v1.0 estimate today would mean inventing numbers for those
 two - not done here.
+
+## CKP.09.05 Update — Provider Workflows, Not Authority Transfer
+
+The environment setup wizard is a universal Cockpit shell. The first live
+workflow is the Marlin Environment Setup Wizard, rendered in Cockpit. Marlin
+remains the authority for package search/install, trust gates, registry
+semantics, scaffold/audit/governance behavior, and CLI execution. Cockpit
+renders intent and results; it does not become Marlin.
+
+This PASS added:
+
+- Marlin package search and explicit-confirm install UI inside the setup wizard
+- structured Marlin CLI JSON consumption instead of table scraping
+- read-only Niji provider status/scheme/palette preview
+
+Host mutation boundary: webview JavaScript sends install intent only. The VS Code
+host confirms with the human, then spawns the Marlin CLI and returns structured
+output to Cockpit.

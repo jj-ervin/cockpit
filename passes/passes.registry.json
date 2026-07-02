@@ -394,6 +394,23 @@
       "superseded_by": null,
       "depends_on": ["CKP:1011", "CKP:1002"],
       "originating_pass": "CKP.09.04"
+    },
+    {
+      "id": "CKP:1013",
+      "alias": "CKP.09.05",
+      "legacy_ids": [],
+      "title": "Marlin Provider Real Install and Niji Provider",
+      "description": "Adds the first real provider action to the generic environment setup wizard: Marlin package search and explicit-confirm install rendered in Cockpit while Marlin remains the package/install authority and eco-vscode owns host subprocess execution. Adds a read-only Niji provider adapter/panel for health, schemes, and sample palette preview. Confirms the CKP.09.00 boundary: Universal Cockpit hosts provider workflows; it does not absorb Marlin or Niji domain authority.",
+      "layer": "domain",
+      "cluster": "CKP",
+      "parent": "CKP:1011",
+      "status": "accepted",
+      "timestamp": "2026-07-02T00:00:00Z",
+      "path": "docs/specifications/CKP.v1.0-scoping.md",
+      "supersedes": [],
+      "superseded_by": null,
+      "depends_on": ["CKP:1011", "CKP:1012", "CKP:1002"],
+      "originating_pass": "CKP.09.05"
     }
   ]
 }

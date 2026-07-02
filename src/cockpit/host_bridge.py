@@ -15,6 +15,7 @@ from typing import Any
 
 from cockpit.adapters.eco import EcoAdapter
 from cockpit.adapters.marlin import MarlinAdapter
+from cockpit.adapters.niji import NijiAdapter
 from cockpit.core.adapter import CockpitAdapter
 
 
@@ -120,6 +121,12 @@ def _build_adapter(
     if backend == "marlin":
         normalized_workspace = str(workspace_id) if workspace_id else None
         return MarlinAdapter(
+            workspace_id=normalized_workspace,
+            node_id=normalized_node_id,
+        )
+    if backend == "niji":
+        normalized_workspace = str(workspace_id) if workspace_id else None
+        return NijiAdapter(
             workspace_id=normalized_workspace,
             node_id=normalized_node_id,
         )

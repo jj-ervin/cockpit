@@ -18,6 +18,8 @@
     policyOriginal: '{}',
     lastDeletedArtifact: null,
     wizardStep: 0,
+    marlinSearchResults: [],
+    marlinInstallResult: null,
   };
 
   // CKP.09.04 - environment setup wizard shell. Steps are generic (id, title,
@@ -27,7 +29,7 @@
   const WIZARD_STEPS = [
     {
       id: 'marlin-install',
-      title: 'Marlin Install Readiness',
+      title: 'Marlin Environment Setup',
       render: renderWizardMarlinStep,
       isComplete: function (snapshot) {
         const readiness = snapshot.marlin && snapshot.marlin.installReadiness;
@@ -92,6 +94,12 @@
     wizardContent: byId('wizard-content'),
     wizardBack: byId('wizard-back'),
     wizardNext: byId('wizard-next'),
+    nijiStatus: byId('niji-status'),
+    nijiApi: byId('niji-api'),
+    nijiSchemes: byId('niji-schemes'),
+    nijiBase: byId('niji-base'),
+    nijiScheme: byId('niji-scheme'),
+    nijiSwatches: byId('niji-swatches'),
   };
 
   elements.refresh.addEventListener('click', function () {
@@ -202,6 +210,20 @@
       elements.undoDeleteArtifact.disabled = !state.lastDeletedArtifact;
       return;
     }
+    if (message.type === 'eco.cockpit.marlinPackageSearchResult') {
+      const payload = message.payload || {};
+      state.marlinSearchResults = Array.isArray(payload.packages) ? payload.packages : [];
+      showNotice('Marlin package search returned ' + state.marlinSearchResults.length + ' result(s).', false);
+      renderWizard();
+      return;
+    }
+    if (message.type === 'eco.cockpit.marlinInstallResult') {
+      state.marlinInstallResult = message.payload || {};
+      showNotice(state.marlinInstallResult.ok === false ? 'Marlin install failed.' : 'Marlin install completed.', state.marlinInstallResult.ok === false);
+      renderWizard();
+      post({ type: 'eco.cockpit.refresh' });
+      return;
+    }
     if (message.type === 'eco.cockpit.error') {
       const payload = message.payload || {};
       showNotice(payload.message || 'Cockpit host error.', true);
@@ -254,6 +276,7 @@
     renderGovernance(state.snapshot.governance);
     renderEditorPlaneBar(records.runs, state.snapshot.governance);
     renderWizard();
+    renderNiji(state.snapshot.niji || {});
 
     if (workspace.bridgeError) {
       elements.footer.textContent = workspace.bridgeError;
@@ -560,6 +583,123 @@
       ? readiness.apply_command.join(' ')
       : 'No apply command returned.';
     container.appendChild(applyCommand);
+
+    const providerPanel = document.createElement('div');
+    const heading = document.createElement('h2');
+    const form = document.createElement('form');
+    const label = document.createElement('label');
+    const input = document.createElement('input');
+    const submit = document.createElement('button');
+    const results = document.createElement('div');
+
+    providerPanel.className = 'wizard-provider-panel';
+    heading.textContent = 'Marlin Package Search';
+    form.className = 'wizard-search';
+    label.textContent = 'Package';
+    input.type = 'text';
+    input.value = 'niji';
+    input.autocomplete = 'off';
+    submit.type = 'submit';
+    submit.textContent = 'Search';
+    results.className = 'list';
+
+    form.addEventListener('submit', function (event) {
+      event.preventDefault();
+      const query = input.value.trim();
+      if (query) {
+        post({ type: 'eco.cockpit.marlinSearchPackages', query: query });
+      }
+    });
+
+    label.appendChild(input);
+    form.appendChild(label);
+    form.appendChild(submit);
+    providerPanel.appendChild(heading);
+    providerPanel.appendChild(form);
+    providerPanel.appendChild(results);
+    container.appendChild(providerPanel);
+
+    renderMarlinPackageResults(results);
+    renderMarlinInstallResult(container);
+  }
+
+  function renderMarlinPackageResults(container) {
+    clear(container);
+    if (!state.marlinSearchResults.length) {
+      const note = document.createElement('div');
+      note.className = 'item';
+      note.textContent = 'No package search results loaded.';
+      container.appendChild(note);
+      return;
+    }
+
+    state.marlinSearchResults.forEach(function (pkg) {
+      const row = document.createElement('div');
+      const title = document.createElement('strong');
+      const detail = document.createElement('span');
+      const action = document.createElement('button');
+      row.className = 'item action-item';
+      title.textContent = String(pkg.name || '-') + '@' + String(pkg.version || '-');
+      detail.textContent = String(pkg.description || '') + (pkg.source ? ' [' + pkg.source + ']' : '');
+      action.type = 'button';
+      action.textContent = 'Install';
+      action.addEventListener('click', function () {
+        if (pkg.name) {
+          post({ type: 'eco.cockpit.marlinInstallPackage', packageName: pkg.name });
+        }
+      });
+      row.appendChild(title);
+      row.appendChild(detail);
+      row.appendChild(action);
+      container.appendChild(row);
+    });
+  }
+
+  function renderMarlinInstallResult(container) {
+    if (!state.marlinInstallResult) {
+      return;
+    }
+    const block = document.createElement('pre');
+    block.className = 'wizard-result';
+    block.textContent = JSON.stringify(state.marlinInstallResult, null, 2);
+    container.appendChild(block);
+  }
+
+  function renderNiji(niji) {
+    const health = niji.health || {};
+    const providerState = niji.state || {};
+    const preview = niji.palettePreview || {};
+    elements.nijiStatus.textContent = health.status || (niji.error ? 'degraded' : '-');
+    elements.nijiApi.textContent = health.api_version || providerState.api_version || '-';
+    elements.nijiSchemes.textContent = String(providerState.scheme_count || 0);
+    elements.nijiBase.textContent = preview.base_hex || providerState.default_base_hex || '-';
+    elements.nijiScheme.textContent = preview.scheme || providerState.default_scheme || '-';
+    clear(elements.nijiSwatches);
+
+    const swatches = Array.isArray(preview.swatches) ? preview.swatches : [];
+    if (!swatches.length) {
+      const note = document.createElement('div');
+      note.className = 'item';
+      note.textContent = niji.error || 'No Niji palette preview available.';
+      elements.nijiSwatches.appendChild(note);
+      return;
+    }
+
+    swatches.forEach(function (swatch) {
+      const tile = document.createElement('div');
+      const chip = document.createElement('span');
+      const label = document.createElement('strong');
+      const detail = document.createElement('span');
+      tile.className = 'swatch';
+      chip.className = 'swatch-chip';
+      chip.style.background = swatch.hex || '#000000';
+      label.textContent = swatch.name || swatch.role || 'swatch';
+      detail.textContent = (swatch.role || '-') + ' ' + (swatch.hex || '');
+      tile.appendChild(chip);
+      tile.appendChild(label);
+      tile.appendChild(detail);
+      elements.nijiSwatches.appendChild(tile);
+    });
   }
 
   function syncRunFilterOptions(runs) {
@@ -650,6 +790,7 @@
       marlin: snapshot.marlin || {},
       records: Object.assign(emptyRecords(), snapshot.records || {}),
       governance: snapshot.governance || null,
+      niji: snapshot.niji || {},
     };
   }
 
@@ -660,6 +801,7 @@
       marlin: {},
       records: emptyRecords(),
       governance: null,
+      niji: {},
     };
   }
 
