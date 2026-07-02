@@ -1,0 +1,29 @@
+repos:
+  - repo: local
+    hooks:
+      - id: pass-citations-staged
+        name: DEV-ACCORD-CI-41 — PASS-ID citations must resolve to the registry
+        language: system
+        entry: pwsh -NoProfile -File ../governance-commons/gc-audit/tools/validate-pass-citations.ps1 -PortfolioRoot .
+        types: [markdown]
+        pass_filenames: false
+        stages: [pre-commit]
+        description: >
+          Shared tool (not duplicated per-repo): scans the staged diff's added
+          lines for PASS-shaped heading citations and "Pass-ID:" lines; each
+          must resolve to an alias in passes/passes.registry.json under the
+          CKP: namespace, or be marked "working name, not yet registered".
+          Declared by governance-commons DEV-ACCORD.06's DEV-ACCORD-CI-41
+          amendment (2026-07-02), after cockpit's own CKP.6/CKP.6A citations
+          were found unregistered in this repo's history with no gate to
+          catch them.
+      - id: pass-citations-commit-msg
+        name: DEV-ACCORD-CI-41 — commit trailer Pass-ID must resolve to the registry
+        language: system
+        entry: pwsh -NoProfile -File ../governance-commons/gc-audit/tools/validate-pass-citations.ps1 -PortfolioRoot . -Mode CommitMsg -MessageFile
+        pass_filenames: true
+        stages: [commit-msg]
+        description: >
+          Reads the commit message's trailing trailer block and checks any
+          Pass-ID: value against passes/passes.registry.json. "standalone",
+          "N/A", and "none" are valid non-citation values.
