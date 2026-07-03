@@ -277,7 +277,9 @@
     {
       "id": "CKP:1003",
       "alias": "CKP.08.00",
-      "legacy_ids": [],
+      "legacy_ids": [
+        "CKP.08"
+      ],
       "title": "Cockpit UI Extraction (Primary)",
       "description": "Extract Cockpit's webview UI (HTML/CSS/JS) out of eco-vscode and eco/surfaces/vscode/eco-vs into a host-agnostic bundle owned by cockpit/, so Cockpit ships its own installable UI that any host (VS Code, future Electron, browser) can mount via a thin loader against the existing Python bridge.",
       "layer": "domain",
