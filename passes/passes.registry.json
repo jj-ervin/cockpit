@@ -3,7 +3,7 @@
   "namespace": "CKP",
   "meta": {
     "created_at": "2026-07-02T00:00:00Z",
-    "updated_at": "2026-07-02T00:00:00Z",
+    "updated_at": "2026-07-03T00:00:00Z",
     "allocation_authority": "jj-ervin",
     "namespace_file": "passes/namespace.yaml",
     "layers_file": "passes/layers.yaml",
@@ -24,7 +24,9 @@
     {
       "id": "CKP:0001",
       "alias": "CKP.01.00",
-      "legacy_ids": ["CKP.01"],
+      "legacy_ids": [
+        "CKP.01"
+      ],
       "title": "Standalone Planning Docs",
       "description": "Recovered and established standalone DEV-PATH.md/DEV-PLAN.md for the Cockpit repo, separate from eco's CK.00/CK.01/CK.02 governance.",
       "layer": "standards",
@@ -35,13 +37,17 @@
       "path": "DEV-PLAN.md",
       "supersedes": [],
       "superseded_by": null,
-      "depends_on": ["ECO:2005"],
+      "depends_on": [
+        "ECO:2005"
+      ],
       "originating_pass": "CKP.01.00"
     },
     {
       "id": "CKP:0002",
       "alias": "CKP.02.00",
-      "legacy_ids": ["CKP.02"],
+      "legacy_ids": [
+        "CKP.02"
+      ],
       "title": "Audit Current eco Cockpit Files Against CK.01/CK.02",
       "description": "Correction-pass audit of eco's embedded Cockpit implementation against the CK.01/CK.02 specs, ahead of extraction planning.",
       "layer": "standards",
@@ -52,13 +58,18 @@
       "path": "DEV-PLAN.md",
       "supersedes": [],
       "superseded_by": null,
-      "depends_on": ["ECO:2006", "ECO:2007"],
+      "depends_on": [
+        "ECO:2006",
+        "ECO:2007"
+      ],
       "originating_pass": "CKP.02.00"
     },
     {
       "id": "CKP:0003",
       "alias": "CKP.03.00",
-      "legacy_ids": ["CKP.03"],
+      "legacy_ids": [
+        "CKP.03"
+      ],
       "title": "Extraction Shape Decision",
       "description": "Decided Cockpit's extraction shape: Python package boundary as the public API, with VS Code bridge and future standalone shell as adapters on top of it.",
       "layer": "standards",
@@ -69,13 +80,17 @@
       "path": "DEV-PLAN.md",
       "supersedes": [],
       "superseded_by": null,
-      "depends_on": ["CKP:0002"],
+      "depends_on": [
+        "CKP:0002"
+      ],
       "originating_pass": "CKP.03.00"
     },
     {
       "id": "CKP:0004",
       "alias": "CKP.04.00",
-      "legacy_ids": ["CKP.04"],
+      "legacy_ids": [
+        "CKP.04"
+      ],
       "title": "Public API Surface",
       "description": "Defined Cockpit's public consumer API as the Phase 1 Python package adapter boundary; VS Code and future standalone shells are hosts over that same API.",
       "layer": "standards",
@@ -86,13 +101,17 @@
       "path": "DEV-PLAN.md",
       "supersedes": [],
       "superseded_by": null,
-      "depends_on": ["CKP:0003"],
+      "depends_on": [
+        "CKP:0003"
+      ],
       "originating_pass": "CKP.04.00"
     },
     {
       "id": "CKP:0005",
       "alias": "CKP.05.00",
-      "legacy_ids": ["CKP.05"],
+      "legacy_ids": [
+        "CKP.05"
+      ],
       "title": "Packaging Checklist (Primary)",
       "description": "Packaging checklist for Track B B.2-02: Python package install/bridge smoke commands, VS Code host build, extension dev-host visual smoke, bridge resolution order, VSIX release exclusions.",
       "layer": "standards",
@@ -103,13 +122,17 @@
       "path": "docs/specifications/CKP.05-packaging-checklist.md",
       "supersedes": [],
       "superseded_by": null,
-      "depends_on": ["CKP:0004"],
+      "depends_on": [
+        "CKP:0004"
+      ],
       "originating_pass": "CKP.05.00"
     },
     {
       "id": "CKP:0006",
       "alias": "CKP.05.01",
-      "legacy_ids": ["CKP.05A"],
+      "legacy_ids": [
+        "CKP.05A"
+      ],
       "title": "VS Code Host-to-Python Adapter Bridge",
       "description": "VS Code host consumes the Phase 1 Python package adapter boundary through a read-only JSON bridge (cockpit.host_bridge): health, get_state, list_records, get_record.",
       "layer": "standards",
@@ -120,13 +143,17 @@
       "path": "DEV-PLAN.md",
       "supersedes": [],
       "superseded_by": null,
-      "depends_on": ["CKP:0005"],
+      "depends_on": [
+        "CKP:0005"
+      ],
       "originating_pass": "CKP.05.01"
     },
     {
       "id": "CKP:0007",
       "alias": "CKP.05.02",
-      "legacy_ids": ["CKP.05B"],
+      "legacy_ids": [
+        "CKP.05B"
+      ],
       "title": "Bridge Packaging and Diagnostics Hardening",
       "description": "Explicit bridge resolution order (packageRoot setting, sibling checkout, active Python environment) and 'eco: Cockpit Bridge Health' diagnostic command. VSIX must not bundle private planning/bootstrap docs.",
       "layer": "standards",
@@ -137,13 +164,17 @@
       "path": "DEV-PLAN.md",
       "supersedes": [],
       "superseded_by": null,
-      "depends_on": ["CKP:0006"],
+      "depends_on": [
+        "CKP:0006"
+      ],
       "originating_pass": "CKP.05.02"
     },
     {
       "id": "CKP:0008",
       "alias": "CKP.05.03",
-      "legacy_ids": ["CKP.05C"],
+      "legacy_ids": [
+        "CKP.05C"
+      ],
       "title": "Phase 1 Package Install Automation",
       "description": "cockpit.install_phase1 and the cockpit-install-phase1 console entrypoint: editable package install, test verification, read-only bridge health smoke against a selected eco workspace.",
       "layer": "standards",
@@ -154,13 +185,17 @@
       "path": "DEV-PLAN.md",
       "supersedes": [],
       "superseded_by": null,
-      "depends_on": ["CKP:0007"],
+      "depends_on": [
+        "CKP:0007"
+      ],
       "originating_pass": "CKP.05.03"
     },
     {
       "id": "CKP:0009",
       "alias": "CKP.05.04",
-      "legacy_ids": ["CKP.05D"],
+      "legacy_ids": [
+        "CKP.05D"
+      ],
       "title": "Explicit Apply for Install Automation",
       "description": "install_phase1 follows explicit-apply: preview by default, --apply required to mutate the active Python environment. Aligns with GC zero-trust expectations.",
       "layer": "standards",
@@ -171,13 +206,17 @@
       "path": "DEV-PLAN.md",
       "supersedes": [],
       "superseded_by": null,
-      "depends_on": ["CKP:0008"],
+      "depends_on": [
+        "CKP:0008"
+      ],
       "originating_pass": "CKP.05.04"
     },
     {
       "id": "CKP:0010",
       "alias": "CKP.06.00",
-      "legacy_ids": ["CKP.06"],
+      "legacy_ids": [
+        "CKP.06"
+      ],
       "title": "Screenshot/Demo Flow",
       "description": "Demo flow using the VS Code Extension Development Host against C:\\dev\\eco, positioning Cockpit as a bridge-backed operator surface: setup commands, visible signals, screenshot sequence, claims boundaries.",
       "layer": "standards",
@@ -188,13 +227,17 @@
       "path": "docs/specifications/CKP.06-demo-flow.md",
       "supersedes": [],
       "superseded_by": null,
-      "depends_on": ["CKP:0009"],
+      "depends_on": [
+        "CKP:0009"
+      ],
       "originating_pass": "CKP.06.00"
     },
     {
       "id": "CKP:1001",
       "alias": "CKP.07.00",
-      "legacy_ids": ["CKP.6"],
+      "legacy_ids": [
+        "CKP.6"
+      ],
       "title": "Marlin Governance Panel (Primary)",
       "description": "First concrete use of Cockpit's universal UI host role: surfaces Marlin-DXP's install, audit validate, and status operations inside Cockpit as a governance panel, removing the need for a standalone Marlin GUI.",
       "layer": "domain",
@@ -205,13 +248,17 @@
       "path": "docs/specifications/CKP.6-marlin-governance-panel.md",
       "supersedes": [],
       "superseded_by": null,
-      "depends_on": ["CKP:0010"],
+      "depends_on": [
+        "CKP:0010"
+      ],
       "originating_pass": "CKP.07.00"
     },
     {
       "id": "CKP:1002",
       "alias": "CKP.07.01",
-      "legacy_ids": ["CKP.6A"],
+      "legacy_ids": [
+        "CKP.6A"
+      ],
       "title": "Marlin Panel Install-Readiness Slice",
       "description": "First Marlin governance panel slice: read-only install-readiness record type on the Marlin adapter and host bridge, with an explicit apply command as an approval artifact. Bridge rejects apply attempts through the read-only query.",
       "layer": "domain",
@@ -222,7 +269,9 @@
       "path": "DEV-PATH.md",
       "supersedes": [],
       "superseded_by": null,
-      "depends_on": ["CKP:1001"],
+      "depends_on": [
+        "CKP:1001"
+      ],
       "originating_pass": "CKP.07.01"
     },
     {
@@ -239,7 +288,10 @@
       "path": "DEV-PATH.md",
       "supersedes": [],
       "superseded_by": null,
-      "depends_on": ["CKP:1001", "CKP:0006"],
+      "depends_on": [
+        "CKP:1001",
+        "CKP:0006"
+      ],
       "originating_pass": "CKP.08.00"
     },
     {
@@ -256,13 +308,17 @@
       "path": "docs/specifications/CKP.08.04-feature-parity-audit.md",
       "supersedes": [],
       "superseded_by": null,
-      "depends_on": ["CKP:1003"],
+      "depends_on": [
+        "CKP:1003"
+      ],
       "originating_pass": "CKP.08.04"
     },
     {
       "id": "CKP:1005",
       "alias": "CKP.08.05",
-      "legacy_ids": ["CKP.08.04a"],
+      "legacy_ids": [
+        "CKP.08.04a"
+      ],
       "title": "UI-Only Operator Parity Port",
       "description": "Retroactive registration: ports the seven UI-only parity surfaces (run list/detail/copy/rerun, escalation approve/deny, artifact list/open, PASS run launcher, policy viewer/editor) into the extracted cockpit/web bundle against existing adapter calls, per the CKP.08.04 audit's Finding 3. Implemented and closed under the informal, unregistered name CKP.08.04a before this correction - DEV-ACCORD.02 does not permit letter-suffixed sub-passes (three-level CLUSTER.NN.NN.letter form); this is a sibling sub-pass of CKP.08.04 under CKP.08.00, not a child of CKP.08.04.",
       "layer": "domain",
@@ -273,13 +329,17 @@
       "path": "docs/specifications/CKP.08.04-feature-parity-audit.md",
       "supersedes": [],
       "superseded_by": null,
-      "depends_on": ["CKP:1004"],
+      "depends_on": [
+        "CKP:1004"
+      ],
       "originating_pass": "CKP.08.05"
     },
     {
       "id": "CKP:1006",
       "alias": "CKP.08.06",
-      "legacy_ids": ["CKP.08.04b"],
+      "legacy_ids": [
+        "CKP.08.04b"
+      ],
       "title": "Artifact Trash/Restore Backend Contract",
       "description": "Adds delete_record/restore_record to the CockpitAdapter ABC and implements soft-delete (move to .eco/.trash/artifacts) plus restore for EcoAdapter, with path-containment checks matching the proven eco-vs deleteArtifact/restoreArtifact semantics. Wired into host_bridge.py as delete_record/restore_record operations. Closes the first of the two real backend gaps identified in the CKP.08.04 audit (governance diagnostics and editor-plane sync remain open). Cited as CKP.08.04b before this correction, per the same DEV-ACCORD.02 letter-suffix issue as CKP.08.05.",
       "layer": "domain",
@@ -290,13 +350,17 @@
       "path": "src/cockpit/adapters/eco.py",
       "supersedes": [],
       "superseded_by": null,
-      "depends_on": ["CKP:1004"],
+      "depends_on": [
+        "CKP:1004"
+      ],
       "originating_pass": "CKP.08.06"
     },
     {
       "id": "CKP:1007",
       "alias": "CKP.08.07",
-      "legacy_ids": ["CKP.08.04c"],
+      "legacy_ids": [
+        "CKP.08.04c"
+      ],
       "title": "Governance Diagnostics Record Type",
       "description": "Adds a governance record type to CockpitAdapter/EcoAdapter, merging governance-diagnostics.json, project.yaml's governance_mode, and health-report.json's overall_score into one record - the three sources the old eco-vs Governance tab read directly. Flows through the existing generic list_records/get_record dispatch (no host_bridge.py changes needed). Relayed through cockpitApi.ts/webviewHost.ts and rendered as a Governance tab in the extracted bundle. Closes the second of the two real backend gaps identified in the CKP.08.04 audit.",
       "layer": "domain",
@@ -307,7 +371,9 @@
       "path": "src/cockpit/adapters/eco.py",
       "supersedes": [],
       "superseded_by": null,
-      "depends_on": ["CKP:1004"],
+      "depends_on": [
+        "CKP:1004"
+      ],
       "originating_pass": "CKP.08.07"
     },
     {
@@ -324,7 +390,9 @@
       "path": "DEV-PATH.md",
       "supersedes": [],
       "superseded_by": null,
-      "depends_on": ["CKP:1004"],
+      "depends_on": [
+        "CKP:1004"
+      ],
       "originating_pass": "CKP.08.08"
     },
     {
@@ -341,7 +409,9 @@
       "path": "DEV-PATH.md",
       "supersedes": [],
       "superseded_by": null,
-      "depends_on": ["CKP:1006"],
+      "depends_on": [
+        "CKP:1006"
+      ],
       "originating_pass": "CKP.08.09"
     },
     {
@@ -358,7 +428,12 @@
       "path": "docs/specifications/CKP.08.04-feature-parity-audit.md",
       "supersedes": [],
       "superseded_by": null,
-      "depends_on": ["CKP:1005", "CKP:1006", "CKP:1007", "CKP:1008"],
+      "depends_on": [
+        "CKP:1005",
+        "CKP:1006",
+        "CKP:1007",
+        "CKP:1008"
+      ],
       "originating_pass": "CKP.08.10"
     },
     {
@@ -375,7 +450,9 @@
       "path": "docs/specifications/CKP.v1.0-scoping.md",
       "supersedes": [],
       "superseded_by": null,
-      "depends_on": ["CKP:1003"],
+      "depends_on": [
+        "CKP:1003"
+      ],
       "originating_pass": "CKP.09.00"
     },
     {
@@ -392,7 +469,10 @@
       "path": "web/cockpit.js",
       "supersedes": [],
       "superseded_by": null,
-      "depends_on": ["CKP:1011", "CKP:1002"],
+      "depends_on": [
+        "CKP:1011",
+        "CKP:1002"
+      ],
       "originating_pass": "CKP.09.04"
     },
     {
@@ -409,8 +489,31 @@
       "path": "docs/specifications/CKP.v1.0-scoping.md",
       "supersedes": [],
       "superseded_by": null,
-      "depends_on": ["CKP:1011", "CKP:1012", "CKP:1002"],
+      "depends_on": [
+        "CKP:1011",
+        "CKP:1012",
+        "CKP:1002"
+      ],
       "originating_pass": "CKP.09.05"
+    },
+    {
+      "id": "CKP:1014",
+      "alias": "CKP.09.06",
+      "legacy_ids": [],
+      "title": "Headless DOM Smoke Tests for the Extracted Web Bundle",
+      "description": "Adds pytest-playwright headless-Chromium smoke tests (src/cockpit/tests/test_web_bundle_smoke.py) loading web/cockpit.html + cockpit.js + cockpit.css with the host-template placeholders substituted the same way webviewHost.ts does. Verifies the bundle renders with zero console errors and posts the correct eco.cockpit.* message for each UI-only operator-parity action from CKP.08.04a. Does not re-test eco-vscode snapshot assembly or adapter/backend logic. pytest-playwright declared in this repo's own pyproject.toml [test] extra, not a sibling repo's shared venv, per the portfolio-wide modularity/portability standard.",
+      "layer": "domain",
+      "cluster": "CKP",
+      "parent": "CKP:1011",
+      "status": "accepted",
+      "timestamp": "2026-07-03T00:00:00Z",
+      "path": "src/cockpit/tests/test_web_bundle_smoke.py",
+      "supersedes": [],
+      "superseded_by": null,
+      "depends_on": [
+        "CKP:1013"
+      ],
+      "originating_pass": "CKP.09.06"
     }
   ]
 }
