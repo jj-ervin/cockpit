@@ -10,6 +10,8 @@
   --input: var(--vscode-input-background, #3c3c3c);
   --input-text: var(--vscode-input-foreground, #cccccc);
   --danger: var(--vscode-errorForeground, #f48771);
+  --success: #49b36d;
+  --warning: #d6a442;
 }
 
 * {
@@ -28,13 +30,15 @@ body {
   display: grid;
   gap: 14px;
   padding: 18px;
+  min-height: 100vh;
 }
 
 .topbar,
 .panel-header,
 .button-row,
 .tabs,
-.command-row {
+.command-row,
+.topbar-actions {
   align-items: center;
   display: flex;
   gap: 8px;
@@ -43,6 +47,15 @@ body {
 .topbar,
 .panel-header {
   justify-content: space-between;
+}
+
+.topbar {
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 12px;
+}
+
+.topbar-actions {
+  justify-content: flex-end;
 }
 
 .wrap {
@@ -92,6 +105,27 @@ button {
   color: var(--accent-text);
   cursor: pointer;
   white-space: nowrap;
+}
+
+.connection-badge {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  padding: 8px 10px;
+  white-space: nowrap;
+}
+
+.connection-badge.is-live {
+  border-color: color-mix(in srgb, var(--success) 52%, var(--line));
+  color: var(--success);
+}
+
+.connection-badge.is-preview {
+  border-color: color-mix(in srgb, var(--warning) 56%, var(--line));
+  color: var(--warning);
 }
 
 button:disabled {
@@ -145,20 +179,28 @@ code {
 }
 
 .tabs {
-  border-bottom: 1px solid var(--line);
   overflow-x: auto;
 }
 
 .tab {
   background: transparent;
-  border-radius: 0;
+  border-radius: 4px;
   color: var(--text);
   min-width: 84px;
 }
 
 .tab.is-active {
-  border-bottom: 2px solid var(--accent);
+  background: var(--surface-2);
+  box-shadow: inset 3px 0 0 var(--accent);
   color: var(--accent-text);
+}
+
+.nav-label {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 10px 10px 2px;
+  text-transform: uppercase;
 }
 
 .tab-panel {
@@ -467,6 +509,38 @@ tr:hover {
   overflow-wrap: anywhere;
 }
 
+.workspace-repos {
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+  padding-top: 12px;
+}
+
+.repo-list {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.repo-item {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  padding: 10px;
+}
+
+.repo-item strong,
+.repo-item span {
+  overflow-wrap: anywhere;
+}
+
+.repo-meta {
+  color: var(--muted);
+}
+
 .lasso-workspace {
   display: grid;
   gap: 12px;
@@ -511,6 +585,64 @@ tr:hover {
   }
 }
 
+@media (min-width: 1040px) {
+  .shell {
+    grid-template-columns: 190px minmax(0, 1fr);
+    grid-template-areas:
+      "topbar topbar"
+      "tabs status"
+      "tabs content"
+      "tabs notice"
+      "tabs footer";
+  }
+
+  .topbar {
+    grid-area: topbar;
+  }
+
+  .shell > .status-grid {
+    grid-area: status;
+    grid-template-columns: repeat(8, minmax(0, 1fr));
+  }
+
+  .shell > .status-grid article {
+    padding: 10px;
+  }
+
+  .tabs {
+    align-self: start;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    flex-direction: column;
+    grid-area: tabs;
+    overflow: visible;
+    padding: 8px;
+    position: sticky;
+    top: 18px;
+  }
+
+  .tab {
+    justify-content: flex-start;
+    min-width: 0;
+    padding: 0 10px;
+    text-align: left;
+    width: 100%;
+  }
+
+  .tab-panel {
+    grid-area: content;
+    min-width: 0;
+  }
+
+  .notice {
+    grid-area: notice;
+  }
+
+  footer {
+    grid-area: footer;
+  }
+}
+
 @media (max-width: 560px) {
   .shell {
     padding: 12px;
@@ -523,6 +655,11 @@ tr:hover {
   .topbar {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .topbar-actions {
+    justify-content: space-between;
+    width: 100%;
   }
 
   .command-row {

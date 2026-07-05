@@ -56,6 +56,7 @@
 
   const elements = {
     refresh: byId('refresh'),
+    connectionBadge: byId('connection-badge'),
     status: byId('status'),
     totalRuns: byId('total-runs'),
     escalations: byId('escalations'),
@@ -116,6 +117,7 @@
     workspaceReveal: byId('workspace-reveal'),
     workspaceStatusAction: byId('workspace-status-action'),
     workspaceMetadata: byId('workspace-metadata'),
+    workspaceRepos: byId('workspace-repos'),
     nijiStatus: byId('niji-status'),
     nijiApi: byId('niji-api'),
     nijiSchemes: byId('niji-schemes'),
@@ -308,6 +310,9 @@
     const runCounts = backendState.run_counts || {};
 
     elements.status.textContent = workspace.statusLabel || (workspace.detected ? 'Detected' : 'Not detected');
+    elements.connectionBadge.textContent = hasRealHost ? 'Host connected' : 'Preview mode';
+    elements.connectionBadge.classList.toggle('is-live', hasRealHost);
+    elements.connectionBadge.classList.toggle('is-preview', !hasRealHost);
     elements.totalRuns.textContent = String(backendState.total_runs || records.runs.length || 0);
     elements.escalations.textContent = String(backendState.escalation_queue_depth || records.escalations.length || 0);
     elements.artifacts.textContent = String(records.artifacts.length || 0);
@@ -344,6 +349,7 @@
     renderEditorPlaneBar(records.runs, state.snapshot.governance);
     renderWizard();
     renderWorkspaceExplorer(state.snapshot.marlin || {});
+    renderWorkspaceRepos(state.snapshot.marlin || {});
     renderNiji(state.snapshot.niji || {});
 
     if (workspace.bridgeError) {
@@ -836,6 +842,35 @@
     });
   }
 
+  function renderWorkspaceRepos(marlin) {
+    const repos = Array.isArray(marlin.repoStatus) ? marlin.repoStatus : [];
+    clear(elements.workspaceRepos);
+    if (!repos.length) {
+      elements.workspaceRepos.appendChild(emptyDiv('No repository status records available.'));
+      return;
+    }
+
+    repos.forEach(function (repo) {
+      const item = document.createElement('article');
+      const title = document.createElement('strong');
+      const path = document.createElement('span');
+      const detail = document.createElement('span');
+      item.className = 'repo-item';
+      title.textContent = repo.name || repo.path || 'repository';
+      path.className = 'repo-meta';
+      path.textContent = repo.path || '-';
+      detail.className = 'repo-meta';
+      detail.textContent = [
+        'git: ' + (repo.git || repo.git_status || '-'),
+        'registered: ' + yesNo(Boolean(repo.registered)),
+      ].join(' | ');
+      item.appendChild(title);
+      item.appendChild(path);
+      item.appendChild(detail);
+      elements.workspaceRepos.appendChild(item);
+    });
+  }
+
   function mergeLassoLanes() {
     const lanes = [
       { name: 'Codex', enabled: elements.lassoUseCodex.checked, value: elements.lassoCodex.value.trim() },
@@ -992,7 +1027,15 @@
         statusLabel: 'Preview',
         workspaceRoot: '',
         refreshedAt: new Date().toISOString(),
-        backendState: {},
+        backendState: {
+          total_runs: 3,
+          escalation_queue_depth: 1,
+          run_counts: {
+            queued: 1,
+            running: 1,
+            closed: 1,
+          },
+        },
         bridgeError: 'Static preview mode - no Cockpit host connected.',
         adapter: {
           backend: 'static',
@@ -1005,18 +1048,76 @@
         eco_root_present: false,
       },
       marlin: {
-        installReadiness: null,
-        workspaceTree: null,
-        repoStatus: [],
-        error: 'Static preview mode - no Cockpit host connected.',
+        installReadiness: {
+          id: 'install-readiness',
+          status: 'ready',
+          mode: 'preview',
+          requires_human_apply: true,
+          preview_steps: [
+            { name: 'Cockpit Python package', command: ['python', '-m', 'pip', 'install', '-e', 'C:\\dev\\cockpit'] },
+            { name: 'Host bridge smoke', command: ['python', '-m', 'cockpit.host_bridge'] },
+            { name: 'Explicit apply approval', command: ['python', '-m', 'cockpit.install_phase1', '--workspace', 'C:\\dev\\eco', '--apply'] },
+          ],
+          apply_command: ['python', '-m', 'cockpit.install_phase1', '--workspace', 'C:\\dev\\eco', '--apply'],
+        },
+        workspaceTree: {
+          id: 'static-root',
+          root: 'C:/dev',
+          truncated: false,
+          nodes: [
+            { id: '.', name: 'dev', path: '.', kind: 'directory', depth: 0, skipped: false },
+            { id: 'cockpit', name: 'cockpit', path: 'cockpit', kind: 'directory', depth: 1, skipped: false },
+            { id: 'cockpit/web', name: 'web', path: 'cockpit/web', kind: 'directory', depth: 2, skipped: false },
+            { id: 'cockpit/web/cockpit.html', name: 'cockpit.html', path: 'cockpit/web/cockpit.html', kind: 'file', depth: 3, skipped: false },
+            { id: 'marlin', name: 'marlin', path: 'marlin', kind: 'directory', depth: 1, skipped: false },
+            { id: 'eco-vscode', name: 'eco-vscode', path: 'eco-vscode', kind: 'directory', depth: 1, skipped: false },
+            { id: 'node_modules', name: 'node_modules', path: 'node_modules', kind: 'directory', depth: 1, skipped: true },
+          ],
+        },
+        repoStatus: [
+          { name: 'cockpit', path: 'cockpit', git: 'clean', registered: true },
+          { name: 'marlin', path: 'marlin', git: 'clean', registered: true },
+          { name: 'eco-vscode', path: 'eco-vscode', git: 'clean', registered: true },
+        ],
+        error: null,
       },
-      records: emptyRecords(),
-      governance: null,
+      records: {
+        runs: [
+          { id: 'preview-run-1', state: 'running', updated_at: '2026-07-05T20:55:00Z', pass_name_or_id: 'CKP.09.05' },
+          { id: 'preview-run-2', state: 'queued', updated_at: '2026-07-05T20:45:00Z', pass_name_or_id: 'CKP.09.06' },
+          { id: 'preview-run-3', state: 'closed', updated_at: '2026-07-05T20:20:00Z', pass_name_or_id: 'CKP.08.09' },
+        ],
+        escalations: [
+          { id: 'preview-escalation-1', reason: 'Confirm Marlin install before package mutation.' },
+        ],
+        artifacts: [
+          { artifact_path: 'C:/dev/cockpit/.eco/artifacts/preview-readiness.json', kind: 'readiness', updated_at: '2026-07-05T20:55:00Z' },
+        ],
+        policies: [
+          { id: 'preview-policy', mode: 'read-only-preview', rules: ['host-mediated-writes', 'path-containment'] },
+        ],
+      },
+      governance: {
+        diagnostics_present: true,
+        governance_mode: 'preview',
+        health_score: 0,
+        hash_match: null,
+        issues: [
+          { severity: 'INFO', rule: 'preview-mode', message: 'Static browser preview is read-only.', file: 'cockpit/web/cockpit.html' },
+        ],
+      },
       niji: {
-        health: null,
-        state: null,
-        palettePreview: null,
-        error: 'Static preview mode - no Cockpit host connected.',
+        health: { status: 'preview' },
+        state: { scheme_count: 3, default_base_hex: '#2f7d68' },
+        palettePreview: {
+          scheme: 'triadic',
+          swatches: [
+            { name: 'Base', role: 'primary', hex: '#2f7d68' },
+            { name: 'Signal', role: 'accent', hex: '#b85c38' },
+            { name: 'Focus', role: 'support', hex: '#5b6fb8' },
+          ],
+        },
+        error: null,
       },
     };
   }

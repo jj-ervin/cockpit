@@ -632,3 +632,62 @@ without giving Cockpit write authority over Niji.
 Marlin JSON CLI smokes passed for `search`, `list`, and `install --dry-run`.
 Cockpit Python tests pass with the Niji adapter tests included. eco-vscode builds
 with the host-side Marlin subprocess and Niji snapshot integration.
+
+## Phase 14 — Lasso Workspace and Marlin Workspace Explorer (CKP.10.00, CKP.10.01)
+
+**Recorded:** 2026-07-05
+**Source:** CKP.10.00 and CKP.10.01 in `passes/passes.registry.json`
+
+### Registration note
+
+`CKP.10.00`'s implementing commit (`9260f15`, "feat(web): add Lasso and
+workspace explorer panels") landed with `Change-Level: DRIVE` and
+`Dev-Docs: not-needed` in its trailer. Per DEV-ACCORD.06, DRIVE requires
+`Dev-Docs: updated`, not `not-needed` — new panels and a new adapter record
+type are a milestone, not a documentation-exempt change. This phase entry,
+the matching DEV-PLAN closure, and the registry entries are that correction,
+applied retroactively for `CKP.10.00` and from creation for `CKP.10.01`.
+
+### CKP.10.00 — Lasso Workspace and Marlin Workspace Explorer Panels
+
+Two new universal-host provider surfaces landed in the extracted bundle:
+
+- **Lasso Workspace** — a multi-lane prompt-compose panel (Codex/Claude/
+  Reviewer lanes, per-lane include toggles, shared prompt input, client-side
+  merge into a composed-output textarea) mirroring the portfolio's existing
+  3-agent workflow. Browser-local only; no backend adapter.
+- **Marlin Workspace Explorer** — a read-only workspace-tree/repo-status
+  surface. `MarlinAdapter` gains `workspace-tree` and `repo-status` record
+  types: a depth/item-bounded directory walk with a skip-list for noise
+  directories (`.git`, `node_modules`, `.venv`, build caches, etc.), path
+  containment via `_resolve_contained_path` (same pattern as the `CKP.08.06`
+  artifact trash/restore contract — refuses to resolve outside the workspace
+  root or through UNC paths), and a `git status --porcelain=v1 --branch`
+  shell-out per repo for branch/dirty detection.
+
+### CKP.10.01 — Repo Status UI, Connection Badge, Responsive Shell
+
+Follow-up UI pass rendering what `CKP.10.00`'s backend already exposed but
+the bundle didn't yet show: a repository card grid (name, path, git branch/
+dirty state, registry match) under the workspace tree/inspector. Adds a
+topbar connection badge (`Host connected` vs `Preview mode`) so the operator
+can tell live data from static preview data at a glance, a two-tier nav
+grouping (`Operate` / `Providers` labels), and a wide-viewport (>=1040px)
+responsive shell that moves the tab list into a sticky left rail. Also
+enriches the bundle's static preview-mode fixture data (fake runs,
+escalations, artifacts, policies, install-readiness, workspace tree, repo
+statuses) so preview mode exercises the same render paths as a live host.
+
+### Validation
+
+`pytest` 115/115 passing (43 of those across
+`test_web_bundle_smoke.py`/`test_marlin_adapter.py`/`test_host_bridge.py`
+specifically). `node --check web/cockpit.js` clean.
+
+### Next
+
+No queued single PASS. Governance diagnostics and editor-plane sync remain
+closed (`CKP.08.07`/`.08`); Lasso currently has no backend — wiring an actual
+merge/dispatch adapter behind it (if the portfolio wants server-side lane
+execution rather than client-only compose) is the natural next scope if
+prioritized.

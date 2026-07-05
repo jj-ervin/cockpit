@@ -470,3 +470,49 @@ in README.md), which is a per-machine browser cache, independent of any venv.
 two open backend gaps from the CKP.08.04 audit (see CKP.08.07/.08 for the
 diagnostics record type and sync bundle UI already landed on the dashboard
 side); no further single PASS is queued here beyond that.
+
+---
+
+## CKP.10.00 Closure — Lasso Workspace and Marlin Workspace Explorer Panels
+
+**Closed:** 2026-07-05
+
+Two new universal-host provider surfaces: a browser-local Lasso Workspace
+panel (Codex/Claude/Reviewer prompt-compose lanes, no backend adapter) and a
+read-only Marlin Workspace Explorer (`workspace-tree` and `repo-status`
+record types on `MarlinAdapter`, depth/item-bounded directory walk with a
+noise-directory skip-list, path containment via `_resolve_contained_path`,
+per-repo `git status` shell-out for branch/dirty state).
+
+**Registration correction:** the implementing commit (`9260f15`) used
+`Change-Level: DRIVE` with `Dev-Docs: not-needed`. DEV-ACCORD.06 requires
+`Dev-Docs: updated` for DRIVE-level changes — new panels and a new adapter
+record type are exactly the "visible or release-affecting" case DRIVE exists
+for. This closure entry and the matching `passes/passes.registry.json`
+(`CKP:1015`) registration are the correction, applied retroactively.
+
+**Next:** Render the `repo-status` records this backend already returns
+(`CKP.10.01`).
+
+---
+
+## CKP.10.01 Closure — Repo Status UI, Connection Badge, Responsive Shell
+
+**Closed:** 2026-07-05
+
+Renders `CKP.10.00`'s `repo-status` records as a repository card grid (name,
+path, git branch/dirty state, registry match) under the workspace explorer's
+tree/inspector. Adds a topbar connection badge (`Host connected` vs
+`Preview mode`) so an operator can tell live data from static preview data at
+a glance, a two-tier `Operate`/`Providers` nav grouping, and a wide-viewport
+(>=1040px) responsive shell that moves the tab list into a sticky left rail
+instead of a horizontal bar. Enriches the bundle's static preview-mode
+fixture data (runs, escalations, artifacts, policies, install-readiness,
+workspace tree, repo statuses) so preview mode exercises the same render
+paths as a live host instead of showing empty states.
+
+**Validation:** 115/115 pytest passing; `node --check web/cockpit.js` clean.
+
+**Next:** No queued single PASS. Lasso currently has no backend — a
+merge/dispatch adapter behind it, if server-side lane execution is wanted
+over client-only compose, is the natural next scope if prioritized.

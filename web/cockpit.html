@@ -17,7 +17,10 @@
         <p class="eyebrow">Operator Console</p>
         <h1>eco Cockpit</h1>
       </div>
-      <button id="refresh" type="button">Refresh</button>
+      <div class="topbar-actions">
+        <strong class="connection-badge" id="connection-badge">Connecting</strong>
+        <button id="refresh" type="button">Refresh</button>
+      </div>
     </header>
 
     <section class="status-grid" aria-label="Workspace status">
@@ -32,12 +35,14 @@
     </section>
 
     <nav class="tabs" aria-label="Cockpit views">
+      <span class="nav-label">Operate</span>
       <button class="tab is-active" type="button" data-tab="dashboard">Dashboard</button>
       <button class="tab" type="button" data-tab="runs">Runs</button>
       <button class="tab" type="button" data-tab="escalations-tab">Escalations</button>
       <button class="tab" type="button" data-tab="artifacts-tab">Artifacts</button>
       <button class="tab" type="button" data-tab="launcher">Launcher</button>
       <button class="tab" type="button" data-tab="policy">Policy</button>
+      <span class="nav-label">Providers</span>
       <button class="tab" type="button" data-tab="governance">Governance</button>
       <button class="tab" type="button" data-tab="wizard">Setup Wizard</button>
       <button class="tab" type="button" data-tab="workspace-tab">Workspace</button>
@@ -248,6 +253,13 @@
             <dl class="metadata-list" id="workspace-metadata"></dl>
           </aside>
         </div>
+        <section class="workspace-repos">
+          <div class="panel-header wrap">
+            <h2>Repositories</h2>
+            <span>Read-only status</span>
+          </div>
+          <div class="repo-list" id="workspace-repos"></div>
+        </section>
       </section>
     </section>
 

@@ -516,6 +516,45 @@
         "CKP:1013"
       ],
       "originating_pass": "CKP.09.06"
+    },
+    {
+      "id": "CKP:1015",
+      "alias": "CKP.10.00",
+      "legacy_ids": [],
+      "title": "Lasso Workspace and Marlin Workspace Explorer Panels",
+      "description": "Adds two new universal-host provider surfaces to the extracted bundle. Lasso Workspace is a multi-lane prompt-compose panel (Codex/Claude/Reviewer lanes with per-lane include toggles, a shared prompt input, and a client-side merge into a composed-output textarea) reflecting the portfolio's existing 3-agent workflow, with no backend adapter of its own - browser-local only. Marlin Workspace Explorer adds a read-only workspace-tree/repo-status surface: MarlinAdapter gains `workspace-tree` and `repo-status` record types, a depth/item-bounded directory walk with a skip-list for noise directories (.git, node_modules, .venv, build caches, etc.), path-containment enforcement via `_resolve_contained_path` (same pattern as the CKP.08.06 artifact trash/restore contract, refusing to resolve outside the workspace root or through UNC paths), and a `git status --porcelain=v1 --branch` shell-out per repo for branch/dirty detection. Registered retroactively: the implementing commit (9260f15) used `Change-Level: DRIVE` with `Dev-Docs: not-needed`, which is non-conformant with DEV-ACCORD.06 (DRIVE requires `Dev-Docs: updated`) - this registration plus the DEV-PATH/DEV-PLAN closure entries is that correction.",
+      "layer": "domain",
+      "cluster": "CKP",
+      "parent": "CKP:1011",
+      "status": "accepted",
+      "timestamp": "2026-07-05T00:00:00Z",
+      "path": "web/cockpit.js",
+      "supersedes": [],
+      "superseded_by": null,
+      "depends_on": [
+        "CKP:1011",
+        "CKP:1006"
+      ],
+      "originating_pass": "CKP.10.00"
+    },
+    {
+      "id": "CKP:1016",
+      "alias": "CKP.10.01",
+      "legacy_ids": [],
+      "title": "Workspace Explorer Repo Status UI, Connection Badge, and Responsive Shell Layout",
+      "description": "Follow-up UI pass on CKP.10.00's Marlin Workspace Explorer. Renders the `repo-status` records the backend already exposed but the bundle did not yet display: a repository card grid (name, path, git branch/dirty state, registry match) under the workspace tree/inspector. Adds a topbar connection badge (`Host connected` vs `Preview mode`, driven by whether a real Cockpit host answered) so the operator can tell live data from static preview data at a glance. Adds a two-tier nav grouping (Operate / Providers labels above the tab list) and a wide-viewport (>=1040px) responsive shell layout that moves the tab list into a sticky left rail instead of a horizontal bar. Also enriches the bundle's static preview-mode fixture data (fake runs, escalations, artifacts, policies, install-readiness, workspace tree, repo statuses) so preview mode exercises the same render paths as a live host instead of showing empty states.",
+      "layer": "domain",
+      "cluster": "CKP",
+      "parent": "CKP:1015",
+      "status": "accepted",
+      "timestamp": "2026-07-05T00:00:00Z",
+      "path": "web/cockpit.js",
+      "supersedes": [],
+      "superseded_by": null,
+      "depends_on": [
+        "CKP:1015"
+      ],
+      "originating_pass": "CKP.10.01"
     }
   ]
 }
