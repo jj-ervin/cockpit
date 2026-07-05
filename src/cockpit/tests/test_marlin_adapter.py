@@ -146,6 +146,71 @@ def test_list_records_install_readiness_preview(populated_home: Path, tmp_path: 
     assert str(workspace.resolve()) in readiness["apply_command"]
 
 
+def test_list_records_workspace_tree_is_bounded_and_skips_heavy_dirs(populated_home: Path, tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    (workspace / "src").mkdir()
+    (workspace / "src" / "app.py").write_text("print('hi')", encoding="utf-8")
+    (workspace / "node_modules").mkdir()
+    (workspace / "node_modules" / "pkg.js").write_text("ignored", encoding="utf-8")
+    adapter = MarlinAdapter(workspace_id=str(populated_home))
+
+    result = adapter.list_records(
+        "workspace-tree",
+        workspace_root=str(workspace),
+        max_depth=2,
+        max_items=20,
+    )
+
+    tree = result.data[0]
+    paths = {node["path"] for node in tree["nodes"]}
+    assert "." in paths
+    assert "src" in paths
+    assert "src/app.py" in paths
+    assert "node_modules" in paths
+    assert "node_modules/pkg.js" not in paths
+    skipped = [node for node in tree["nodes"] if node["path"] == "node_modules"][0]
+    assert skipped["skipped"] is True
+    assert tree["max_depth"] == 2
+    assert tree["max_items"] == 20
+
+
+def test_workspace_tree_rejects_path_escape(populated_home: Path, tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    adapter = MarlinAdapter(workspace_id=str(populated_home))
+
+    with pytest.raises(ValidationError, match="outside the workspace root"):
+        adapter.get_record("repo-status", "../outside")
+
+
+def test_list_records_repo_status_reports_git_and_registry(populated_home: Path, tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    repo = workspace / "cockpit"
+    repo.mkdir(parents=True)
+    (repo / ".git").mkdir()
+    (workspace / "projects.yaml").write_text(
+        "\n".join([
+            "projects:",
+            "  - name: cockpit",
+            "    path: cockpit",
+            "    group: ui",
+            "    status: active",
+            "",
+        ]),
+        encoding="utf-8",
+    )
+    adapter = MarlinAdapter(workspace_id=str(populated_home))
+
+    result = adapter.list_records("repo-status", workspace_root=str(workspace))
+
+    status = result.data[0]
+    assert status["path"] == "cockpit"
+    assert status["has_git"] is True
+    assert status["git"]["present"] is True
+    assert status["registry"]["name"] == "cockpit"
+
+
 def test_install_readiness_rejects_apply_filter(populated_home: Path) -> None:
     adapter = MarlinAdapter(workspace_id=str(populated_home))
 

@@ -8,6 +8,7 @@ build the appropriate `marlin install <name>` CLI invocation themselves.
 from __future__ import annotations
 
 import os
+import subprocess
 from pathlib import Path
 from typing import Any
 
@@ -47,7 +48,24 @@ class MarlinAdapter(CockpitAdapter):
     """
 
     BACKEND_ID = "marlin"
-    RECORD_TYPES = frozenset({"package", "install-readiness"})
+    RECORD_TYPES = frozenset({"package", "install-readiness", "workspace-tree", "repo-status"})
+    WORKSPACE_SKIP_DIRS = frozenset({
+        ".git",
+        "node_modules",
+        ".venv",
+        "dist",
+        "build",
+        "__pycache__",
+        ".pytest_cache",
+        ".mypy_cache",
+        ".ruff_cache",
+        "coverage",
+        ".next",
+        "out",
+        "target",
+    })
+    DEFAULT_TREE_DEPTH = 3
+    DEFAULT_TREE_ITEMS = 500
 
     def __init__(
         self,
@@ -115,6 +133,16 @@ class MarlinAdapter(CockpitAdapter):
                 data=[_build_install_readiness(filters)],
                 origin=self._origin(),
             )
+        if record_type == "workspace-tree":
+            return AdapterResult(
+                data=[self._build_workspace_tree(filters)],
+                origin=self._origin(),
+            )
+        if record_type == "repo-status":
+            return AdapterResult(
+                data=self._list_repo_status(filters),
+                origin=self._origin(),
+            )
         return AdapterResult(data=self._load_packages(), origin=self._origin())
 
     def get_record(
@@ -127,6 +155,15 @@ class MarlinAdapter(CockpitAdapter):
             if record_id != "phase1":
                 raise RecordNotFoundError(f"install readiness '{record_id}' does not exist")
             return AdapterResult(data=_build_install_readiness({}), origin=self._origin())
+        if record_type == "workspace-tree":
+            if record_id != "root":
+                raise RecordNotFoundError(f"workspace tree '{record_id}' does not exist")
+            return AdapterResult(data=self._build_workspace_tree({}), origin=self._origin())
+        if record_type == "repo-status":
+            return AdapterResult(
+                data=self._repo_status_for_path(_workspace_root_filter({}), record_id),
+                origin=self._origin(),
+            )
         for pkg in self._load_packages():
             if pkg.get("name") == record_id:
                 return AdapterResult(data=pkg, origin=self._origin())
@@ -166,6 +203,89 @@ class MarlinAdapter(CockpitAdapter):
             for name, entry in packages_map.items()
             if isinstance(entry, dict)
         ]
+
+    def _build_workspace_tree(self, filters: dict[str, Any]) -> dict[str, Any]:
+        root = _workspace_root_filter(filters)
+        max_depth = _int_filter(filters, "max_depth", self.DEFAULT_TREE_DEPTH, minimum=0, maximum=8)
+        max_items = _int_filter(filters, "max_items", self.DEFAULT_TREE_ITEMS, minimum=1, maximum=5000)
+        nodes: list[dict[str, Any]] = []
+        truncated = False
+
+        def add_node(path: Path, depth: int) -> None:
+            nonlocal truncated
+            if len(nodes) >= max_items:
+                truncated = True
+                return
+            relative = _relative_path(root, path)
+            is_dir = path.is_dir()
+            nodes.append({
+                "id": relative or ".",
+                "name": path.name or str(path),
+                "path": relative or ".",
+                "kind": "directory" if is_dir else "file",
+                "depth": depth,
+                "skipped": is_dir and path.name in self.WORKSPACE_SKIP_DIRS,
+            })
+            if not is_dir or depth >= max_depth or path.name in self.WORKSPACE_SKIP_DIRS:
+                return
+            try:
+                children = sorted(
+                    path.iterdir(),
+                    key=lambda p: (not p.is_dir(), p.name.lower()),
+                )
+            except OSError:
+                return
+            for child in children:
+                if len(nodes) >= max_items:
+                    truncated = True
+                    return
+                try:
+                    contained = _resolve_contained_path(root, child)
+                except ValidationError:
+                    continue
+                add_node(contained, depth + 1)
+
+        add_node(root, 0)
+        return {
+            "id": "root",
+            "root": str(root),
+            "max_depth": max_depth,
+            "max_items": max_items,
+            "truncated": truncated,
+            "skip_dirs": sorted(self.WORKSPACE_SKIP_DIRS),
+            "nodes": nodes,
+        }
+
+    def _list_repo_status(self, filters: dict[str, Any]) -> list[dict[str, Any]]:
+        root = _workspace_root_filter(filters)
+        tree = self._build_workspace_tree({
+            "workspace_root": str(root),
+            "max_depth": 1,
+            "max_items": _int_filter(filters, "max_items", 200, minimum=1, maximum=1000),
+        })
+        statuses = []
+        for node in tree["nodes"]:
+            if node["kind"] != "directory" or node["path"] == ".":
+                continue
+            statuses.append(self._repo_status_for_path(root, node["path"]))
+        return statuses
+
+    def _repo_status_for_path(self, root: Path, record_id: str) -> dict[str, Any]:
+        repo_path = _resolve_contained_path(root, record_id)
+        if not repo_path.is_dir():
+            raise RecordNotFoundError(f"repo path '{record_id}' does not exist")
+        git = _git_status(repo_path)
+        registry = _registry_match(root, repo_path)
+        return {
+            "id": _relative_path(root, repo_path) or ".",
+            "name": repo_path.name,
+            "path": _relative_path(root, repo_path) or ".",
+            "absolute_path": str(repo_path),
+            "exists": repo_path.exists(),
+            "has_git": (repo_path / ".git").exists(),
+            "git": git,
+            "registry": registry,
+        }
 
 
 # ---------------------------------------------------------------------------
@@ -233,6 +353,113 @@ def _build_install_readiness(filters: dict[str, Any]) -> dict[str, Any]:
         "preview_steps": preview_steps,
         "apply_command": apply_command,
     }
+
+
+def _workspace_root_filter(filters: dict[str, Any]) -> Path:
+    return _contained_root(_path_filter(filters, "workspace_root", Path.cwd()))
+
+
+def _contained_root(path: Path) -> Path:
+    resolved = path.resolve()
+    if _is_unc_path(resolved):
+        raise ValidationError("workspace_root must be a local path, not a UNC path")
+    return resolved
+
+
+def _resolve_contained_path(root: Path, requested: str | Path) -> Path:
+    resolved_root = _contained_root(root)
+    raw = Path(requested)
+    if _is_unc_path(raw):
+        raise ValidationError("UNC paths are not allowed")
+    candidate = raw if raw.is_absolute() else resolved_root / raw
+    resolved_candidate = candidate.resolve()
+    if _is_unc_path(resolved_candidate):
+        raise ValidationError("UNC paths are not allowed")
+    try:
+        common = os.path.commonpath([os.path.normcase(str(resolved_root)), os.path.normcase(str(resolved_candidate))])
+    except ValueError as exc:
+        raise ValidationError("path is outside the workspace root") from exc
+    if common != os.path.normcase(str(resolved_root)):
+        raise ValidationError("path is outside the workspace root")
+    return resolved_candidate
+
+
+def _relative_path(root: Path, path: Path) -> str:
+    return path.relative_to(root).as_posix()
+
+
+def _is_unc_path(path: Path) -> bool:
+    text = str(path)
+    return text.startswith("\\\\") or text.startswith("//")
+
+
+def _int_filter(
+    filters: dict[str, Any],
+    key: str,
+    default: int,
+    *,
+    minimum: int,
+    maximum: int,
+) -> int:
+    value = filters.get(key)
+    if value is None:
+        return default
+    if not isinstance(value, int) or isinstance(value, bool):
+        raise ValidationError(f"{key} must be an integer")
+    if value < minimum or value > maximum:
+        raise ValidationError(f"{key} must be between {minimum} and {maximum}")
+    return value
+
+
+def _git_status(repo_path: Path) -> dict[str, Any]:
+    if not (repo_path / ".git").exists():
+        return {"present": False, "branch": None, "dirty": None}
+    try:
+        completed = subprocess.run(
+            ["git", "status", "--porcelain=v1", "--branch"],
+            cwd=repo_path,
+            text=True,
+            capture_output=True,
+            timeout=5,
+            check=False,
+        )
+    except Exception as exc:
+        return {"present": True, "branch": None, "dirty": None, "error": str(exc)}
+    lines = completed.stdout.splitlines()
+    branch = None
+    if lines and lines[0].startswith("## "):
+        branch = lines[0][3:]
+    return {
+        "present": True,
+        "branch": branch,
+        "dirty": any(line and not line.startswith("## ") for line in lines),
+        "exit_code": completed.returncode,
+    }
+
+
+def _registry_match(root: Path, repo_path: Path) -> dict[str, Any] | None:
+    projects_yaml = root / "projects.yaml"
+    if not projects_yaml.exists() or not _YAML_AVAILABLE:
+        return None
+    try:
+        raw = _yaml.safe_load(projects_yaml.read_text(encoding="utf-8")) or {}
+    except Exception:
+        return None
+    projects = raw.get("projects")
+    if not isinstance(projects, list):
+        return None
+    relative = _relative_path(root, repo_path)
+    for entry in projects:
+        if not isinstance(entry, dict):
+            continue
+        if entry.get("path") == relative:
+            return {
+                "name": entry.get("name"),
+                "group": entry.get("group"),
+                "status": entry.get("status"),
+                "path": entry.get("path"),
+            }
+    return None
 
 
 def _reject_apply_request(filters: dict[str, Any]) -> None:

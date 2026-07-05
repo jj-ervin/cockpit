@@ -39,7 +39,21 @@ def _sample_snapshot() -> dict:
             },
         },
         "health": {"status": "ok", "eco_root_present": True},
-        "marlin": {"installReadiness": None, "error": None},
+        "marlin": {
+            "installReadiness": None,
+            "error": None,
+            "workspaceTree": {
+                "id": "root",
+                "root": "C:/fake/workspace",
+                "truncated": False,
+                "nodes": [
+                    {"id": ".", "name": "workspace", "path": ".", "kind": "directory", "depth": 0, "skipped": False},
+                    {"id": "cockpit", "name": "cockpit", "path": "cockpit", "kind": "directory", "depth": 1, "skipped": False},
+                    {"id": "cockpit/README.md", "name": "README.md", "path": "cockpit/README.md", "kind": "file", "depth": 2, "skipped": False},
+                ],
+            },
+            "repoStatus": [],
+        },
         "records": {
             "runs": [
                 {
@@ -97,9 +111,7 @@ def cockpit_page(page, tmp_path: Path):
     )
     html = html.replace("${cspSource}", "*")
     html = html.replace("${nonce}", "test-nonce")
-    html = html.replace("${cockpitCssUri}", "cockpit.css")
-    html = html.replace("${cockpitJsUri}", "cockpit.js")
-    html = html.replace("${cockpitHostBootstrap}", bootstrap)
+    html = html.replace("<!-- cockpit-host-bootstrap -->", bootstrap)
     (tmp_path / "cockpit.html").write_text(html, encoding="utf-8")
 
     errors: list[str] = []
@@ -211,6 +223,26 @@ def test_niji_provider_panel_renders_without_error(cockpit_page):
     assert cockpit_page.locator("#niji-schemes").inner_text() == "17"
     assert cockpit_page.locator("#niji-base").inner_text() == "#336699"
     assert cockpit_page.cockpit_errors == []
+
+
+def test_workspace_explorer_renders_and_posts_structured_intents(cockpit_page):
+    _send_state(cockpit_page, _sample_snapshot())
+    cockpit_page.click(".tab[data-tab='workspace-tab']")
+
+    cockpit_page.click(".workspace-node:has-text('cockpit')")
+    assert cockpit_page.locator("#workspace-selected-title").inner_text() == "cockpit"
+
+    cockpit_page.click("#workspace-reveal")
+    reveal = cockpit_page.evaluate("window.__posted[window.__posted.length - 1]")
+    assert reveal["type"] == "eco.cockpit.workspaceReveal"
+    assert reveal["workspaceId"] == "smoke-workspace"
+    assert reveal["path"] == "cockpit"
+
+    cockpit_page.click("#workspace-status-action")
+    status = cockpit_page.evaluate("window.__posted[window.__posted.length - 1]")
+    assert status["type"] == "eco.cockpit.workspaceStatus"
+    assert status["workspaceId"] == "smoke-workspace"
+    assert status["path"] == "cockpit"
 
 
 def test_refresh_button_posts_refresh_message(cockpit_page):

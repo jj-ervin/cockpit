@@ -6,10 +6,24 @@
   // See docs/specifications/CKP.08-host-loader-contract.md for the full
   // contract. VS Code's loader wraps `acquireVsCodeApi()`; that call and any
   // other host-specific API must never appear in this file.
-  const host = window.cockpitHost;
-  if (!host || typeof host.postMessage !== 'function') {
-    throw new Error('cockpit.js requires window.cockpitHost.postMessage to be set by the host loader before this script runs');
-  }
+  const hasRealHost = Boolean(window.cockpitHost && typeof window.cockpitHost.postMessage === 'function');
+  const host = hasRealHost
+    ? window.cockpitHost
+    : {
+        postMessage: function (message) {
+          window.__posted = Array.isArray(window.__posted) ? window.__posted : [];
+          window.__posted.push(message);
+          if (message.type === 'eco.cockpit.ready' || message.type === 'eco.cockpit.refresh') {
+            window.postMessage({
+              type: 'eco.cockpit.state',
+              payload: staticPreviewSnapshot(),
+            }, '*');
+          }
+          if (window.console && typeof window.console.info === 'function') {
+            window.console.info('Cockpit static preview host message', message);
+          }
+        },
+      };
 
   const state = {
     snapshot: emptySnapshot(),
@@ -20,6 +34,8 @@
     wizardStep: 0,
     marlinSearchResults: [],
     marlinInstallResult: null,
+    selectedWorkspacePath: '',
+    noticeTimer: null,
   };
 
   // CKP.09.04 - environment setup wizard shell. Steps are generic (id, title,
@@ -94,12 +110,29 @@
     wizardContent: byId('wizard-content'),
     wizardBack: byId('wizard-back'),
     wizardNext: byId('wizard-next'),
+    workspaceTreeStatus: byId('workspace-tree-status'),
+    workspaceTree: byId('workspace-tree'),
+    workspaceSelectedTitle: byId('workspace-selected-title'),
+    workspaceReveal: byId('workspace-reveal'),
+    workspaceStatusAction: byId('workspace-status-action'),
+    workspaceMetadata: byId('workspace-metadata'),
     nijiStatus: byId('niji-status'),
     nijiApi: byId('niji-api'),
     nijiSchemes: byId('niji-schemes'),
     nijiBase: byId('niji-base'),
     nijiScheme: byId('niji-scheme'),
     nijiSwatches: byId('niji-swatches'),
+    lassoMode: byId('lasso-mode'),
+    lassoPrompt: byId('lasso-prompt'),
+    lassoUseCodex: byId('lasso-use-codex'),
+    lassoUseClaude: byId('lasso-use-claude'),
+    lassoUseReviewer: byId('lasso-use-reviewer'),
+    lassoCodex: byId('lasso-codex'),
+    lassoClaude: byId('lasso-claude'),
+    lassoReviewer: byId('lasso-reviewer'),
+    lassoMerge: byId('lasso-merge'),
+    lassoClear: byId('lasso-clear'),
+    lassoOutput: byId('lasso-output'),
   };
 
   elements.refresh.addEventListener('click', function () {
@@ -109,6 +142,7 @@
   elements.tabs.forEach(function (tab) {
     tab.addEventListener('click', function () {
       setActiveTab(tab.dataset.tab);
+      clearNotice();
     });
   });
 
@@ -188,6 +222,39 @@
     elements.undoDeleteArtifact.disabled = true;
   });
 
+  elements.workspaceReveal.addEventListener('click', function () {
+    if (state.selectedWorkspacePath) {
+      post({
+        type: 'eco.cockpit.workspaceReveal',
+        workspaceId: workspaceId(),
+        path: state.selectedWorkspacePath,
+      });
+    }
+  });
+
+  elements.workspaceStatusAction.addEventListener('click', function () {
+    if (state.selectedWorkspacePath) {
+      post({
+        type: 'eco.cockpit.workspaceStatus',
+        workspaceId: workspaceId(),
+        path: state.selectedWorkspacePath,
+      });
+    }
+  });
+
+  elements.lassoMerge.addEventListener('click', function () {
+    mergeLassoLanes();
+  });
+
+  elements.lassoClear.addEventListener('click', function () {
+    elements.lassoPrompt.value = '';
+    elements.lassoCodex.value = '';
+    elements.lassoClaude.value = '';
+    elements.lassoReviewer.value = '';
+    elements.lassoOutput.value = '';
+    showNotice('Lasso workspace cleared.', false);
+  });
+
   window.addEventListener('message', function (event) {
     const message = event.data;
     if (!message || !message.type) {
@@ -199,7 +266,7 @@
     }
     if (message.type === 'eco.cockpit.actionResult') {
       const payload = message.payload || {};
-      showNotice(payload.message || 'Action completed.', payload.ok === false);
+      showNotice(payload.message || 'Action completed.', payload.ok === false, payload.persist === true);
       if (payload.refresh !== false) {
         post({ type: 'eco.cockpit.refresh' });
       }
@@ -226,7 +293,7 @@
     }
     if (message.type === 'eco.cockpit.error') {
       const payload = message.payload || {};
-      showNotice(payload.message || 'Cockpit host error.', true);
+      showNotice(payload.message || 'Cockpit host error.', true, true);
     }
   });
 
@@ -240,7 +307,7 @@
     const records = state.snapshot.records || emptyRecords();
     const runCounts = backendState.run_counts || {};
 
-    elements.status.textContent = workspace.detected ? 'Detected' : 'Not detected';
+    elements.status.textContent = workspace.statusLabel || (workspace.detected ? 'Detected' : 'Not detected');
     elements.totalRuns.textContent = String(backendState.total_runs || records.runs.length || 0);
     elements.escalations.textContent = String(backendState.escalation_queue_depth || records.escalations.length || 0);
     elements.artifacts.textContent = String(records.artifacts.length || 0);
@@ -276,6 +343,7 @@
     renderGovernance(state.snapshot.governance);
     renderEditorPlaneBar(records.runs, state.snapshot.governance);
     renderWizard();
+    renderWorkspaceExplorer(state.snapshot.marlin || {});
     renderNiji(state.snapshot.niji || {});
 
     if (workspace.bridgeError) {
@@ -702,6 +770,102 @@
     });
   }
 
+  function renderWorkspaceExplorer(marlin) {
+    const tree = marlin.workspaceTree;
+    clear(elements.workspaceTree);
+    clear(elements.workspaceMetadata);
+    if (!tree || !Array.isArray(tree.nodes)) {
+      elements.workspaceTreeStatus.textContent = marlin.error || 'Workspace tree not loaded.';
+      elements.workspaceTree.appendChild(emptyDiv('No workspace tree available from the host yet.'));
+      renderWorkspaceSelection(null);
+      return;
+    }
+
+    elements.workspaceTreeStatus.textContent = tree.truncated ? 'Read-only, truncated' : 'Read-only';
+    if (!tree.nodes.length) {
+      elements.workspaceTree.appendChild(emptyDiv('No workspace entries found.'));
+      renderWorkspaceSelection(null);
+      return;
+    }
+
+    if (!state.selectedWorkspacePath || !tree.nodes.some(function (node) { return node.path === state.selectedWorkspacePath; })) {
+      state.selectedWorkspacePath = tree.nodes[0].path || '.';
+    }
+
+    tree.nodes.forEach(function (node) {
+      const button = document.createElement('button');
+      const icon = node.kind === 'directory' ? '[] ' : '- ';
+      button.type = 'button';
+      button.className = 'workspace-node';
+      button.classList.toggle('is-selected', node.path === state.selectedWorkspacePath);
+      button.classList.toggle('is-skipped', Boolean(node.skipped));
+      button.style.paddingLeft = String(8 + ((node.depth || 0) * 16)) + 'px';
+      button.textContent = icon + (node.name || node.path || '.');
+      button.addEventListener('click', function () {
+        state.selectedWorkspacePath = node.path || '.';
+        renderWorkspaceExplorer(marlin);
+      });
+      elements.workspaceTree.appendChild(button);
+    });
+
+    renderWorkspaceSelection(tree.nodes.find(function (node) {
+      return node.path === state.selectedWorkspacePath;
+    }) || tree.nodes[0]);
+  }
+
+  function renderWorkspaceSelection(node) {
+    clear(elements.workspaceMetadata);
+    if (!node) {
+      elements.workspaceSelectedTitle.textContent = 'Selection';
+      elements.workspaceReveal.disabled = true;
+      elements.workspaceStatusAction.disabled = true;
+      elements.workspaceMetadata.appendChild(emptyMetadata('Status', 'No workspace item selected.'));
+      return;
+    }
+
+    elements.workspaceSelectedTitle.textContent = node.name || node.path || 'Selection';
+    elements.workspaceReveal.disabled = false;
+    elements.workspaceStatusAction.disabled = node.kind !== 'directory';
+    [
+      ['Path', node.path || '.'],
+      ['Kind', node.kind || '-'],
+      ['Depth', String(node.depth || 0)],
+      ['Skipped', node.skipped ? 'yes' : 'no'],
+    ].forEach(function (item) {
+      elements.workspaceMetadata.appendChild(metadataRow(item[0], item[1]));
+    });
+  }
+
+  function mergeLassoLanes() {
+    const lanes = [
+      { name: 'Codex', enabled: elements.lassoUseCodex.checked, value: elements.lassoCodex.value.trim() },
+      { name: 'Claude', enabled: elements.lassoUseClaude.checked, value: elements.lassoClaude.value.trim() },
+      { name: 'Reviewer', enabled: elements.lassoUseReviewer.checked, value: elements.lassoReviewer.value.trim() },
+    ].filter(function (lane) {
+      return lane.enabled && lane.value;
+    });
+
+    const prompt = elements.lassoPrompt.value.trim();
+    const mode = elements.lassoMode.value;
+    const parts = ['# Lasso Session', '', 'Mode: ' + mode];
+
+    if (prompt) {
+      parts.push('', '## Shared Input', prompt);
+    }
+
+    if (!lanes.length) {
+      showNotice('Select at least one populated Lasso lane.', true);
+      return;
+    }
+
+    lanes.forEach(function (lane) {
+      parts.push('', '## ' + lane.name, lane.value);
+    });
+
+    elements.lassoOutput.value = parts.join('\n');
+    showNotice('Lasso selected lanes merged into composed output.', false);
+  }
+
   function syncRunFilterOptions(runs) {
     const states = Array.from(new Set(runs.map(function (run) {
       return run.state || run.status || '';
@@ -773,9 +937,25 @@
     });
   }
 
-  function showNotice(message, isError) {
+  function showNotice(message, isError, persist) {
     elements.notice.textContent = message;
     elements.notice.classList.toggle('is-error', Boolean(isError));
+    if (state.noticeTimer) {
+      window.clearTimeout(state.noticeTimer);
+      state.noticeTimer = null;
+    }
+    if (!persist) {
+      state.noticeTimer = window.setTimeout(clearNotice, 5000);
+    }
+  }
+
+  function clearNotice() {
+    if (state.noticeTimer) {
+      window.clearTimeout(state.noticeTimer);
+      state.noticeTimer = null;
+    }
+    elements.notice.textContent = '';
+    elements.notice.classList.remove('is-error');
   }
 
   function post(message) {
@@ -805,6 +985,42 @@
     };
   }
 
+  function staticPreviewSnapshot() {
+    return {
+      state: {
+        detected: false,
+        statusLabel: 'Preview',
+        workspaceRoot: '',
+        refreshedAt: new Date().toISOString(),
+        backendState: {},
+        bridgeError: 'Static preview mode - no Cockpit host connected.',
+        adapter: {
+          backend: 'static',
+          workspaceId: 'static-preview',
+          nodeId: null,
+        },
+      },
+      health: {
+        status: 'preview',
+        eco_root_present: false,
+      },
+      marlin: {
+        installReadiness: null,
+        workspaceTree: null,
+        repoStatus: [],
+        error: 'Static preview mode - no Cockpit host connected.',
+      },
+      records: emptyRecords(),
+      governance: null,
+      niji: {
+        health: null,
+        state: null,
+        palettePreview: null,
+        error: 'Static preview mode - no Cockpit host connected.',
+      },
+    };
+  }
+
   function emptyRecords() {
     return {
       runs: [],
@@ -830,6 +1046,28 @@
     return row;
   }
 
+  function emptyDiv(text) {
+    const div = document.createElement('div');
+    div.className = 'item';
+    div.textContent = text;
+    return div;
+  }
+
+  function emptyMetadata(label, text) {
+    return metadataRow(label, text);
+  }
+
+  function metadataRow(label, value) {
+    const row = document.createElement('div');
+    const dt = document.createElement('dt');
+    const dd = document.createElement('dd');
+    dt.textContent = label;
+    dd.textContent = String(value);
+    row.appendChild(dt);
+    row.appendChild(dd);
+    return row;
+  }
+
   function cell(text) {
     const td = document.createElement('td');
     td.textContent = String(text);
@@ -849,6 +1087,13 @@
 
   function byId(id) {
     return document.getElementById(id);
+  }
+
+  function workspaceId() {
+    const workspace = state.snapshot.state || {};
+    return workspace.adapter && workspace.adapter.workspaceId
+      ? workspace.adapter.workspaceId
+      : '';
   }
 
   function yesNo(value) {

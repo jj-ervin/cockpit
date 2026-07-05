@@ -403,6 +403,99 @@ tr:hover {
   color: var(--muted);
 }
 
+.workspace-explorer {
+  display: grid;
+  grid-template-columns: minmax(280px, 1fr) minmax(320px, 0.8fr);
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.workspace-tree,
+.workspace-inspector {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  min-height: 360px;
+  min-width: 0;
+  padding: 12px;
+}
+
+.workspace-tree {
+  overflow: auto;
+}
+
+.workspace-node {
+  background: transparent;
+  border: 0;
+  border-radius: 4px;
+  color: var(--text);
+  display: block;
+  min-height: 28px;
+  overflow-wrap: anywhere;
+  padding: 4px 8px;
+  text-align: left;
+  width: 100%;
+}
+
+.workspace-node:hover,
+.workspace-node.is-selected {
+  background: var(--surface-2);
+}
+
+.workspace-node.is-skipped {
+  color: var(--muted);
+}
+
+.metadata-list {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0 0;
+}
+
+.metadata-list div {
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: 3px;
+  padding-top: 8px;
+}
+
+.metadata-list dt {
+  color: var(--muted);
+}
+
+.metadata-list dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.lasso-workspace {
+  display: grid;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.lasso-lanes {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.lasso-lane {
+  display: grid;
+  gap: 8px;
+}
+
+.lasso-include {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  font-weight: 600;
+}
+
+.lasso-include input {
+  min-height: auto;
+  width: auto;
+}
+
 .full {
   grid-column: 1 / -1;
 }
@@ -411,7 +504,9 @@ tr:hover {
   .status-grid,
   .panel-grid,
   .split,
-  .form-grid {
+  .form-grid,
+  .workspace-explorer,
+  .lasso-lanes {
     grid-template-columns: 1fr;
   }
 }

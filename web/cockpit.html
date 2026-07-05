@@ -4,11 +4,11 @@
   <meta charset="UTF-8">
   <meta
     http-equiv="Content-Security-Policy"
-    content="default-src 'none'; img-src ${cspSource} https:; style-src ${cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}';"
+    content="default-src 'none'; img-src ${cspSource} 'self' https:; style-src ${cspSource} 'self' 'unsafe-inline'; script-src 'nonce-${nonce}' 'self';"
   >
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>eco Cockpit</title>
-  <link rel="stylesheet" href="${cockpitCssUri}">
+  <link rel="stylesheet" href="cockpit.css">
 </head>
 <body>
   <main class="shell">
@@ -40,7 +40,9 @@
       <button class="tab" type="button" data-tab="policy">Policy</button>
       <button class="tab" type="button" data-tab="governance">Governance</button>
       <button class="tab" type="button" data-tab="wizard">Setup Wizard</button>
+      <button class="tab" type="button" data-tab="workspace-tab">Workspace</button>
       <button class="tab" type="button" data-tab="niji">Niji</button>
+      <button class="tab" type="button" data-tab="lasso">Lasso</button>
     </nav>
 
     <section class="tab-panel is-active" id="dashboard">
@@ -227,10 +229,74 @@
       </section>
     </section>
 
+    <section class="tab-panel" id="workspace-tab">
+      <section class="panel">
+        <div class="panel-header wrap">
+          <h2>Marlin Workspace Explorer</h2>
+          <span id="workspace-tree-status">Read-only</span>
+        </div>
+        <div class="workspace-explorer">
+          <div class="workspace-tree" id="workspace-tree"></div>
+          <aside class="workspace-inspector">
+            <div class="panel-header wrap">
+              <h2 id="workspace-selected-title">Selection</h2>
+              <div class="button-row">
+                <button id="workspace-reveal" type="button" disabled>Reveal</button>
+                <button id="workspace-status-action" type="button" disabled>Status</button>
+              </div>
+            </div>
+            <dl class="metadata-list" id="workspace-metadata"></dl>
+          </aside>
+        </div>
+      </section>
+    </section>
+
+    <section class="tab-panel" id="lasso">
+      <section class="panel">
+        <div class="panel-header wrap">
+          <h2>Lasso Workspace</h2>
+          <label class="inline-control">Mode
+            <select id="lasso-mode">
+              <option value="parallel">Parallel</option>
+              <option value="consensus">Consensus</option>
+              <option value="merge">Merge</option>
+              <option value="plan-role">Plan / Role</option>
+            </select>
+          </label>
+        </div>
+        <div class="lasso-workspace">
+          <label class="full">Shared Input
+            <textarea id="lasso-prompt" rows="5" spellcheck="true"></textarea>
+          </label>
+          <div class="lasso-lanes">
+            <article class="lasso-lane">
+              <label class="lasso-include"><input id="lasso-use-codex" type="checkbox" checked> Codex</label>
+              <textarea id="lasso-codex" rows="9" spellcheck="true"></textarea>
+            </article>
+            <article class="lasso-lane">
+              <label class="lasso-include"><input id="lasso-use-claude" type="checkbox" checked> Claude</label>
+              <textarea id="lasso-claude" rows="9" spellcheck="true"></textarea>
+            </article>
+            <article class="lasso-lane">
+              <label class="lasso-include"><input id="lasso-use-reviewer" type="checkbox"> Reviewer</label>
+              <textarea id="lasso-reviewer" rows="9" spellcheck="true"></textarea>
+            </article>
+          </div>
+          <div class="button-row full">
+            <button id="lasso-merge" type="button">Merge Selected</button>
+            <button id="lasso-clear" type="button">Clear</button>
+          </div>
+          <label class="full">Composed Output
+            <textarea id="lasso-output" rows="12" spellcheck="true"></textarea>
+          </label>
+        </div>
+      </section>
+    </section>
+
     <section class="notice" id="notice" aria-live="polite"></section>
     <footer id="footer">Loading Cockpit state...</footer>
   </main>
-  ${cockpitHostBootstrap}
-  <script nonce="${nonce}" src="${cockpitJsUri}"></script>
+  <!-- cockpit-host-bootstrap -->
+  <script nonce="${nonce}" src="cockpit.js"></script>
 </body>
 </html>
