@@ -20,3 +20,6 @@ dist/
 .venv/
 venv/
 .env
+
+# Headless Chromium (pytest-playwright) GPU process log
+debug.log
