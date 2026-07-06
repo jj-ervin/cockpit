@@ -3,7 +3,7 @@
   "namespace": "CKP",
   "meta": {
     "created_at": "2026-07-02T00:00:00Z",
-    "updated_at": "2026-07-03T00:00:00Z",
+    "updated_at": "2026-07-06T00:00:00Z",
     "allocation_authority": "jj-ervin",
     "namespace_file": "passes/namespace.yaml",
     "layers_file": "passes/layers.yaml",
@@ -595,6 +595,25 @@
         "CKP:1017"
       ],
       "originating_pass": "CKP.11.00"
+    },
+    {
+      "id": "CKP:1019",
+      "alias": "CKP.12.00",
+      "legacy_ids": [],
+      "title": "Phase 4 Multi-Tenant Hosting Design",
+      "description": "Design-only pass (no implementation) for DEV-PATH.md's Phase 4 - a genuinely public, multi-tenant hosted Cockpit deferred by CKP.11.00/Phase 16 as its own security-critical planning pass. Portfolio-wide search found no existing auth, multi-tenancy, or subprocess-sandboxing precedent anywhere in c:\\dev. Recommends a thin control plane (new host-cloud/ directory, colocated in this repo) in front of unmodified, one-per-tenant Phase 3 host-web instances running in containers, reusing Phase 16's own stated design principle. Documents: control-plane vs per-tenant-container responsibilities; an explicitly undecided auth-model tradeoff (GitHub OAuth vs email magic link); session handling that derives workspaceRoot only from the authenticated tenant, never client input; subprocess sandboxing via the container boundary plus the existing stdin-not-argv precedent (marlinCli.js, lasso/spawnAgent.js); a path-containment gap (existing helpers are lexical-only and don't follow symlinks/junctions, must resolve via fs.realpath/Path.resolve(strict=True) before the containment check); capability boundaries per action class (read-only panels vs mutating actions) in addition to tenancy boundaries; and abuse/resource limits. Also fixed, as a separate small patch surfaced during this design review (Phase 3 hardening, not part of the Phase 4 design itself): host-web/index.js defaulted to binding all network interfaces with zero auth - now defaults to 127.0.0.1, overridable via COCKPIT_HOST.",
+      "layer": "domain",
+      "cluster": "CKP",
+      "parent": "CKP:1018",
+      "status": "accepted",
+      "timestamp": "2026-07-06T00:00:00Z",
+      "path": "docs/specifications/CKP.12-phase4-multitenant-design.md",
+      "supersedes": [],
+      "superseded_by": null,
+      "depends_on": [
+        "CKP:1018"
+      ],
+      "originating_pass": "CKP.12.00"
     }
   ]
 }

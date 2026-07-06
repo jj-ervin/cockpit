@@ -959,3 +959,46 @@ shape decision this closes the third form of) in a follow-up commit — the
 same self-caught conformance pattern already corrected twice earlier this
 session (`CKP.09.01`'s original commit, and the Lasso-relabel/`time_loc`
 commits).
+
+## Phase 17 — Phase 4 Multi-Tenant Hosting Design (CKP.12.00)
+
+**Recorded:** 2026-07-06
+**Source:** `docs/specifications/CKP.12-phase4-multitenant-design.md`
+
+### Decision
+
+Phase 16 deferred public multi-tenant hosting as its own security-critical
+planning pass. This phase is that pass: a design, not an implementation.
+Portfolio-wide search found no existing auth, multi-tenancy, or subprocess
+sandboxing precedent anywhere in `c:\dev` — Phase 4 is a from-scratch design.
+
+The recommended architecture is a thin control plane in front of unmodified,
+one-per-tenant Phase 3 `host-web` instances running in containers, directly
+reusing Phase 16's own stated design principle. Auth, tenant isolation,
+subprocess sandboxing, and abuse/resource limits all live in the new
+control-plane component (`host-cloud/`, colocated in this repo); `host-web`
+itself is not rewritten.
+
+**Left explicitly open:** the auth model (GitHub OAuth vs. email magic
+link) is documented as a tradeoff with a recommendation, not decided —
+closing it is a prerequisite for any implementation PASS. Production
+hosting/orchestrator choice, secrets management, billing/quota mechanics,
+and TLS/domain routing are also out of scope for this design.
+
+### Real gap found during design review, fixed separately
+
+Reviewing `host-web` for this design surfaced an independent, pre-existing
+gap in already-shipped Phase 3 code: `index.js` bound the server to all
+network interfaces by default (no host argument to `app.listen`), and
+`host-web` has zero auth — so a locally-run `npm start` was reachable by
+anyone who could reach that interface, not just `localhost`. Fixed in the
+same session as a small separate patch: default bind is now `127.0.0.1`,
+overridable via `COCKPIT_HOST`. This is a Phase 3 hardening fix, not part of
+the Phase 4 design itself.
+
+### Next
+
+Recommended next bounded PASS: close the auth model decision and build a
+minimal tenant-registry skeleton (no container orchestration yet) — see the
+spec doc's "Recommended Next Bounded PASS" section for the concrete test
+plan. Phase 4 as a whole remains planned-not-started.

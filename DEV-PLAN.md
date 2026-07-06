@@ -624,3 +624,35 @@ a full HELM-mode write round trip verified against a scratch workspace.
 original three-form plan, now formally four with Phase 4 added — its own
 future design pass (auth, isolation, sandboxing, abuse limits), not
 scheduled.
+
+---
+
+## CKP.12.00 Phase 4 Design Closure — Multi-Tenant Hosting Design
+
+**Closed:** 2026-07-06
+
+Design-only pass (no implementation) answering the Phase 4 deferral above:
+`docs/specifications/CKP.12-phase4-multitenant-design.md` recommends a thin
+control plane (new `host-cloud/` directory, colocated in this repo) in front
+of unmodified, one-per-tenant Phase 3 `host-web` instances running in
+containers — directly reusing the design principle already recorded in
+`CKP.11.00`'s closure above. Auth, tenant isolation, subprocess sandboxing,
+and abuse/resource limits all live in the new control-plane component only;
+`host-web` itself is not rewritten.
+
+**Still open:** the auth model (GitHub OAuth vs. email magic link) is
+documented as a tradeoff with a recommendation, not decided — closing it is
+a prerequisite for any implementation PASS. Production hosting/orchestrator
+choice, secrets management, billing/quota mechanics, and TLS/domain routing
+are also explicitly out of scope for this design.
+
+**Real gap found during review, fixed separately:** `host-web/index.js`
+bound to all network interfaces by default with zero auth in place — fixed
+in the same session as an independent Phase 3 hardening patch (default bind
+now `127.0.0.1`, overridable via `COCKPIT_HOST`), not part of the Phase 4
+design itself.
+
+**Next:** close the auth model decision and build a minimal tenant-registry
+skeleton (no container orchestration yet) as the first bounded
+implementation PASS — see the spec doc's own "Recommended Next Bounded
+PASS" section for the concrete test plan.

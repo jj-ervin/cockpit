@@ -10,13 +10,29 @@ function parseWorkspaceArg(argv) {
   return null;
 }
 
-const workspaceRoot = parseWorkspaceArg(process.argv) || process.env.WORKSPACE_ROOT || process.cwd();
-const port = process.env.PORT ? Number(process.env.PORT) : 4174;
-const pythonExecutable = process.env.COCKPIT_PYTHON || 'python';
+/**
+ * Defaults to loopback-only so a locally-run `npm start` isn't reachable
+ * from other machines on the network by default - host-web has no auth, so
+ * binding all interfaces would expose every eco.cockpit.* action to anyone
+ * who can reach the host. Set COCKPIT_HOST to opt into wider binding (e.g.
+ * for deliberate local multi-device testing).
+ */
+function resolveHost(env) {
+  return env.COCKPIT_HOST || '127.0.0.1';
+}
 
-const app = createApp({ workspaceRoot, pythonExecutable });
-app.listen(port, () => {
-  console.log(`Cockpit (standalone web host) listening on http://localhost:${port}`);
-  console.log(`Workspace: ${workspaceRoot}`);
-  console.log(`Python interpreter: ${pythonExecutable} (set COCKPIT_PYTHON to override)`);
-});
+if (require.main === module) {
+  const workspaceRoot = parseWorkspaceArg(process.argv) || process.env.WORKSPACE_ROOT || process.cwd();
+  const port = process.env.PORT ? Number(process.env.PORT) : 4174;
+  const pythonExecutable = process.env.COCKPIT_PYTHON || 'python';
+  const host = resolveHost(process.env);
+
+  const app = createApp({ workspaceRoot, pythonExecutable });
+  app.listen(port, host, () => {
+    console.log(`Cockpit (standalone web host) listening on http://${host}:${port}`);
+    console.log(`Workspace: ${workspaceRoot}`);
+    console.log(`Python interpreter: ${pythonExecutable} (set COCKPIT_PYTHON to override)`);
+  });
+}
+
+module.exports = { parseWorkspaceArg, resolveHost };
