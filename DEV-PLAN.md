@@ -163,6 +163,14 @@ These are inherited from CK.00/CK.01 and must remain the v0.1 baseline:
 | v2.0 | Developer OS controls, multi-agent orchestration console display, workspace graph, profile management |
 | v3.0 | Semantic workspace controls, semantic search/diff/template workflows, AI-augmented diagnostics |
 | v4.0 | Full developer OS shell, enterprise-grade identity and automation orchestration surfaces |
+| v5.0 | Reserved for future/unpredictable development — deliberately not scoped yet (portfolio owner, 2026-07-06) |
+
+**Note on v5.0 (2026-07-06):** unlike v2.0-v4.0, which name specific
+(if unbuilt) capability areas, v5.0 is an intentionally open slot — a place
+for work that doesn't fit or predict cleanly into v1.0-v4.0's themes,
+without forcing a premature label onto it. Do not backfill a specific
+scope for v5.0 without a portfolio-owner decision; treat naming it here as
+recording the reservation itself, not a spec.
 
 ---
 
