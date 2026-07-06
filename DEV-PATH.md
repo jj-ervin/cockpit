@@ -851,3 +851,101 @@ substantial separate build, not part of this correction.
 
 **Validation:** 127/127 pytest (cockpit's own `.venv`), `node --check
 web/cockpit.js` clean.
+
+## Phase 16 — Standalone Web Host, CKP.03's Phase 3 Finally Built
+
+**Recorded:** 2026-07-05
+
+### Deployment model and Phase 4
+
+Built the **locally-run** standalone web host (`npm start`, open `localhost`,
+point at your own machine's workspace) — matches `CKP.03`'s own Phase 3
+definition exactly, and mirrors LASSO's v0 shape from the same session. A
+genuinely public, multi-tenant hosted version (strangers sharing a server)
+is named **Phase 4** here for the first time: a distinct, deliberately
+deferred, much larger, security-critical project (auth, per-tenant
+workspace isolation, subprocess sandboxing, abuse/resource limits) —
+planned-not-started, not scoped or estimated in this PASS. Design principle
+so Phase 4 doesn't require a Phase 3 rewrite: `host-web/server.js`'s
+`/api/bridge` handler is stateless per request, scoped to one configured
+workspace root with no global mutable state beyond that — a future Phase 4
+control plane could run one Phase 3 server instance per tenant/container.
+
+### What got built
+
+New `host-web/` directory (colocated in this repo, not a separate repo —
+unlike `eco-vscode`, which is separate purely for VS Code marketplace
+packaging reasons that don't apply here): a plain Express server serving
+the **unmodified** `web/cockpit.{html,css,js}` bundle, proving
+`docs/specifications/CKP.08-host-loader-contract.md`'s host-agnostic
+contract is real — that document already speced this exact case ("a
+plain-browser host... can skip the CSP/nonce substitution entirely and
+call `cockpit.host_bridge` from a small local HTTP shim") before any code
+existed.
+
+`host-web/bridgeClient.js` spawns `python -m cockpit.host_bridge` per
+request (same JSON-stdin/stdout contract `eco-vscode`'s TypeScript already
+uses, just called from Node); `host-web/snapshotBuilder.js` assembles one
+combined snapshot mirroring `buildCockpitSnapshot`'s exact shape via
+parallel bridge calls, independently of `eco-vscode`'s own TS orchestration
+(the contract requires compliance, not shared code, between hosts);
+`host-web/actions.js` dispatches every `eco.cockpit.*` message type the
+bundle already sends, matching `webviewHost.ts`'s message shapes field-for-
+field so the bundle needs zero changes.
+
+### Security work carried over and extended from LASSO
+
+The same session's LASSO build (`c:\dev\lasso`) had already found and fixed
+a real command-injection bug: spawning a `.cmd` npm shim on Windows requires
+`shell: true`, and Node does not escape `args` when shell is true. That
+lesson applied again here for `marlinCli.js` (real `marlin search` CLI
+spawn) — but with an added wrinkle LASSO's `claude`/`codex` case didn't
+have: `marlin search <query>` is a positional-arg CLI with no evidence it
+accepts stdin instead, so the stdin-instead-of-argv fix wouldn't apply
+cleanly. Rather than accept the injection risk for the PATH-based `.cmd`
+fallback, `marlinCli.js` **fails closed**: it only runs via the sibling-
+checkout path (`process.execPath` invoking the compiled JS directly — a
+real `.exe`, no shell involved, no injection surface regardless of query
+content) and explicitly refuses to fall back to the shell-requiring `.cmd`
+path at all, rather than silently exposing the same class of bug.
+
+### Gap found and fixed during manual verification, not caught by unit tests
+
+The unmodified bundle's CSP template (`web/cockpit.html`) has no
+`connect-src` directive, so it falls back to `default-src 'none'` — which
+silently blocks the bootstrap script's `fetch('/api/bridge', ...)` call
+entirely. VS Code's `postMessage` transport never needed `connect-src`, so
+this gap never surfaced there; it only appeared when testing this host in a
+real headless Chromium (confirmed via the exact browser console error:
+*"Refused to connect because it violates the document's Content Security
+Policy"*). Fixed in `server.js` by substituting the whole CSP directive
+server-side (adding `connect-src 'self'`) rather than just filling the
+`${cspSource}`/`${nonce}` placeholders — per the host-loader-contract's own
+allowance that a plain-browser host may use a more permissive CSP.
+
+### Three actions with no clean web equivalent — downgraded, not faked
+
+- `copyRunJson`: no host-side clipboard API without a bundle-side script
+  change (out of scope, zero bundle changes) — logs JSON to the server
+  console instead.
+- `openArtifact`/`openPolicy`: no in-bundle slot to render file content
+  inline without a bundle change — opens the file with the OS default
+  application instead (`host-web/osOpen.js`; real equivalent for
+  `workspaceReveal` too, revealing the containing folder).
+- `marlinInstallPackage`: VS Code gates real package installs behind a
+  native modal confirm dialog; a headless Node process has no equivalent
+  without a bundle change, and silently skipping confirmation for a real
+  package-mutating action would be a genuine safety regression, not a
+  missing nicety — declines with an explanatory message instead.
+
+### Validation
+
+24/24 new `host-web` unit tests (mocked subprocess throughout — `node --test
+tests/*.test.js`, no real CLI/Python calls). Manually verified end-to-end
+against real infrastructure: full dashboard render against `c:\dev\eco`'s
+real `.eco/` data (including real historical HELM mode entries from actual
+`eco-vs` usage back in April) with zero console errors in a real headless
+Chromium; a full write round trip (mode selector → Activate → real
+`mode_history.json` write with a correctly-shaped `time.loc/1.2` record)
+verified against a scratch workspace, not the real `eco` one, to avoid
+polluting production history during testing.

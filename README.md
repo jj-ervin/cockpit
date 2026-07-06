@@ -71,6 +71,38 @@ npm run build
 code --new-window --extensionDevelopmentPath=C:\dev\eco-vscode C:\dev\eco --command eco.openCockpit
 ```
 
+## Standalone web host (Phase 3)
+
+`host-web/` implements `CKP.03`'s Phase 3 — a universal standalone shell, no
+VS Code required. It's a plain Express server that serves the *same*
+`web/cockpit.{html,css,js}` bundle used by the VS Code host (zero bundle
+changes — that's the entire point of `docs/specifications/
+CKP.08-host-loader-contract.md`, which already speced this exact shim) and
+relays `eco.cockpit.*` messages to `python -m cockpit.host_bridge` over
+plain HTTP instead of VS Code's `postMessage` channel.
+
+```powershell
+cd host-web
+npm install
+$env:COCKPIT_PYTHON = "C:\dev\cockpit\.venv\Scripts\python.exe"   # interpreter with cockpit installed
+npm start -- --workspace C:\dev\your-eco-workspace                # or set WORKSPACE_ROOT
+```
+
+Open `http://localhost:4174`. This is a **local tool** (run it on your own
+machine, point it at your own workspace) — not a hosted service. A genuinely
+public multi-tenant version (strangers sharing a server) is a distinct,
+much larger, deliberately-deferred future phase (**Phase 4** — see
+`DEV-PATH.md`), not something this server attempts.
+
+Three actions have no clean web equivalent and are honestly downgraded
+rather than faked (see `host-web/actions.js`'s own doc comment for detail):
+copying run JSON logs to the server console instead of a clipboard; opening
+an artifact/policy file uses your OS default app instead of a VS Code editor
+tab; installing a Marlin package declines with an explanatory message,
+since there's no web equivalent to VS Code's native confirmation dialog and
+skipping confirmation for a real package-mutating action would be a safety
+regression, not just a missing nicety.
+
 Boundary summary:
 
 - Cockpit is UX and operator control.

@@ -577,3 +577,50 @@ all verification for this correction used throwaway scratch venvs instead.
 
 **Validation:** 127/127 pytest passing in an isolated venv; a clean
 `pip install -e .` of `time-loc` verified with no manual workarounds.
+
+---
+
+## CKP.03 Phase 3 Closure — Standalone Web Host
+
+**Closed:** 2026-07-05
+
+Implements the "Universal standalone shell" packaging form `CKP.03` reserved
+but never built: `host-web/`, a plain Express server serving the unmodified
+`web/cockpit.{html,css,js}` bundle and relaying `eco.cockpit.*` messages to
+`python -m cockpit.host_bridge` over HTTP instead of VS Code's `postMessage`
+channel. Confirms `docs/specifications/CKP.08-host-loader-contract.md`'s
+host-agnostic bundle contract is real — that doc already speced this exact
+"small local HTTP shim" case before any code existed.
+
+**Deployment model:** locally-run tool (`npm start`, point at your own
+workspace), matching `CKP.03`'s Phase 3 definition and LASSO's v0 shape from
+the same session. A public multi-tenant hosted version is named **Phase 4**
+in `DEV-PATH.md` — planned, deliberately deferred, not scoped here.
+
+**Real gaps found during build, handled honestly rather than faked:**
+
+- The bundle's static CSP has no `connect-src`, silently blocking the
+  bootstrap script's `fetch()` call — found via a real headless-Chromium
+  console error, not assumed; fixed server-side (permissive CSP
+  substitution, per the host-loader-contract's own allowance).
+- `marlin search`'s query is a positional CLI arg, not stdin-fed like
+  `claude`/`codex` — the same shell-injection class LASSO fixed doesn't have
+  a clean fix here, so the PATH-based `.cmd` fallback is refused outright
+  (fails closed) rather than accepting the risk; only the safe
+  sibling-checkout path (real `.exe`, no shell) is supported.
+- Three actions with no web equivalent (clipboard copy, VS Code editor
+  open, native install-confirm dialog) are downgraded to honest
+  alternatives (console log, OS-default-app open, explicit decline) instead
+  of faked — see `host-web/actions.js`'s doc comment and `DEV-PATH.md`'s
+  Phase 16 for the full reasoning per action.
+
+**Validation:** 24/24 new unit tests (mocked subprocess). Manually verified
+end-to-end against real infrastructure: full dashboard render against
+`c:\dev\eco`'s real data with zero console errors in real headless Chromium;
+a full HELM-mode write round trip verified against a scratch workspace.
+
+**Next:** Cockpit's Phase 1/2/3 packaging forms are now all real. Phase 4
+(public multi-tenant hosting) is the only unbuilt item from `CKP.03`'s
+original three-form plan, now formally four with Phase 4 added — its own
+future design pass (auth, isolation, sandboxing, abuse limits), not
+scheduled.
