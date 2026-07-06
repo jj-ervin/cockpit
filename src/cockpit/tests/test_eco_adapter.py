@@ -731,3 +731,63 @@ def test_origin_on_all_read_methods(full_workspace: Path, runs_dir: Path, artifa
 def test_node_id_flows_to_origin(full_workspace: Path) -> None:
     a = EcoAdapter(workspace_id=str(full_workspace), node_id="node-42")
     assert a.health().origin.node_id == "node-42"
+
+
+# ---------------------------------------------------------------------------
+# agent-pipeline record type — read
+# ---------------------------------------------------------------------------
+
+def _write_play_entry(workspace: Path, **overrides: Any) -> None:
+    entry: dict[str, Any] = {
+        "play_id": "ckp-play-test-001",
+        "repo": "cockpit",
+        "level": "PASS",
+        "status": "closed",
+        "declared_at": "2026-07-01T00:00:00-07:00",
+        "declared_by": "codex",
+    }
+    entry.update(overrides)
+    path = workspace / "PLAY.jsonl"
+    with path.open("a", encoding="utf-8") as fh:
+        fh.write(json.dumps(entry) + "\n")
+
+
+def test_agent_pipeline_defaults_when_play_jsonl_absent(full_workspace: Path) -> None:
+    a = EcoAdapter(workspace_id=str(full_workspace))
+    result = a.get_record("agent-pipeline", "current")
+    assert result.data["source_present"] is False
+    assert result.data["total_entries"] == 0
+    assert result.data["agents"] == []
+
+
+def test_agent_pipeline_aggregates_by_declared_by(workspace: Path) -> None:
+    _write_play_entry(workspace, play_id="p1", declared_by="codex", declared_at="2026-07-01T00:00:00-07:00", status="closed")
+    _write_play_entry(workspace, play_id="p2", declared_by="codex", declared_at="2026-07-02T00:00:00-07:00", status="open")
+    _write_play_entry(workspace, play_id="p3", declared_by="claude", declared_at="2026-07-01T12:00:00-07:00", status="closed")
+    a = EcoAdapter(workspace_id=str(workspace))
+    result = a.get_record("agent-pipeline", "current")
+    assert result.data["source_present"] is True
+    assert result.data["total_entries"] == 3
+    by_agent = {entry["agent"]: entry for entry in result.data["agents"]}
+    assert by_agent["codex"]["pass_count"] == 2
+    assert by_agent["codex"]["last_play_id"] == "p2"
+    assert by_agent["codex"]["last_status"] == "open"
+    assert by_agent["claude"]["pass_count"] == 1
+
+
+def test_agent_pipeline_skips_malformed_lines(workspace: Path) -> None:
+    _write_play_entry(workspace, play_id="p1", declared_by="codex")
+    path = workspace / "PLAY.jsonl"
+    with path.open("a", encoding="utf-8") as fh:
+        fh.write("not valid json\n")
+        fh.write("\n")  # blank line
+    a = EcoAdapter(workspace_id=str(workspace))
+    result = a.get_record("agent-pipeline", "current")
+    assert result.data["total_entries"] == 1
+
+
+def test_list_records_agent_pipeline_returns_single_item(full_workspace: Path) -> None:
+    a = EcoAdapter(workspace_id=str(full_workspace))
+    result = a.list_records("agent-pipeline")
+    assert len(result.data) == 1
+    assert "agents" in result.data[0]

@@ -55,7 +55,7 @@ class EcoAdapter(CockpitAdapter):
     """
 
     BACKEND_ID = "eco"
-    RECORD_TYPES = frozenset({"run", "escalation", "artifact", "policy", "governance", "mode"})
+    RECORD_TYPES = frozenset({"run", "escalation", "artifact", "policy", "governance", "mode", "agent-pipeline"})
 
     def __init__(
         self,
@@ -74,6 +74,7 @@ class EcoAdapter(CockpitAdapter):
         self._project_yaml_path = self._root / "project.yaml"
         self._health_report_path = self._root / "health-report.json"
         self._helm_mode_history_path = self._eco_root / "helm" / "mode_history.json"
+        self._play_jsonl_path = self._root / "PLAY.jsonl"
         self._runtime_client = runtime_client
 
     @property
@@ -168,6 +169,8 @@ class EcoAdapter(CockpitAdapter):
                 data = [self._read_governance()]
             case "mode":
                 data = [self._read_mode()]
+            case "agent-pipeline":
+                data = [self._read_agent_pipeline()]
         return AdapterResult(data=data, origin=self._origin())
 
     def get_record(
@@ -197,6 +200,8 @@ class EcoAdapter(CockpitAdapter):
                 return AdapterResult(data=self._read_governance(), origin=self._origin())
             case "mode":
                 return AdapterResult(data=self._read_mode(), origin=self._origin())
+            case "agent-pipeline":
+                return AdapterResult(data=self._read_agent_pipeline(), origin=self._origin())
 
     # ---------------------------------------------------------------------------
     # Write operations
@@ -517,6 +522,52 @@ class EcoAdapter(CockpitAdapter):
             return parsed if isinstance(parsed, list) else []
         except (json.JSONDecodeError, OSError):
             return []
+
+    def _read_agent_pipeline(self) -> dict[str, Any]:
+        """Aggregates <workspace_root>/PLAY.jsonl by declared_by (the agent
+        that declared each PASS) - the "agent pipelines" Diagnostics
+        category CKP.v1.0-scoping.md named but never defined a source for.
+        PLAY.jsonl is a per-repo dev-process ledger (this portfolio's own
+        governance convention), not every .eco/-governed workspace has one -
+        absent/malformed lines degrade gracefully to an empty aggregation,
+        matching every other _read_* method's pattern here."""
+        entries = self._read_play_entries()
+        agents: dict[str, dict[str, Any]] = {}
+        for entry in entries:
+            agent = entry.get("declared_by")
+            if not isinstance(agent, str) or not agent:
+                continue
+            bucket = agents.setdefault(agent, {"agent": agent, "pass_count": 0, "last_play_id": None, "last_status": None, "last_declared_at": None})
+            bucket["pass_count"] += 1
+            declared_at = entry.get("declared_at")
+            if not bucket["last_declared_at"] or (isinstance(declared_at, str) and declared_at > bucket["last_declared_at"]):
+                bucket["last_declared_at"] = declared_at
+                bucket["last_play_id"] = entry.get("play_id")
+                bucket["last_status"] = entry.get("status")
+        return {
+            "source_present": self._play_jsonl_path.exists(),
+            "total_entries": len(entries),
+            "agents": sorted(agents.values(), key=lambda a: a["agent"]),
+        }
+
+    def _read_play_entries(self) -> list[dict[str, Any]]:
+        if not self._play_jsonl_path.exists():
+            return []
+        try:
+            lines = self._play_jsonl_path.read_text(encoding="utf-8").splitlines()
+        except OSError:
+            return []
+        entries: list[dict[str, Any]] = []
+        for line in lines:
+            if not line.strip():
+                continue
+            try:
+                parsed = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if isinstance(parsed, dict):
+                entries.append(parsed)
+        return entries
 
     def _write_mode(self, payload: dict[str, Any]) -> AdapterResult[dict[str, Any]]:
         mode = payload.get("mode")

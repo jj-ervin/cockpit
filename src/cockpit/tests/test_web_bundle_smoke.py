@@ -96,6 +96,24 @@ def _sample_snapshot() -> dict:
             "state": {"scheme_count": 17, "default_base_hex": "#336699"},
             "palettePreview": {"scheme": "triadic", "swatches": []},
         },
+        "diagnostics": {
+            "integrations": {
+                "eco": {"status": "ok", "reachable": True},
+                "marlin": {"status": "ok", "reachable": True},
+                "niji": {"status": "degraded", "reachable": False},
+            },
+            "environment": {
+                "python": {"version": "3.14.3", "cockpit_version": "0.1.0"},
+                "node": {"available": True, "version": "v24.14.1"},
+            },
+            "agentPipeline": {
+                "source_present": True,
+                "total_entries": 2,
+                "agents": [
+                    {"agent": "codex", "pass_count": 2, "last_play_id": "ckp-play-smoke-002", "last_status": "closed", "last_declared_at": "2026-07-02T00:00:00Z"},
+                ],
+            },
+        },
     }
 
 
@@ -293,3 +311,34 @@ def test_helm_mode_activate_posts_set_helm_mode(cockpit_page):
     last = cockpit_page.evaluate("window.__posted[window.__posted.length - 1]")
     assert last["type"] == "eco.cockpit.setHelmMode"
     assert last["mode"] == "Builder"
+
+
+def test_diagnostics_tab_renders_integrations_environment_and_pipeline(cockpit_page):
+    _send_state(cockpit_page, _sample_snapshot())
+    cockpit_page.click(".tab[data-tab='diagnostics-tab']")
+
+    assert cockpit_page.locator("#diag-integration-eco").inner_text() == "ok"
+    assert cockpit_page.locator("#diag-integration-marlin").inner_text() == "ok"
+    assert cockpit_page.locator("#diag-integration-niji").inner_text() == "degraded"
+
+    assert cockpit_page.locator("#diag-env-python-version").inner_text() == "3.14.3"
+    assert cockpit_page.locator("#diag-env-cockpit-version").inner_text() == "0.1.0"
+    assert cockpit_page.locator("#diag-env-node-version").inner_text() == "v24.14.1"
+    assert cockpit_page.locator("#diag-env-node-available").inner_text() == "yes"
+
+    assert cockpit_page.locator("#diag-pipeline-status").inner_text() == "2 entries"
+    rows = cockpit_page.locator("#diag-pipeline-table tr")
+    assert rows.count() == 1
+    assert "codex" in rows.nth(0).inner_text()
+    assert cockpit_page.cockpit_errors == []
+
+
+def test_diagnostics_tab_handles_missing_diagnostics_gracefully(cockpit_page):
+    snapshot = _sample_snapshot()
+    del snapshot["diagnostics"]
+    _send_state(cockpit_page, snapshot)
+    cockpit_page.click(".tab[data-tab='diagnostics-tab']")
+
+    assert cockpit_page.locator("#diag-integration-eco").inner_text() == "-"
+    assert cockpit_page.locator("#diag-pipeline-table tr").count() == 1  # empty-state row
+    assert cockpit_page.cockpit_errors == []

@@ -768,3 +768,28 @@ priority) — a token minted here would otherwise have no way to actually be
 used, since non-browser callers have no cookie jar.
 
 **Validation:** 66 tests (5 new), 65 passing, 1 self-skipped (unchanged).
+
+---
+
+## CKP.09.02 Closure — Diagnostics Dashboard Expansion
+
+**Closed:** 2026-07-06
+
+Builds the v1.0 ladder's Diagnostics panel item — the only real, unblocked
+v1.0 item left. Researched each of the locked spec's three undefined
+categories before building: integrations was cheap (adapters already had
+`health()`, just not all called); environment checks was genuinely new
+(no existing source anywhere — portfolio owner scoped it to Python/Node/
+cockpit-importable); agent pipelines was medium (raw data already existed
+in `PLAY.jsonl`, needed aggregation).
+
+Built: new `SystemAdapter` (Python), a new `agent-pipeline` `EcoAdapter`
+record type reading `PLAY.jsonl`, wired into both `host-web` and
+`eco-vscode` (parity per `CKP.08`'s contract), and a new Diagnostics tab
+in the bundle. A property-mismatch-shaped false alarm during manual
+verification turned out to be an artifact of the ad hoc test command's own
+shell-escaping, not a real bug — re-verified with a real script file.
+
+**Validation:** 145 Python tests (145/145, +15 new), 15 Playwright bundle
+smoke tests (+2 new), 28 `host-web` tests (unchanged). `eco-vscode`:
+`tsc --noEmit` and `npm run build` both clean.

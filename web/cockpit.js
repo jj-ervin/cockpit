@@ -104,6 +104,15 @@
     govHashMatch: byId('gov-hash-match'),
     govIssueCount: byId('gov-issue-count'),
     govIssueTable: byId('governance-issue-table'),
+    diagIntegrationEco: byId('diag-integration-eco'),
+    diagIntegrationMarlin: byId('diag-integration-marlin'),
+    diagIntegrationNiji: byId('diag-integration-niji'),
+    diagEnvPythonVersion: byId('diag-env-python-version'),
+    diagEnvCockpitVersion: byId('diag-env-cockpit-version'),
+    diagEnvNodeVersion: byId('diag-env-node-version'),
+    diagEnvNodeAvailable: byId('diag-env-node-available'),
+    diagPipelineStatus: byId('diag-pipeline-status'),
+    diagPipelineTable: byId('diag-pipeline-table'),
     epActivePass: byId('ep-active-pass'),
     epRunState: byId('ep-run-state'),
     epGovState: byId('ep-gov-state'),
@@ -364,6 +373,7 @@
     renderArtifacts();
     renderPolicy();
     renderGovernance(state.snapshot.governance);
+    renderDiagnostics(state.snapshot.diagnostics);
     renderHelmMode(state.snapshot.mode);
     renderEditorPlaneBar(records.runs, state.snapshot.governance, state.snapshot.mode);
     renderWizard();
@@ -581,6 +591,53 @@
       row.appendChild(cell(issue.message || '-'));
       row.appendChild(cell(issue.file || '-'));
       elements.govIssueTable.appendChild(row);
+    });
+  }
+
+  function statusLabel(health) {
+    if (!health) {
+      return '-';
+    }
+    if (health.status) {
+      return String(health.status);
+    }
+    return health.reachable ? 'reachable' : 'unreachable';
+  }
+
+  function renderDiagnostics(diagnostics) {
+    const diag = diagnostics || {};
+    const integrations = diag.integrations || {};
+    elements.diagIntegrationEco.textContent = statusLabel(integrations.eco);
+    elements.diagIntegrationMarlin.textContent = statusLabel(integrations.marlin);
+    elements.diagIntegrationNiji.textContent = statusLabel(integrations.niji);
+
+    const env = diag.environment || {};
+    const py = env.python || {};
+    const node = env.node || {};
+    elements.diagEnvPythonVersion.textContent = py.version || '-';
+    elements.diagEnvCockpitVersion.textContent = py.cockpit_version || '-';
+    elements.diagEnvNodeVersion.textContent = node.version || '-';
+    elements.diagEnvNodeAvailable.textContent = node.available === true ? 'yes' : node.available === false ? 'no' : '-';
+
+    const pipeline = diag.agentPipeline || {};
+    const agents = Array.isArray(pipeline.agents) ? pipeline.agents : [];
+    elements.diagPipelineStatus.textContent = pipeline.source_present
+      ? String(pipeline.total_entries || 0) + ' entries'
+      : 'No PLAY.jsonl found for this workspace';
+
+    clear(elements.diagPipelineTable);
+    if (!agents.length) {
+      elements.diagPipelineTable.appendChild(emptyTableRow(5, 'No agent pipeline activity found.'));
+      return;
+    }
+    agents.forEach(function (agent) {
+      const row = document.createElement('tr');
+      row.appendChild(cell(agent.agent || '-'));
+      row.appendChild(cell(String(agent.pass_count || 0)));
+      row.appendChild(cell(agent.last_play_id || '-'));
+      row.appendChild(cell(agent.last_status || '-'));
+      row.appendChild(cell(formatTimeLoc(agent.last_declared_at) || agent.last_declared_at || '-'));
+      elements.diagPipelineTable.appendChild(row);
     });
   }
 
@@ -1080,6 +1137,7 @@
       governance: snapshot.governance || null,
       mode: snapshot.mode || null,
       niji: snapshot.niji || {},
+      diagnostics: snapshot.diagnostics || {},
     };
   }
 
@@ -1092,6 +1150,7 @@
       governance: null,
       mode: null,
       niji: {},
+      diagnostics: {},
     };
   }
 
@@ -1204,6 +1263,25 @@
           ],
         },
         error: null,
+      },
+      diagnostics: {
+        integrations: {
+          eco: { status: 'preview', reachable: false },
+          marlin: { status: 'ok', reachable: true },
+          niji: { status: 'preview', reachable: true },
+        },
+        environment: {
+          python: { version: '3.14.3', cockpit_version: '0.1.0' },
+          node: { available: true, version: 'v24.14.1' },
+        },
+        agentPipeline: {
+          source_present: true,
+          total_entries: 2,
+          agents: [
+            { agent: 'claude', pass_count: 1, last_play_id: 'ckp-play-preview-001', last_status: 'closed', last_declared_at: '2026-07-05T20:55:00Z' },
+            { agent: 'codex', pass_count: 1, last_play_id: 'ckp-play-preview-002', last_status: 'closed', last_declared_at: '2026-07-05T20:45:00Z' },
+          ],
+        },
       },
     };
   }

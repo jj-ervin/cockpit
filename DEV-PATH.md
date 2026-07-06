@@ -1270,3 +1270,89 @@ Real GitHub OAuth verification (currently mocked-fetch-only) needs a real
 GitHub OAuth App's credentials from the portfolio owner; real container
 orchestration remains blocked on Docker access; true filesystem quota
 enforcement remains unbuilt.
+
+## Phase 22 — Diagnostics Dashboard Expansion (CKP.09.02)
+
+**Recorded:** 2026-07-06
+**Source:** `CKP.v1.0-scoping.md`'s item 2 (Diagnostics dashboard), the only
+real, unblocked v1.0 ladder item left — Quick-Bar and "environment
+emergence UI" remain blocked on things outside Cockpit's control.
+
+### Research before building
+
+The locked spec (`eco/docs/specifications/cockpit-ui-spec.md`) requires
+"unified status for runtime health, integrations, environment checks, and
+agent pipelines." Runtime health already existed (`CKP.08.07`'s Governance
+tab). Before writing code, each of the other three was investigated for a
+real existing data source rather than assumed:
+
+- **Integrations** — cheap. `EcoAdapter`/`MarlinAdapter`/`NijiAdapter`
+  already each have a `health()` method with a uniform shape; only
+  `marlin('health')` was missing from the snapshot call, everything else
+  already existed.
+- **Environment checks** — genuinely new. No `marlin doctor`, no venv/
+  toolchain/version check existed anywhere in this portfolio. The
+  portfolio owner scoped it: Python interpreter/version + cockpit package
+  importable, Node version.
+- **Agent pipelines** — medium. `PLAY.jsonl` (a per-repo dev-process
+  ledger, this portfolio's own governance convention, not a `.eco/`
+  runtime artifact) already records which agent declared each PASS, but
+  nothing aggregated it into a status view.
+
+### What was built
+
+- `src/cockpit/adapters/system.py` — new `SystemAdapter` (`backend_id`
+  `"system"`, not workspace-scoped — there is exactly one "system" per
+  running `cockpit.host_bridge` process), registered in
+  `host_bridge.py`'s `_build_adapter`. Reports Python executable/version/
+  cockpit-importable/cockpit-version, and Node availability/version (via
+  `shutil.which` + `node --version`).
+- `EcoAdapter` gained a new `"agent-pipeline"` record type: reads
+  `<workspace_root>/PLAY.jsonl`, aggregates by `declared_by`, gracefully
+  degrades to an empty aggregation if the file is absent or a line is
+  malformed — matching every other `_read_*` method's pattern in this
+  adapter.
+- `host-web/snapshotBuilder.js` — added the `marlin('health')` call, the
+  new `system('get_record', ...)` call, and the new
+  `eco('get_record', {record_type: 'agent-pipeline', ...})` call; assembled
+  into a new `diagnostics` section of the snapshot shape.
+- `eco-vscode/src/cockpitApi.ts`/`webviewHost.ts` — added
+  `createPythonSystemCockpitApi`, the two new `CockpitRecordType` values,
+  and the same `diagnostics` assembly in `buildCockpitSnapshot`/
+  `loadMarlinInstallReadiness`, so both hosts stay in sync per
+  `CKP.08-host-loader-contract.md`.
+- `web/cockpit.html`/`cockpit.js` — a new "Diagnostics" tab: an
+  Integrations status grid, an Environment status grid, and an Agent
+  Pipelines table. Static preview-mode fixture data enriched to match.
+
+### A real bug caught by an inline ad hoc test, not the real code
+
+While manually verifying the wiring, an early test run showed
+`workspace_id` arriving at Python with its backslashes stripped
+(`"C:devcockpit"` instead of `"C:\dev\cockpit"`). Traced to the ad hoc
+verification command itself — nested bash/JS string escaping consumed the
+backslashes before Node ever saw them — not a bug in `snapshotBuilder.js`
+or `bridgeClient.js`. Re-verified with a real script file (no shell
+re-escaping) and confirmed the actual wiring is correct: real
+`marlin.health`, all three integrations, real Python/Node environment
+data, and real `PLAY.jsonl` entries correctly aggregated by agent. Recorded
+here as a reminder that ad hoc one-liner verification commands are
+themselves a source of false signals, not just the code under test.
+
+### Validation
+
+145 Python tests (145/145 passing, up from 141: +9 `SystemAdapter` tests,
++4 `agent-pipeline` tests, +2 `host_bridge` system-backend tests), 15
+Playwright bundle smoke tests (15/15, +2 new Diagnostics-tab tests), 28
+`host-web` tests (unchanged — `snapshotBuilder.js` has no pre-existing
+unit-test infrastructure; verified instead by direct invocation against a
+real workspace). `eco-vscode`: `npx tsc --noEmit` clean, `npm run build`
+clean (no automated test suite exists for this repo, matching prior
+PASSes' validation pattern for TS-only changes).
+
+### Next
+
+Quick-Bar and "environment emergence UI" remain the two blocked v1.0
+ladder items (upstream `devxtoolkit-v2-x` still Phase 0; the design itself
+still undefined). v1.0 is now 3-of-5 real; those two remain genuinely
+outside Cockpit's control.

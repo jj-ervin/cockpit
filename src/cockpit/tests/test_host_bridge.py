@@ -227,3 +227,15 @@ def test_module_entrypoint_outputs_json(workspace: Path) -> None:
     payload = json.loads(completed.stdout)
     assert payload["origin"]["backend"] == "eco"
     assert payload["data"]["total_runs"] == 0
+
+
+def test_execute_system_backend_health() -> None:
+    result = execute({"backend": "system", "operation": "health"})
+    assert result["origin"]["backend"] == "system"
+    assert result["data"]["reachable"] is True
+
+
+def test_execute_system_backend_get_state() -> None:
+    result = execute({"backend": "system", "operation": "get_state"})
+    assert "python" in result["data"]
+    assert "node" in result["data"]

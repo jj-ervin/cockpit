@@ -3,7 +3,7 @@
   "namespace": "CKP",
   "meta": {
     "created_at": "2026-07-02T00:00:00Z",
-    "updated_at": "2026-07-06T00:00:03Z",
+    "updated_at": "2026-07-06T00:00:04Z",
     "allocation_authority": "jj-ervin",
     "namespace_file": "passes/namespace.yaml",
     "layers_file": "passes/layers.yaml",
@@ -690,6 +690,25 @@
         "CKP:1021"
       ],
       "originating_pass": "CKP.16.00"
+    },
+    {
+      "id": "CKP:1024",
+      "alias": "CKP.09.02",
+      "legacy_ids": [],
+      "title": "Diagnostics Dashboard Expansion",
+      "description": "Builds the v1.0 ladder's Diagnostics panel item (CKP.v1.0-scoping.md), whose locked spec (eco/docs/specifications/cockpit-ui-spec.md) requires 'unified status for runtime health, integrations, environment checks, and agent pipelines' - three categories the scoping doc admitted had no identified data source. Research first (not invented scope): integrations = cheap, already existed (EcoAdapter/MarlinAdapter/NijiAdapter health() all already return a uniform shape; only marlin('health') was missing from the snapshot call - added). Environment checks = genuinely new, no existing source anywhere in the portfolio - portfolio owner decided the scope: a minimal toolchain check (Python interpreter/version + cockpit package importable, Node version), new SystemAdapter (backend_id 'system', not workspace-scoped, registered in host_bridge.py's _build_adapter). Agent pipelines = medium, raw data existed in PLAY.jsonl (a per-repo dev-process ledger, this portfolio's own governance convention) but nothing aggregated it - new EcoAdapter record type 'agent-pipeline' reads <workspace_root>/PLAY.jsonl (graceful degradation if absent, matching every other _read_* method's pattern) and aggregates by declared_by. Wired into both host-web (snapshotBuilder.js) and eco-vscode (cockpitApi.ts's new createPythonSystemCockpitApi, webviewHost.ts's buildCockpitSnapshot/loadMarlinInstallReadiness) so both hosts stay in sync per CKP.08's contract, and into the bundle (web/cockpit.html/js) as a new Diagnostics tab: Integrations status grid, Environment status grid, Agent Pipelines table. Static preview-mode fixture data enriched to match.",
+      "layer": "domain",
+      "cluster": "CKP",
+      "parent": "CKP:1011",
+      "status": "accepted",
+      "timestamp": "2026-07-06T00:00:00Z",
+      "path": "web/cockpit.js",
+      "supersedes": [],
+      "superseded_by": null,
+      "depends_on": [
+        "CKP:1011"
+      ],
+      "originating_pass": "CKP.09.02"
     }
   ]
 }
