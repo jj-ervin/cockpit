@@ -723,3 +723,25 @@ quota enforcement.
 **Validation:** 54 tests in `host-cloud/tests/` (30 new), 53 passing, 1
 self-skipped (unchanged from `CKP.13.00`). `host-web` unchanged, 28/28
 still passing.
+
+---
+
+## CKP.15.00 Closure — Secure-Cookie Enforcement
+
+**Closed:** 2026-07-06
+
+A security review of `CKP.12.00`-`14.00`'s `host-cloud/` code found
+`serializeCookie` never set `Secure` on the session/OAuth-state cookies.
+Since `cockpit_session` is the sole bearer credential for a control plane
+explicitly built for public multi-tenant hosting, and `host-cloud` defaults
+to binding `0.0.0.0` with no TLS of its own, this was a concrete
+session-hijacking vector in the PASS's own shipped default, not a
+theoretical gap.
+
+Fixed: `serializeCookie` takes a `secure` option (default `true`);
+`index.js`'s new `resolveRuntimeSecurity()` **refuses to start** on a
+non-loopback bind unless `COCKPIT_CLOUD_TLS_TERMINATED=1` or an explicit
+`COCKPIT_CLOUD_ALLOW_INSECURE_HTTP=1` opt-out is set. Loopback binding is
+unaffected.
+
+**Validation:** 61 tests (7 new), 60 passing, 1 self-skipped (unchanged).

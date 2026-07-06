@@ -7,7 +7,7 @@ const os = require('os');
 const path = require('path');
 const http = require('http');
 
-const { createApp } = require('../server');
+const { createApp, serializeCookie } = require('../server');
 const { createTenantRegistry } = require('../tenantRegistry');
 
 function makeTmpDataDir() {
@@ -32,6 +32,49 @@ function extractCookie(res, name) {
 }
 
 const SECRET = 'test-session-secret';
+
+test('serializeCookie marks auth cookies Secure by default', () => {
+  const cookie = serializeCookie('cockpit_session', 'abc123', { maxAgeSeconds: 3600 });
+  assert.match(cookie, /; HttpOnly/);
+  assert.match(cookie, /; SameSite=Lax/);
+  assert.match(cookie, /; Secure/);
+});
+
+test('serializeCookie can omit Secure only when explicitly requested', () => {
+  const cookie = serializeCookie('cockpit_session', 'abc123', { maxAgeSeconds: 3600, secure: false });
+  assert.doesNotMatch(cookie, /; Secure/);
+});
+
+test('OAuth state and session cookies are Secure when set by the auth flow', async () => {
+  const registry = createTenantRegistry({ dataDir: makeTmpDataDir() });
+  const fetchFn = async (url) => {
+    if (String(url).includes('access_token')) {
+      return { json: async () => ({ access_token: 'github-token' }) };
+    }
+    return { json: async () => ({ id: 42, login: 'alice' }) };
+  };
+  const app = createApp({
+    tenantRegistry: registry,
+    sessionSecret: SECRET,
+    github: { clientId: 'cid', clientSecret: 'secret', redirectUri: 'https://example.test/callback' },
+    deps: { fetchFn, stateFn: () => 'fixed-state' },
+  });
+
+  await withServer(app, async (base) => {
+    const loginRes = await fetch(`${base}/auth/github/login`, { redirect: 'manual' });
+    const stateCookie = loginRes.headers.get('set-cookie') || '';
+    assert.match(stateCookie, /oauth_state=fixed-state/);
+    assert.match(stateCookie, /; Secure/);
+
+    const callbackRes = await fetch(`${base}/auth/github/callback?code=c1&state=fixed-state`, {
+      redirect: 'manual',
+      headers: { Cookie: 'oauth_state=fixed-state' },
+    });
+    const sessionCookie = callbackRes.headers.get('set-cookie') || '';
+    assert.match(sessionCookie, /cockpit_session=/);
+    assert.match(sessionCookie, /; Secure/);
+  });
+});
 
 test('POST /api/whoami without a session returns 401', async () => {
   const registry = createTenantRegistry({ dataDir: makeTmpDataDir() });

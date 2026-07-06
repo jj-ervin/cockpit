@@ -7,6 +7,32 @@ const { createTenantRegistry } = require('./tenantRegistry');
 const { createProcessManager } = require('./processManager');
 const { createRateLimiter } = require('./rateLimiter');
 
+function isLoopbackHost(host) {
+  return host === '127.0.0.1' || host === 'localhost' || host === '::1';
+}
+
+function resolveRuntimeSecurity(env = process.env) {
+  const host = env.HOST || '0.0.0.0';
+  const publicBind = !isLoopbackHost(host);
+  const allowInsecureHttp = env.COCKPIT_CLOUD_ALLOW_INSECURE_HTTP === '1';
+  const tlsTerminated = env.COCKPIT_CLOUD_TLS_TERMINATED === '1';
+
+  if (publicBind && !tlsTerminated && !allowInsecureHttp) {
+    throw new Error(
+      'host-cloud refuses to bind a public host without TLS. Set ' +
+      'COCKPIT_CLOUD_TLS_TERMINATED=1 when deployed behind HTTPS termination, ' +
+      'or set COCKPIT_CLOUD_ALLOW_INSECURE_HTTP=1 for local/dev-only testing.'
+    );
+  }
+
+  return {
+    host,
+    secureCookies: tlsTerminated || (publicBind && !allowInsecureHttp),
+    tlsTerminated,
+    allowInsecureHttp,
+  };
+}
+
 if (require.main === module) {
   const port = process.env.PORT ? Number(process.env.PORT) : 4175;
   // Unlike host-web (Phase 3, a locally-run single-user tool that defaults
@@ -14,7 +40,8 @@ if (require.main === module) {
   // tenants over the network - it defaults to all interfaces, gated by
   // auth instead of by network reachability. Deploy behind a reverse proxy/
   // TLS terminator; that's ops scope CKP.12.00 explicitly deferred.
-  const host = process.env.HOST || '0.0.0.0';
+  const runtimeSecurity = resolveRuntimeSecurity(process.env);
+  const host = runtimeSecurity.host;
   const dataDir = process.env.COCKPIT_CLOUD_DATA_DIR || path.join(process.cwd(), '.cockpit-cloud-data');
   const sessionSecret = process.env.SESSION_SECRET;
   if (!sessionSecret) {
@@ -50,6 +77,7 @@ if (require.main === module) {
     processManager,
     rateLimiter,
     tenantDiskQuotaBytes: process.env.TENANT_DISK_QUOTA_BYTES ? Number(process.env.TENANT_DISK_QUOTA_BYTES) : 0,
+    secureCookies: runtimeSecurity.secureCookies,
     github: {
       clientId: process.env.GITHUB_CLIENT_ID,
       clientSecret: process.env.GITHUB_CLIENT_SECRET,
@@ -58,8 +86,10 @@ if (require.main === module) {
   });
 
   app.listen(port, host, () => {
-    console.log(`Cockpit host-cloud (Phase 4 control plane) listening on http://${host}:${port}`);
+    const scheme = runtimeSecurity.tlsTerminated ? 'https' : 'http';
+    console.log(`Cockpit host-cloud (Phase 4 control plane) listening on ${scheme}://${host}:${port}`);
     console.log(`Tenant data dir: ${dataDir}`);
+    console.log(`Secure cookies: ${runtimeSecurity.secureCookies ? 'enabled' : 'disabled (insecure dev mode)'}`);
   });
 
   process.on('SIGINT', () => {
@@ -72,4 +102,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createApp, createTenantRegistry, createProcessManager, createRateLimiter };
+module.exports = { createApp, createTenantRegistry, createProcessManager, createRateLimiter, resolveRuntimeSecurity };

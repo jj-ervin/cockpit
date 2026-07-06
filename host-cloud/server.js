@@ -25,8 +25,9 @@ function parseCookies(header) {
   return out;
 }
 
-function serializeCookie(name, value, { maxAgeSeconds }) {
-  return `${name}=${encodeURIComponent(value)}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${maxAgeSeconds}`;
+function serializeCookie(name, value, { maxAgeSeconds, secure = true }) {
+  const secureFlag = secure ? '; Secure' : '';
+  return `${name}=${encodeURIComponent(value)}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${maxAgeSeconds}${secureFlag}`;
 }
 
 /**
@@ -44,7 +45,7 @@ function serializeCookie(name, value, { maxAgeSeconds }) {
  */
 function createApp({
   tenantRegistry, sessionSecret, github, processManager, rateLimiter,
-  tenantDiskQuotaBytes = 0, deps = {},
+  tenantDiskQuotaBytes = 0, secureCookies = true, deps = {},
 } = {}) {
   const app = express();
   app.use(express.json());
@@ -56,7 +57,7 @@ function createApp({
 
   app.get('/auth/github/login', (req, res) => {
     const state = stateFn();
-    res.setHeader('Set-Cookie', serializeCookie('oauth_state', state, { maxAgeSeconds: 600 }));
+    res.setHeader('Set-Cookie', serializeCookie('oauth_state', state, { maxAgeSeconds: 600, secure: secureCookies }));
     res.redirect(buildAuthorizeUrl({ clientId: github.clientId, redirectUri: github.redirectUri, state }));
   });
 
@@ -78,7 +79,7 @@ function createApp({
       const { githubId, login } = await fetchGithubUser({ accessToken, fetchFn });
       const tenant = tenantRegistry.upsertByGithubId({ githubId, login });
       const token = session.sign({ tenantId: tenant.id, secret: sessionSecret, now: nowFn() });
-      res.setHeader('Set-Cookie', serializeCookie(SESSION_COOKIE, token, { maxAgeSeconds: 3600 }));
+      res.setHeader('Set-Cookie', serializeCookie(SESSION_COOKIE, token, { maxAgeSeconds: 3600, secure: secureCookies }));
       res.redirect('/');
     } catch (err) {
       res.status(502).json({ error: err instanceof Error ? err.message : String(err) });
@@ -160,4 +161,4 @@ function createApp({
   return app;
 }
 
-module.exports = { createApp, SESSION_COOKIE, parseCookies };
+module.exports = { createApp, SESSION_COOKIE, parseCookies, serializeCookie };

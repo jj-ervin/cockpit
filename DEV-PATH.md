@@ -1184,3 +1184,45 @@ unaffected (no changes to `host-web` in this PASS).
 Real container orchestration once a compatible Docker host exists (a
 different machine, a newer Windows build, or a Linux CI runner); a real
 endpoint for issuing narrower-scoped tokens; true disk quota enforcement.
+
+## Phase 20 — Secure-Cookie Enforcement (CKP.15.00)
+
+**Recorded:** 2026-07-06
+**Source:** security review of `CKP.12.00`–`CKP.14.00`'s `host-cloud/` changes
+
+### The finding
+
+A security review of `host-cloud`'s auth-critical code found
+`server.js`'s `serializeCookie` set `HttpOnly; SameSite=Lax` on both the
+`oauth_state` and `cockpit_session` cookies but never `Secure`. Since
+`cockpit_session` is the sole bearer credential for a control plane
+explicitly designed for public multi-tenant hosting, and `host-cloud`
+defaults to binding `0.0.0.0` with no TLS termination of its own (TLS/
+reverse-proxy setup was named as deferred ops scope in `CKP.12.00`), the
+session cookie would be sent over plain HTTP in this PASS's own shipped
+default configuration — a concrete session-hijacking vector via network
+interception (public wifi, shared LAN, or any passive on-path attacker),
+not a theoretical hardening gap.
+
+### The fix
+
+`serializeCookie` now takes a `secure` option (default `true`). `index.js`
+gained `resolveRuntimeSecurity()`, which fails closed: binding a
+non-loopback host now **refuses to start** unless the operator explicitly
+sets `COCKPIT_CLOUD_TLS_TERMINATED=1` (deployed behind real HTTPS
+termination — cookies get `Secure`) or `COCKPIT_CLOUD_ALLOW_INSECURE_HTTP=1`
+(an explicit, named opt-out for local/dev-only testing — cookies drop
+`Secure` too, since a `Secure` cookie over plain HTTP is simply never sent
+by the browser and would silently break the flow rather than protect it).
+A loopback bind (`127.0.0.1`/`localhost`/`::1`) is allowed without either
+flag, matching `host-web`'s own local-dev posture.
+
+### Validation
+
+61 tests in `host-cloud/tests/` (7 new: 3 cookie-attribute assertions in
+`server.test.js`, 4 `resolveRuntimeSecurity` cases in a new
+`index.test.js`), 60 passing, 1 self-skipped (symlink permission,
+unchanged). Confirmed the refusal path is real: `resolveRuntimeSecurity`
+throws for the default (`HOST` unset → `0.0.0.0`, no TLS/insecure flag)
+rather than silently starting insecure, which is what `CKP.12.00`-`14.00`
+shipped before this fix.

@@ -3,7 +3,7 @@
   "namespace": "CKP",
   "meta": {
     "created_at": "2026-07-02T00:00:00Z",
-    "updated_at": "2026-07-06T00:00:01Z",
+    "updated_at": "2026-07-06T00:00:02Z",
     "allocation_authority": "jj-ervin",
     "namespace_file": "passes/namespace.yaml",
     "layers_file": "passes/layers.yaml",
@@ -652,6 +652,25 @@
         "CKP:1020"
       ],
       "originating_pass": "CKP.14.00"
+    },
+    {
+      "id": "CKP:1022",
+      "alias": "CKP.15.00",
+      "legacy_ids": [],
+      "title": "Secure-Cookie Enforcement",
+      "description": "Fixes a real gap found by a security review of CKP.12.00-14.00's host-cloud/ code: server.js's serializeCookie never set the Secure attribute on the oauth_state or cockpit_session cookies. Since cockpit_session is the sole bearer credential for a control plane explicitly built for public multi-tenant hosting, and host-cloud defaults to binding 0.0.0.0 with no TLS of its own (TLS/reverse-proxy setup is deferred ops scope per CKP.12.00), this was a concrete session-hijacking vector via network interception in the PASS's own shipped default configuration, not a theoretical hardening gap. Fixed: serializeCookie takes a secure option (default true); index.js's new resolveRuntimeSecurity() fails closed - refuses to start on a non-loopback bind unless COCKPIT_CLOUD_TLS_TERMINATED=1 (real HTTPS termination, cookies get Secure) or an explicit COCKPIT_CLOUD_ALLOW_INSECURE_HTTP=1 opt-out (local/dev-only, cookies drop Secure too since a Secure cookie over plain HTTP is simply never sent by the browser). Loopback binding (127.0.0.1/localhost/::1) is allowed without either flag, matching host-web's own local-dev posture.",
+      "layer": "domain",
+      "cluster": "CKP",
+      "parent": "CKP:1021",
+      "status": "accepted",
+      "timestamp": "2026-07-06T00:00:00Z",
+      "path": "host-cloud/index.js",
+      "supersedes": [],
+      "superseded_by": null,
+      "depends_on": [
+        "CKP:1021"
+      ],
+      "originating_pass": "CKP.15.00"
     }
   ]
 }
