@@ -108,3 +108,126 @@ test('a session token for an unknown/deleted tenant is rejected', async () => {
     assert.equal(res.status, 401);
   });
 });
+
+function fakeProcessManager(portByTenant) {
+  const calls = [];
+  return {
+    calls,
+    ensureRunning: async (tenant) => { calls.push(tenant.id); return { port: portByTenant[tenant.id] }; },
+    touch: () => {},
+  };
+}
+
+test('POST /api/bridge proxies to the ensured tenant process and relays its messages', async () => {
+  const registry = createTenantRegistry({ dataDir: makeTmpDataDir() });
+  const alice = registry.createTenant({ githubId: 1, login: 'alice' });
+  const processManager = fakeProcessManager({ [alice.id]: 9001 });
+  let forwardedPort;
+  const app = createApp({
+    tenantRegistry: registry, sessionSecret: SECRET, github: {}, processManager,
+    deps: { proxyForward: async ({ port }) => { forwardedPort = port; return [{ type: 'eco.cockpit.state', payload: {} }]; } },
+  });
+  const session = require('../session');
+  const token = session.sign({ tenantId: alice.id, secret: SECRET });
+
+  await withServer(app, async (base) => {
+    const res = await fetch(`${base}/api/bridge`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Cookie: `cockpit_session=${token}` },
+      body: JSON.stringify({ type: 'eco.cockpit.ready' }),
+    });
+    const body = await res.json();
+    assert.equal(forwardedPort, 9001);
+    assert.deepEqual(body, [{ type: 'eco.cockpit.state', payload: {} }]);
+  });
+});
+
+test('POST /api/bridge rejects a write action from a read-only-scoped token with 403', async () => {
+  const registry = createTenantRegistry({ dataDir: makeTmpDataDir() });
+  const alice = registry.createTenant({ githubId: 1, login: 'alice' });
+  const processManager = fakeProcessManager({ [alice.id]: 9002 });
+  const app = createApp({
+    tenantRegistry: registry, sessionSecret: SECRET, github: {}, processManager,
+    deps: { proxyForward: async () => [{ type: 'eco.cockpit.actionResult', payload: { ok: true } }] },
+  });
+  const session = require('../session');
+  const readOnlyToken = session.sign({ tenantId: alice.id, secret: SECRET, capabilities: ['read'] });
+
+  await withServer(app, async (base) => {
+    const res = await fetch(`${base}/api/bridge`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Cookie: `cockpit_session=${readOnlyToken}` },
+      body: JSON.stringify({ type: 'eco.cockpit.submitRun', payload: {} }),
+    });
+    assert.equal(res.status, 403);
+    assert.equal(processManager.calls.length, 0); // never even reached process spawn
+  });
+});
+
+test('POST /api/bridge allows a read action from a read-only-scoped token', async () => {
+  const registry = createTenantRegistry({ dataDir: makeTmpDataDir() });
+  const alice = registry.createTenant({ githubId: 1, login: 'alice' });
+  const processManager = fakeProcessManager({ [alice.id]: 9003 });
+  const app = createApp({
+    tenantRegistry: registry, sessionSecret: SECRET, github: {}, processManager,
+    deps: { proxyForward: async () => [{ type: 'eco.cockpit.state', payload: {} }] },
+  });
+  const session = require('../session');
+  const readOnlyToken = session.sign({ tenantId: alice.id, secret: SECRET, capabilities: ['read'] });
+
+  await withServer(app, async (base) => {
+    const res = await fetch(`${base}/api/bridge`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Cookie: `cockpit_session=${readOnlyToken}` },
+      body: JSON.stringify({ type: 'eco.cockpit.ready' }),
+    });
+    assert.equal(res.status, 200);
+  });
+});
+
+test('POST /api/bridge returns 429 once the rate limiter is exhausted', async () => {
+  const registry = createTenantRegistry({ dataDir: makeTmpDataDir() });
+  const alice = registry.createTenant({ githubId: 1, login: 'alice' });
+  const processManager = fakeProcessManager({ [alice.id]: 9004 });
+  const rateLimiter = { take: () => false };
+  const app = createApp({
+    tenantRegistry: registry, sessionSecret: SECRET, github: {}, processManager, rateLimiter,
+    deps: { proxyForward: async () => [{ type: 'eco.cockpit.state', payload: {} }] },
+  });
+  const session = require('../session');
+  const token = session.sign({ tenantId: alice.id, secret: SECRET });
+
+  await withServer(app, async (base) => {
+    const res = await fetch(`${base}/api/bridge`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Cookie: `cockpit_session=${token}` },
+      body: JSON.stringify({ type: 'eco.cockpit.ready' }),
+    });
+    assert.equal(res.status, 429);
+    assert.equal(processManager.calls.length, 0);
+  });
+});
+
+test('POST /api/bridge returns 507 and skips the process/proxy call when a write action is over quota', async () => {
+  const registry = createTenantRegistry({ dataDir: makeTmpDataDir() });
+  const alice = registry.createTenant({ githubId: 1, login: 'alice' });
+  fs.writeFileSync(path.join(alice.workspacePath, 'big.txt'), 'x'.repeat(1000));
+  const processManager = fakeProcessManager({ [alice.id]: 9005 });
+  const app = createApp({
+    tenantRegistry: registry, sessionSecret: SECRET, github: {}, processManager,
+    tenantDiskQuotaBytes: 100,
+    deps: { proxyForward: async () => [{ type: 'eco.cockpit.actionResult', payload: { ok: true } }] },
+  });
+  const session = require('../session');
+  const token = session.sign({ tenantId: alice.id, secret: SECRET });
+
+  await withServer(app, async (base) => {
+    const res = await fetch(`${base}/api/bridge`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Cookie: `cockpit_session=${token}` },
+      body: JSON.stringify({ type: 'eco.cockpit.submitRun', payload: {} }),
+    });
+    assert.equal(res.status, 507);
+    assert.equal(processManager.calls.length, 0);
+  });
+});

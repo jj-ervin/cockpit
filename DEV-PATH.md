@@ -1076,3 +1076,111 @@ The items listed under "Deliberately not built this PASS" are the natural
 follow-on slices — container orchestration is the largest of them and
 warrants its own bounded PASS rather than being combined with anything
 else.
+
+## Phase 19 — Process Orchestration, Rate/Quota Limits, Capability Tokens, Real Proxying (CKP.14.00)
+
+**Recorded:** 2026-07-06
+**Source:** `CKP.13.00`'s "Deliberately not built this PASS" list, done together as one compound PASS at the portfolio owner's request ("as much as possible")
+
+### Docker was attempted for real, and genuinely cannot run here
+
+Before writing any stand-in, a real attempt was made to run `CKP.12.00`'s
+actual container-orchestration design: Docker Desktop was launched on this
+machine. It failed with `WSL_E_WSL_MOUNT_NOT_SUPPORTED` — `wsl.exe --mount`
+requires Windows build 27653+ on ARM64, and this machine is on build
+26200 (confirmed via `[System.Environment]::OSVersion.Version`, not
+assumed). This is a platform-version gap, not a sign-in or configuration
+issue — the VS Code Docker extension was also considered and confirmed to
+depend on the same underlying daemon, so it doesn't route around the gap
+either. Real container orchestration against this design remains
+unbuilt-and-unbuildable **on this specific machine** until a compatible
+Windows build or a different host is available; the design itself
+(`CKP.12.00`) is unaffected and should still be the target once a working
+Docker host exists.
+
+### Non-Docker stand-in: real per-tenant OS processes
+
+`host-cloud/processManager.js` spawns one **unmodified** `host-web`
+(`CKP.11.00`) child process per tenant — real OS-process isolation (separate
+PID, separate loopback port, separate Express instance state), with a
+narrower blast radius than a container (no cgroup/seccomp/filesystem-
+namespace boundary). `ensureRunning`/`stop`/`sweepIdle`/`touch` are
+deliberately container-manager-shaped so a real Docker (or other runtime)
+backing can be swapped in later without changing `server.js`'s calling code.
+Readiness is detected by watching the child's stdout for `host-web/index.js`'s
+own `"listening on"` log line, not a fixed sleep.
+
+### Abuse / resource limits
+
+- `rateLimiter.js` — per-tenant token bucket (capacity + refill rate),
+  checked before a request reaches process spawn or proxying.
+- `quota.js` — best-effort, application-level disk usage check
+  (`directorySizeBytes`/`withinQuota`), gating mutating actions only (read
+  actions remain available even over quota). Documented honestly as a soft
+  backstop, not real enforcement — true disk quotas need filesystem/
+  container-runtime support this non-Docker stand-in doesn't have.
+- `processManager`'s `maxConcurrentTenants` cap and `sweepIdle` (idle-timeout
+  teardown, driven by an explicit `touch()` on every proxied request, not a
+  fixed TTL).
+
+### Capability-scoped tokens
+
+`session.js` gained a `capabilities` claim (`['read', 'write']` by default
+for a normal login; a narrower `['read']`-only token can be issued
+separately). `capabilities.js` maps every `eco.cockpit.*` message type from
+`host-web/actions.js`'s own dispatch switch to `'read'` or `'write'`
+(unrecognized types fail closed to `'write'`), and its `requireCapability`
+middleware enforces this independently of tenancy — a valid session for the
+right tenant can still lack `'write'` if issued as a read-only token.
+
+### Real proxying, and a real bug live testing caught that mocks would have missed
+
+`proxy.js` forwards an authenticated request to the tenant's running
+`host-web` instance's `POST /api/bridge` and relays its response unchanged,
+per `CKP.08-host-loader-contract.md`. `server.js`'s `/api/bridge` now chains
+`requireSession` → `requireRateLimit` → `requireCapability` → quota check →
+`processManager.ensureRunning` → `proxy.forward`.
+
+While building the real end-to-end test (`host-cloud/tests/endToEnd.test.js`
+— spawns an actual `host-web` child against this repo's own `.venv`, no
+mocks), a genuine bug surfaced: `requireSession` builds
+`req.tenant = { id, workspaceRoot: tenant.workspacePath }`, but
+`processManager.ensureRunning` read `tenant.workspacePath` — a property-name
+mismatch, so `WORKSPACE_ROOT` was passed to the child as `undefined`, and
+`host-web/index.js`'s own fallback chain silently resolved to the child's
+inherited **control-plane** cwd instead of the tenant's workspace. Every
+tenant would have gotten the control plane's own directory. Caught only
+because the end-to-end test asserted the *real* resolved path against a
+*real* spawned process instead of trusting a mock; a mocked-only test
+double would have had no way to expose this, since the mock would have had
+to encode the same (wrong) assumption to begin with. Fixed by renaming
+`processManager.js`'s expectation to `tenant.workspaceRoot`, matching the
+property name every other part of this codebase already uses.
+
+### Deliberately not built this PASS
+
+- Real Docker/container orchestration (blocked on this machine's platform
+  version, see above — the design and code shape are ready for it).
+- Capability tokens are issued only with full `['read','write']` today;
+  there is no UI/endpoint yet to actually request or hand out a narrower
+  `['read']`-only token to a third party.
+- True filesystem-level disk quota enforcement (only the best-effort
+  application-level check exists).
+
+### Validation
+
+54 tests in `host-cloud/tests/` (30 new this PASS: `processManager.test.js`,
+`rateLimiter.test.js`, `quota.test.js`, `capabilities.test.js`,
+`proxy.test.js`, `endToEnd.test.js`, plus `/api/bridge` additions to
+`server.test.js` and capability additions to `session.test.js`): 53 passing,
+1 self-skipped (symlink permission, unchanged from `CKP.13.00`). The
+end-to-end test is a real spawn of `host-web` + the real Python `cockpit`
+package via this repo's own `.venv` — not mocked — and is the test that
+caught the `workspaceRoot` bug above. `host-web`'s own 28/28 tests remain
+unaffected (no changes to `host-web` in this PASS).
+
+### Next
+
+Real container orchestration once a compatible Docker host exists (a
+different machine, a newer Windows build, or a Linux CI runner); a real
+endpoint for issuing narrower-scoped tokens; true disk quota enforcement.

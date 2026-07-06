@@ -4,6 +4,8 @@ const path = require('path');
 
 const { createApp } = require('./server');
 const { createTenantRegistry } = require('./tenantRegistry');
+const { createProcessManager } = require('./processManager');
+const { createRateLimiter } = require('./rateLimiter');
 
 if (require.main === module) {
   const port = process.env.PORT ? Number(process.env.PORT) : 4175;
@@ -20,9 +22,34 @@ if (require.main === module) {
   }
 
   const tenantRegistry = createTenantRegistry({ dataDir });
+
+  const processManager = createProcessManager({
+    hostWebEntry: process.env.HOST_WEB_ENTRY || path.join(__dirname, '..', 'host-web', 'index.js'),
+    pythonExecutable: process.env.COCKPIT_PYTHON || 'python',
+    maxConcurrentTenants: process.env.MAX_CONCURRENT_TENANTS ? Number(process.env.MAX_CONCURRENT_TENANTS) : 10,
+    readyTimeoutMs: process.env.TENANT_READY_TIMEOUT_MS ? Number(process.env.TENANT_READY_TIMEOUT_MS) : undefined,
+  });
+
+  const rateLimiter = createRateLimiter({
+    capacity: process.env.RATE_LIMIT_CAPACITY ? Number(process.env.RATE_LIMIT_CAPACITY) : 20,
+    refillPerSecond: process.env.RATE_LIMIT_REFILL_PER_SEC ? Number(process.env.RATE_LIMIT_REFILL_PER_SEC) : 5,
+  });
+
+  const idleTimeoutMs = process.env.TENANT_IDLE_TIMEOUT_MS ? Number(process.env.TENANT_IDLE_TIMEOUT_MS) : 15 * 60 * 1000;
+  const idleSweepInterval = setInterval(() => {
+    const stopped = processManager.sweepIdle(idleTimeoutMs);
+    if (stopped.length) {
+      console.log(`Stopped idle tenant processes: ${stopped.join(', ')}`);
+    }
+  }, Math.min(idleTimeoutMs, 60000));
+  idleSweepInterval.unref();
+
   const app = createApp({
     tenantRegistry,
     sessionSecret,
+    processManager,
+    rateLimiter,
+    tenantDiskQuotaBytes: process.env.TENANT_DISK_QUOTA_BYTES ? Number(process.env.TENANT_DISK_QUOTA_BYTES) : 0,
     github: {
       clientId: process.env.GITHUB_CLIENT_ID,
       clientSecret: process.env.GITHUB_CLIENT_SECRET,
@@ -31,9 +58,18 @@ if (require.main === module) {
   });
 
   app.listen(port, host, () => {
-    console.log(`Cockpit host-cloud (Phase 4 control-plane skeleton) listening on http://${host}:${port}`);
+    console.log(`Cockpit host-cloud (Phase 4 control plane) listening on http://${host}:${port}`);
     console.log(`Tenant data dir: ${dataDir}`);
+  });
+
+  process.on('SIGINT', () => {
+    processManager.stopAll();
+    process.exit(0);
+  });
+  process.on('SIGTERM', () => {
+    processManager.stopAll();
+    process.exit(0);
   });
 }
 
-module.exports = { createApp, createTenantRegistry };
+module.exports = { createApp, createTenantRegistry, createProcessManager, createRateLimiter };

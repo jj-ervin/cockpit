@@ -3,7 +3,7 @@
   "namespace": "CKP",
   "meta": {
     "created_at": "2026-07-02T00:00:00Z",
-    "updated_at": "2026-07-06T00:00:00Z",
+    "updated_at": "2026-07-06T00:00:01Z",
     "allocation_authority": "jj-ervin",
     "namespace_file": "passes/namespace.yaml",
     "layers_file": "passes/layers.yaml",
@@ -633,6 +633,25 @@
         "CKP:1019"
       ],
       "originating_pass": "CKP.13.00"
+    },
+    {
+      "id": "CKP:1021",
+      "alias": "CKP.14.00",
+      "legacy_ids": [],
+      "title": "Process Orchestration, Rate/Quota Limits, Capability Tokens, Real Proxying",
+      "description": "Compound PASS closing all four items CKP.13.00 named as future scope, done together at the portfolio owner's request. Docker was attempted for real first (Docker Desktop launch on this ARM64/Windows-build-26200 machine) and failed with WSL_E_WSL_MOUNT_NOT_SUPPORTED (wsl.exe --mount requires build 27653+) - confirmed as a platform-version gap, not sign-in/config; CKP.12.00's container design is unaffected and remains the target once a compatible Docker host exists. Built instead: processManager.js spawns one real, unmodified host-web (CKP.11.00) child process per tenant - real OS-process isolation, container-manager-shaped interface (ensureRunning/stop/sweepIdle/touch) for a later Docker swap-in, readiness detected via host-web's own 'listening on' stdout line. rateLimiter.js (per-tenant token bucket). quota.js (best-effort application-level disk usage check, honestly documented as not real enforcement - true quotas need filesystem/container-runtime support this stand-in lacks). session.js gained a capabilities claim (['read','write'] default, or a narrower ['read']-only token); capabilities.js maps every eco.cockpit.* type from host-web/actions.js's dispatch switch to read or write (fails closed to write for unrecognized types) and enforces it independently of tenancy via requireCapability. proxy.js + server.js's real POST /api/bridge chain (requireSession -> requireRateLimit -> requireCapability -> quota check -> processManager.ensureRunning -> proxy.forward), relaying the tenant's real host-web response unchanged per CKP.08-host-loader-contract.md. A real bug was caught only by the real (non-mocked) end-to-end test built for this pass: requireSession built req.tenant.workspaceRoot but processManager.ensureRunning originally read tenant.workspacePath - a property-name mismatch that would have silently given every tenant the control plane's own cwd instead of its isolated workspace; fixed by aligning processManager.js to tenant.workspaceRoot. Not built: real container orchestration (blocked on this machine's platform), an endpoint to issue narrower read-only tokens, true filesystem quota enforcement.",
+      "layer": "domain",
+      "cluster": "CKP",
+      "parent": "CKP:1020",
+      "status": "accepted",
+      "timestamp": "2026-07-06T00:00:00Z",
+      "path": "host-cloud/server.js",
+      "supersedes": [],
+      "superseded_by": null,
+      "depends_on": [
+        "CKP:1020"
+      ],
+      "originating_pass": "CKP.14.00"
     }
   ]
 }

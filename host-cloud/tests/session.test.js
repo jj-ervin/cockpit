@@ -34,3 +34,15 @@ test('verify rejects an expired token', () => {
 test('verify rejects a malformed token string', () => {
   assert.throws(() => session.verify('not-a-real-token', { secret: SECRET }));
 });
+
+test('sign defaults to full read+write capabilities', () => {
+  const token = session.sign({ tenantId: 't1', secret: SECRET });
+  const claims = session.verify(token, { secret: SECRET });
+  assert.deepEqual(claims.capabilities, ['read', 'write']);
+});
+
+test('sign can issue a narrower read-only token', () => {
+  const token = session.sign({ tenantId: 't1', secret: SECRET, capabilities: ['read'] });
+  const claims = session.verify(token, { secret: SECRET });
+  assert.deepEqual(claims.capabilities, ['read']);
+});

@@ -684,3 +684,42 @@ instance — all named as future scope, not attempted in this PASS.
 **Validation:** 24 new tests (`host-cloud/tests/`), 23 passing, 1
 self-skipped (symlink creation needs elevated privileges on this Windows
 dev machine — confirmed `EPERM`, not silently swallowed).
+
+---
+
+## CKP.14.00 Closure — Process Orchestration, Rate/Quota Limits, Capability Tokens, Real Proxying
+
+**Closed:** 2026-07-06
+
+Did all four items named as future scope in `CKP.13.00`'s closure, as one
+compound PASS per the portfolio owner's request. Docker was attempted for
+real first (Docker Desktop launch on this machine) and failed with
+`WSL_E_WSL_MOUNT_NOT_SUPPORTED` — ARM64 + Windows build 26200, needs
+27653+. Confirmed as a platform-version gap, not a config/sign-in issue.
+`CKP.12.00`'s container design is unaffected and remains the target once a
+compatible Docker host exists.
+
+Built instead: `processManager.js` spawns one real, unmodified `host-web`
+child process per tenant (real OS-process isolation, container-shaped
+interface for a later swap-in); `rateLimiter.js` (per-tenant token bucket);
+`quota.js` (best-effort disk usage check, honestly documented as not real
+enforcement); `session.js`/`capabilities.js` (a `capabilities` token claim
+plus a read/write action-type map, independent of tenancy); `proxy.js` +
+`server.js`'s real `/api/bridge` chain (session → rate limit → capability →
+quota → process ensure → proxy).
+
+**A real bug only live end-to-end testing caught:** a property-name
+mismatch (`req.tenant.workspaceRoot` vs. `processManager`'s expected
+`tenant.workspaceRoot` — originally read as `.workspacePath`) meant every
+tenant's spawned process would have silently inherited the control plane's
+own working directory instead of its isolated workspace. A mocked-only test
+would have had to encode the same wrong assumption to pass; the real spawn
+test caught it. Fixed and verified.
+
+**Not built:** real container orchestration (blocked on this machine's
+platform), an endpoint to issue narrower read-only tokens, true filesystem
+quota enforcement.
+
+**Validation:** 54 tests in `host-cloud/tests/` (30 new), 53 passing, 1
+self-skipped (unchanged from `CKP.13.00`). `host-web` unchanged, 28/28
+still passing.

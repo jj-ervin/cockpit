@@ -14,9 +14,16 @@ const crypto = require('crypto');
  * everything downstream (workspaceRoot resolution) must come from looking
  * that tenantId up in the tenant registry, never from any other field a
  * caller could set.
+ *
+ * capabilities (CKP.14.00) is a second claim: which action classes this
+ * token may invoke ('read', 'write'). A normal browser login gets both; a
+ * narrower-scoped token (e.g. for a read-only embed/share link) can be
+ * issued with capabilities: ['read'] only. requireCapability() in
+ * capabilities.js enforces this at the edge, independent of the tenancy
+ * check requireSession already does in server.js.
  */
-function sign({ tenantId, ttlSeconds = 3600, now = Date.now(), secret }) {
-  const payload = { tenantId, exp: now + ttlSeconds * 1000 };
+function sign({ tenantId, capabilities = ['read', 'write'], ttlSeconds = 3600, now = Date.now(), secret }) {
+  const payload = { tenantId, capabilities, exp: now + ttlSeconds * 1000 };
   const encoded = Buffer.from(JSON.stringify(payload), 'utf-8').toString('base64url');
   const signature = crypto.createHmac('sha256', secret).update(encoded).digest('hex');
   return `${encoded}.${signature}`;
@@ -45,7 +52,8 @@ function verify(token, { secret, now = Date.now() }) {
   if (typeof payload.tenantId !== 'string' || !payload.tenantId) {
     throw new Error('Session token missing tenantId.');
   }
-  return { tenantId: payload.tenantId };
+  const capabilities = Array.isArray(payload.capabilities) ? payload.capabilities : ['read', 'write'];
+  return { tenantId: payload.tenantId, capabilities };
 }
 
 module.exports = { sign, verify };
