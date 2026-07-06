@@ -949,3 +949,13 @@ Chromium; a full write round trip (mode selector → Activate → real
 `mode_history.json` write with a correctly-shaped `time.loc/1.2` record)
 verified against a scratch workspace, not the real `eco` one, to avoid
 polluting production history during testing.
+
+**Registration correction:** the implementing commit (`2eee10d`) used
+`Change-Level: PASS` with `Pass-ID: standalone` — a placeholder accepted by
+the citation gate as a valid non-citation value, not an actual registered
+PASS ID, which `Change-Level: PASS` requires per `DEV-ACCORD.06`. Registered
+as `CKP.11.00` (`CKP:1018`, parent `CKP:0003` — the `CKP.03.00` extraction-
+shape decision this closes the third form of) in a follow-up commit — the
+same self-caught conformance pattern already corrected twice earlier this
+session (`CKP.09.01`'s original commit, and the Lasso-relabel/`time_loc`
+commits).

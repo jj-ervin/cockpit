@@ -575,6 +575,26 @@
         "CKP:1007"
       ],
       "originating_pass": "CKP.09.01"
+    },
+    {
+      "id": "CKP:1018",
+      "alias": "CKP.11.00",
+      "legacy_ids": [],
+      "title": "Standalone Web Host - CKP.03 Phase 3 Implemented",
+      "description": "Implements CKP.03.00's reserved-but-unbuilt third packaging form: 'Universal standalone shell: Electron or web app host; no VS Code dependency; same adapter API as phases 1 and 2.' New host-web/ directory: a plain Express server serving the unmodified web/cockpit.{html,css,js} bundle and relaying eco.cockpit.* messages to python -m cockpit.host_bridge over HTTP instead of VS Code's postMessage channel, proving docs/specifications/CKP.08-host-loader-contract.md's host-agnostic bundle contract for real - that doc already speced this exact 'small local HTTP shim' case before any code existed. Deployment model: locally-run tool only (npm start, point at your own workspace) - a public multi-tenant hosted version is named Phase 4 in DEV-PATH.md, planned and deliberately deferred, not scoped here. Two real gaps found during build: the bundle's static CSP has no connect-src (blocks fetch(), fixed server-side with a permissive CSP substitution); marlin search's query is a positional CLI arg with no stdin alternative (unlike claude/codex), so the PATH-based .cmd fallback is refused outright rather than accepting a shell-injection risk - only the safe sibling-checkout path (real .exe, no shell) is supported. Three actions with no clean web equivalent (clipboard copy, VS Code editor open, native install-confirm dialog) are downgraded to honest alternatives instead of faked.",
+      "layer": "domain",
+      "cluster": "CKP",
+      "parent": "CKP:0003",
+      "status": "accepted",
+      "timestamp": "2026-07-05T00:00:00Z",
+      "path": "host-web/server.js",
+      "supersedes": [],
+      "superseded_by": null,
+      "depends_on": [
+        "CKP:0003",
+        "CKP:1017"
+      ],
+      "originating_pass": "CKP.11.00"
     }
   ]
 }
