@@ -606,6 +606,16 @@
     elements.epModeState.textContent = (mode && mode.current_mode) || '-';
   }
 
+  function formatTimeLoc(timeLoc) {
+    if (!timeLoc) {
+      return '';
+    }
+    if (typeof timeLoc === 'string') {
+      return timeLoc;
+    }
+    return timeLoc['stamp.utc'] || '';
+  }
+
   function renderHelmMode(mode) {
     const helm = mode || {};
     const availableModes = Array.isArray(helm.available_modes) ? helm.available_modes : [];
@@ -629,7 +639,7 @@
     renderList(elements.modeHistory, history.slice().reverse().map(function (entry) {
       return {
         title: (entry.previous_mode || '-') + ' → ' + (entry.current_mode || '-'),
-        detail: entry.time_loc || '',
+        detail: formatTimeLoc(entry.time_loc),
       };
     }));
   }
@@ -1159,7 +1169,11 @@
         current_mode: 'Navigator',
         available_modes: ['Navigator', 'Builder', 'Analyst', 'Historian', 'Operator'],
         history: [
-          { previous_mode: null, current_mode: 'Navigator', time_loc: '2026-07-05T20:00:00Z' },
+          {
+            previous_mode: null,
+            current_mode: 'Navigator',
+            time_loc: { version: 'time.loc/1.2', 'stamp.utc': '2026-07-05T20:00:00Z', 'geo.source': 'unavailable', sig: 'unsigned' },
+          },
         ],
       },
       niji: {

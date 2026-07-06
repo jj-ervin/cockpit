@@ -765,3 +765,48 @@ status bar (read-only), and a "HELM Mode" section on the Governance tab
 126/126 pytest passing (11 new: 8 `EcoAdapter` mode tests, 2 Playwright
 smoke tests, 1 updated existing `submit()` error-message assertion).
 `node --check web/cockpit.js` clean.
+
+### Correction — `time_loc` conformance to the real time.loc v1.2 schema
+
+Before doing live-round-trip testing, `c:\dev\eco\.eco\helm\mode_history.json`
+(real history written by `eco-vs`'s live usage) was checked to sanity-check
+the `time_loc` field shape. It is not a plain timestamp string as this PASS
+originally assumed — it is a structured **time.loc v1.2** record (a portable
+portfolio-wide standard, `c:\dev\time-loc`: dual local/UTC timestamps, geo
+provenance, a ULID sequence, HMAC-SHA256 integrity). `EcoAdapter._write_mode`
+was writing a bare ISO string, which would have mixed formats in a real,
+shared file.
+
+`time-loc` had no packaging (no `pyproject.toml`) and could not be
+pip-installed. Rather than vendor a copy (the precedent `governed-event`
+already uses — it vendors its own `time_loc.py`/`time_loc_compact.py` instead
+of depending on a package), the portfolio owner chose to fix the root cause:
+`time-loc` (`340aefc`) now ships a real `pyproject.toml` packaging its three
+flat top-level modules (`time_loc`, `time_loc_compact`, `time_loc_validator`
+— matching `governed-event`'s actual working imports and the modules' own
+docstrings, not the inconsistent `python.time_loc`-style example the README
+previously showed). `typing-extensions` was added as an explicit dependency
+after a clean-venv install revealed `python-ulid` needs it but doesn't
+declare it.
+
+`cockpit/pyproject.toml` now depends on `time-loc` (git dependency, not a
+local-path dependency, per the portfolio's modularity/portability standard).
+`_write_mode` uses `produce_unsigned_unavailable().to_dict()` — same
+provenance shape (`geo.source: "unavailable"`, `sig: "unsigned"`) `eco-vs`'s
+real entries already use. The bundle's history renderer (`renderHelmMode`)
+gained a `formatTimeLoc()` helper handling both the old plain-string shape
+(covered by the smoke-test fixture) and the new structured-object shape
+(covered by the static preview fixture and a new adapter test asserting the
+full `time.loc/1.2` shape).
+
+**Also surfaced, not fixed (separate, larger issue):** `cockpit`'s own
+`pytest` run was found to resolve to `c:\dev\eco\.venv\Scripts\python.exe`
+rather than a cockpit-local venv — cockpit is not currently self-contained
+against its own stated goal (and the portfolio's modularity standard) of
+working regardless of venv or platform. All verification in this PASS was
+done in throwaway scratch venvs specifically to avoid deepening that
+coupling, but the coupling itself remains and needs a dedicated fix.
+
+**Validation:** 127/127 pytest passing (re-run in an isolated scratch venv,
+not `eco`'s), including a fresh `pip install -e .` of `time-loc` from a clean
+venv with no manual workarounds. `node --check web/cockpit.js` clean.

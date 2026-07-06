@@ -12,9 +12,10 @@ from __future__ import annotations
 import hashlib
 import json
 import re
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+
+from time_loc import produce_unsigned_unavailable
 
 from cockpit.core.adapter import (
     AdapterResult,
@@ -528,7 +529,7 @@ class EcoAdapter(CockpitAdapter):
         history.append({
             "previous_mode": previous_mode,
             "current_mode": mode,
-            "time_loc": datetime.now(timezone.utc).isoformat(),
+            "time_loc": produce_unsigned_unavailable().to_dict(),
         })
         self._helm_mode_history_path.parent.mkdir(parents=True, exist_ok=True)
         self._helm_mode_history_path.write_text(

@@ -555,3 +555,25 @@ clean.
 **Next:** `eco-vscode`'s relay case + `cockpitApi.ts` widening for the
 `"mode"` record type is a separate commit in that repo, still pending as of
 this closure.
+
+---
+
+## CKP.09.01 Correction — Real `time.loc` Schema, Not a Plain Timestamp
+
+**Recorded:** 2026-07-05
+
+Checking real HELM history (`c:\dev\eco\.eco\helm\mode_history.json`, written
+by `eco-vs`'s live usage) before manual round-trip testing found `time_loc`
+is a structured **time.loc v1.2** record, not the plain ISO string this PASS
+originally wrote. `time-loc` (`c:\dev\time-loc`) had no packaging; it now
+does (commit `340aefc` in that repo), so cockpit depends on it for real
+instead of inventing a competing timestamp format. `EcoAdapter._write_mode`
+now uses `produce_unsigned_unavailable().to_dict()`.
+
+Also surfaced: cockpit's own `pytest` currently resolves to `eco`'s shared
+`.venv`, not a cockpit-local one — a real gap against this repo's own
+self-contained/portable goal. Not fixed here (separate, larger cleanup);
+all verification for this correction used throwaway scratch venvs instead.
+
+**Validation:** 127/127 pytest passing in an isolated venv; a clean
+`pip install -e .` of `time-loc` verified with no manual workarounds.

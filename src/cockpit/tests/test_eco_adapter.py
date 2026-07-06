@@ -530,6 +530,17 @@ def test_submit_mode_appends_and_tracks_previous(full_workspace: Path) -> None:
     assert result.data["history"][-1]["previous_mode"] == "Navigator"
 
 
+def test_submit_mode_writes_real_time_loc_v1_2_shape(full_workspace: Path) -> None:
+    a = EcoAdapter(workspace_id=str(full_workspace))
+    result = a.submit("mode", {"mode": "Navigator"})
+    time_loc = result.data["history"][-1]["time_loc"]
+    assert time_loc["version"] == "time.loc/1.2"
+    assert time_loc["geo.source"] == "unavailable"
+    assert time_loc["sig"] == "unsigned"
+    assert "stamp.utc" in time_loc
+    assert "seq" in time_loc
+
+
 # ---------------------------------------------------------------------------
 # update_record() — policy only
 # ---------------------------------------------------------------------------

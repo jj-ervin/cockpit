@@ -9,6 +9,7 @@ description = "Operator control surface for eco-governed AI workspaces"
 requires-python = ">=3.11"
 dependencies = [
     "pyyaml>=6.0",
+    "time-loc @ git+https://github.com/governancecommons/time-loc.git",
 ]
 
 [project.optional-dependencies]
