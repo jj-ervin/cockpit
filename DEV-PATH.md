@@ -810,3 +810,11 @@ coupling, but the coupling itself remains and needs a dedicated fix.
 **Validation:** 127/127 pytest passing (re-run in an isolated scratch venv,
 not `eco`'s), including a fresh `pip install -e .` of `time-loc` from a clean
 venv with no manual workarounds. `node --check web/cockpit.js` clean.
+
+**Live round-trip confirmed (2026-07-05, portfolio owner):** the full path —
+Cockpit bundle → `eco.cockpit.setHelmMode` → `eco-vscode`'s relay →
+`EcoAdapter.submit("mode", ...)` → `mode_history.json` write → next poll's
+snapshot reflecting the new mode and history — was exercised in a real VS
+Code Extension Development Host against a scratch `.eco/` workspace and
+works. The one remaining unknown flagged at the end of `CKP.09.01`'s original
+implementation is closed.

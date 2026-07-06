@@ -21,6 +21,9 @@ test = [
 [project.scripts]
 cockpit-install-phase1 = "cockpit.install_phase1:main"
 
+[tool.hatch.metadata]
+allow-direct-references = true
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/cockpit"]
 
