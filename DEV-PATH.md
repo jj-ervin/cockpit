@@ -691,3 +691,77 @@ closed (`CKP.08.07`/`.08`); Lasso currently has no backend — wiring an actual
 merge/dispatch adapter behind it (if the portfolio wants server-side lane
 execution rather than client-only compose) is the natural next scope if
 prioritized.
+
+## Phase 15 — Boundary Decisions: Lasso Deferred, Quick-Bar Deferred, Mode Switching Built Host-Agnostic (CKP.09.01)
+
+**Recorded:** 2026-07-05
+**Source:** CKP.09.01 in `passes/passes.registry.json`, plus two scope
+decisions made in the same session that produced no code (recorded here so
+they aren't re-litigated)
+
+### Decision 1 — Lasso stays client-only; real multi-agent work belongs to LASSO
+
+The user asked for a real backend (CLI dispatch, configurable N-lane,
+role-assignment) behind Cockpit's "Lasso Workspace" panel. Investigation
+found that the actual multi-agent-collaboration product is **LASSO**
+(`c:\dev\lasso`), a separate, pre-build/vision-phase repo with its own
+owners (20Amp Labs engine, HBL Creative Studios UI) and its own four modes
+(Parallel/Consensus/Merge/Plan-Role) — explicitly *not* eco's admin panel or
+Cockpit's job to build. Building that architecture into Cockpit's tab would
+mean building LASSO's product inside the wrong repo — throwaway work once
+LASSO is built for real, since LASSO's engine will call through eco, not
+spawn raw CLIs directly.
+
+**Correction applied this session:** the tab's function is left completely
+untouched. Its label was changed from "Lasso"/"Lasso Workspace" to
+**"Compose Scratchpad"** (cosmetic only, `Change-Level: BUNT`, separate
+commit from `CKP.09.01`) so it stops implying it's a preview of the real
+LASSO product.
+
+### Decision 2 — Quick-Bar deferred (still blocked on DevXToolkit v2.x)
+
+`docs/specifications/CKP.v1.0-scoping.md` already marks Quick-Bar
+**blocked**: the locked spec defines it as routing DevXToolkit v2.x
+commands, and `devxtoolkit-v2-x` is an empty Phase-0 scaffold with nothing
+to route to. Building a narrower substitute (a Cockpit-only command
+palette over existing actions) was considered and explicitly rejected —
+same reasoning as Decision 1: a stand-in either gets thrown away or becomes
+a permanent unofficial substitute for scope DevXToolkit v2.x should own.
+**Quick-Bar remains not scheduled.** Mode Switching (`CKP.09.01`, below) was
+built instead, since the same scoping doc identifies it as the item with
+real, usable prior art and no external blocker.
+
+### CKP.09.01 — Mode Switching (HELM), built entirely host-agnostic
+
+Implements the v1.0 ladder's mode-switching item. `EcoAdapter` gains a
+`"mode"` record type: `list_records`/`get_record` read
+`<workspace_root>/.eco/helm/mode_history.json` (same graceful-degradation
+pattern as `CKP.08.07`'s governance record — absent/malformed file reads as
+`current_mode: null`, empty history), and `submit("mode", {mode})` appends a
+`{previous_mode, current_mode, time_loc}` entry — pure file I/O, no
+subprocess, no VS Code API, works under any future host per the `CKP.03`
+three-phase rule.
+
+**Design correction made mid-session:** an earlier draft of this PASS
+proposed porting `eco-vs`'s actual `helm.ts`/`helm-session.ts` implementation
+into `eco-vscode` (mirroring how Cockpit's own UI was extracted from `eco-vs`
+in `CKP.08`), on the theory that it matched a documented "HELM/PASS
+convergence remains open" note in `eco-vscode/DEV-PLAN.md`. The user
+correctly objected: that would make the mode-switching *feature itself*
+depend on a VS Code extension, contradicting `CKP.03`'s explicit rule that
+"VS Code bridge and standalone shell are adapters on top of [the Python
+package], not separate APIs." The design was corrected before any
+`eco-vscode` or `eco` code was touched — this PASS makes **zero changes to
+`eco-vs` or the `eco` repo**. `eco-vscode`'s only role is the same thin,
+generic message-relay every other write action (approve escalation, save
+policy, delete artifact) already requires — no new business logic there.
+
+Bundle UI: a 4th "Operator Mode" tile on the dashboard's editor-plane-sync
+status bar (read-only), and a "HELM Mode" section on the Governance tab
+(mode selector, Activate button, change history list).
+
+### Validation
+
+126/126 pytest passing (11 new: 8 `EcoAdapter` mode tests, 2 Playwright
+smoke tests, 1 updated existing `submit()` error-message assertion).
+`node --check web/cockpit.js` clean.

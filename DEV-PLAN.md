@@ -516,3 +516,42 @@ paths as a live host instead of showing empty states.
 **Next:** No queued single PASS. Lasso currently has no backend — a
 merge/dispatch adapter behind it, if server-side lane execution is wanted
 over client-only compose, is the natural next scope if prioritized.
+
+---
+
+## CKP.09.01 Closure — Mode Switching (HELM), Host-Agnostic
+
+**Closed:** 2026-07-05
+
+Implements the v1.0 ladder's mode-switching item (`docs/specifications/
+CKP.v1.0-scoping.md` identified real prior art — HELM's 5-mode system — as
+schedulable, unlike Quick-Bar, which remains blocked on `devxtoolkit-v2-x`
+being Phase 0). `EcoAdapter` gains a `"mode"` record type: reads
+`<workspace_root>/.eco/helm/mode_history.json` with the same
+graceful-degradation pattern as `CKP.08.07`'s governance record, and
+`submit("mode", {mode})` appends a mode-change entry — pure file I/O, no
+subprocess, no VS Code API dependency, per the `CKP.03` three-phase rule that
+the Python package must stay host-agnostic. Bundle UI: an "Operator Mode"
+tile on the dashboard status bar, and a "HELM Mode" selector/history section
+on the Governance tab.
+
+**Correction made mid-session, before any cross-repo code was written:** an
+earlier draft proposed porting `eco-vs`'s `helm.ts` implementation into
+`eco-vscode` (mirroring `CKP.08`'s Cockpit-UI extraction), reasoning from an
+open "HELM/PASS convergence" note in `eco-vscode/DEV-PLAN.md`. The user
+correctly rejected this — it would make the feature itself VS-Code-dependent.
+This PASS makes **no changes to `eco-vs` or the `eco` repo**; `eco-vscode`
+gets only a thin, generic relay case (`eco.cockpit.setHelmMode` → Python
+bridge `submit` → relay result), identical in shape to existing write actions.
+
+Also this session: the Lasso tab was relabeled "Compose Scratchpad"
+(cosmetic only, separate `BUNT` commit) — real multi-agent dispatch stays
+out of scope for Cockpit; that's LASSO's (`c:\dev\lasso`) product to build,
+not a Cockpit panel's.
+
+**Validation:** 126/126 pytest passing (11 new). `node --check web/cockpit.js`
+clean.
+
+**Next:** `eco-vscode`'s relay case + `cockpitApi.ts` widening for the
+`"mode"` record type is a separate commit in that repo, still pending as of
+this closure.

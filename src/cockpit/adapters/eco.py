@@ -12,6 +12,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -38,6 +39,9 @@ _RUN_STATES = frozenset({
     "RECORDING", "COMPLETE", "FAILED", "ESCALATED",
 })
 
+_HELM_MODES = ("Navigator", "Builder", "Analyst", "Historian", "Operator")
+_HELM_MODE_HISTORY_LIMIT = 20
+
 
 class EcoAdapter(CockpitAdapter):
     """Cockpit adapter for the eco backend.
@@ -50,7 +54,7 @@ class EcoAdapter(CockpitAdapter):
     """
 
     BACKEND_ID = "eco"
-    RECORD_TYPES = frozenset({"run", "escalation", "artifact", "policy", "governance"})
+    RECORD_TYPES = frozenset({"run", "escalation", "artifact", "policy", "governance", "mode"})
 
     def __init__(
         self,
@@ -68,6 +72,7 @@ class EcoAdapter(CockpitAdapter):
         self._governance_diagnostics_path = self._root / "governance-diagnostics.json"
         self._project_yaml_path = self._root / "project.yaml"
         self._health_report_path = self._root / "health-report.json"
+        self._helm_mode_history_path = self._eco_root / "helm" / "mode_history.json"
         self._runtime_client = runtime_client
 
     @property
@@ -160,6 +165,8 @@ class EcoAdapter(CockpitAdapter):
                 data = [self._read_policy()]
             case "governance":
                 data = [self._read_governance()]
+            case "mode":
+                data = [self._read_mode()]
         return AdapterResult(data=data, origin=self._origin())
 
     def get_record(
@@ -187,6 +194,8 @@ class EcoAdapter(CockpitAdapter):
                 return AdapterResult(data=self._read_policy(), origin=self._origin())
             case "governance":
                 return AdapterResult(data=self._read_governance(), origin=self._origin())
+            case "mode":
+                return AdapterResult(data=self._read_mode(), origin=self._origin())
 
     # ---------------------------------------------------------------------------
     # Write operations
@@ -228,10 +237,15 @@ class EcoAdapter(CockpitAdapter):
         record_type: str,
         payload: dict[str, Any],
     ) -> AdapterResult[dict[str, Any]]:
-        """Launch a PASS run. record_type must be 'run'."""
+        """Launch a PASS run (record_type='run') or request a HELM mode
+        change (record_type='mode'). Mode changes are pure file I/O - no
+        runtime_client required, unlike 'run'."""
+        if record_type == "mode":
+            return self._write_mode(payload)
         if record_type != "run":
             raise WriteNotSupportedError(
-                f"eco adapter submit only supports record_type='run', got '{record_type}'"
+                f"eco adapter submit only supports record_type in "
+                f"{{'run', 'mode'}}, got '{record_type}'"
             )
         self._require_runtime_client("submit")
 
@@ -483,6 +497,51 @@ class EcoAdapter(CockpitAdapter):
         if isinstance(score, bool) or not isinstance(score, (int, float)):
             return None
         return score
+
+    def _read_mode(self) -> dict[str, Any]:
+        history = self._read_mode_history()
+        current_mode = history[-1]["current_mode"] if history else None
+        return {
+            "current_mode": current_mode,
+            "history": history[-_HELM_MODE_HISTORY_LIMIT:],
+            "available_modes": list(_HELM_MODES),
+        }
+
+    def _read_mode_history(self) -> list[dict[str, Any]]:
+        if not self._helm_mode_history_path.exists():
+            return []
+        try:
+            raw = self._helm_mode_history_path.read_text(encoding="utf-8")
+            parsed = json.loads(raw)
+            return parsed if isinstance(parsed, list) else []
+        except (json.JSONDecodeError, OSError):
+            return []
+
+    def _write_mode(self, payload: dict[str, Any]) -> AdapterResult[dict[str, Any]]:
+        mode = payload.get("mode")
+        if mode not in _HELM_MODES:
+            raise ValidationError(
+                f"mode must be one of {list(_HELM_MODES)}, got {mode!r}"
+            )
+        history = self._read_mode_history()
+        previous_mode = history[-1]["current_mode"] if history else None
+        history.append({
+            "previous_mode": previous_mode,
+            "current_mode": mode,
+            "time_loc": datetime.now(timezone.utc).isoformat(),
+        })
+        self._helm_mode_history_path.parent.mkdir(parents=True, exist_ok=True)
+        self._helm_mode_history_path.write_text(
+            json.dumps(history, indent=2), encoding="utf-8"
+        )
+        return AdapterResult(
+            data={
+                "current_mode": mode,
+                "history": history[-_HELM_MODE_HISTORY_LIMIT:],
+                "available_modes": list(_HELM_MODES),
+            },
+            origin=self._origin(),
+        )
 
     def _read_policy(self) -> dict[str, Any]:
         if not self._policy_path.exists():

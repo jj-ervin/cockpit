@@ -361,6 +361,64 @@ def test_list_records_governance_returns_single_item(full_workspace: Path) -> No
 
 
 # ---------------------------------------------------------------------------
+# mode record type — read
+# ---------------------------------------------------------------------------
+
+def test_mode_defaults_when_absent(full_workspace: Path) -> None:
+    a = EcoAdapter(workspace_id=str(full_workspace))
+    result = a.get_record("mode", "current")
+    assert result.data["current_mode"] is None
+    assert result.data["history"] == []
+    assert result.data["available_modes"] == [
+        "Navigator", "Builder", "Analyst", "Historian", "Operator",
+    ]
+
+
+def test_mode_reads_history_file(workspace: Path, eco_dir: Path) -> None:
+    helm_dir = eco_dir / "helm"
+    helm_dir.mkdir()
+    history = [
+        {"previous_mode": None, "current_mode": "Navigator", "time_loc": "2026-07-01T00:00:00+00:00"},
+        {"previous_mode": "Navigator", "current_mode": "Builder", "time_loc": "2026-07-02T00:00:00+00:00"},
+    ]
+    (helm_dir / "mode_history.json").write_text(json.dumps(history), encoding="utf-8")
+    a = EcoAdapter(workspace_id=str(workspace))
+    result = a.get_record("mode", "current")
+    assert result.data["current_mode"] == "Builder"
+    assert len(result.data["history"]) == 2
+
+
+def test_mode_current_is_latest_history_entry(workspace: Path, eco_dir: Path) -> None:
+    helm_dir = eco_dir / "helm"
+    helm_dir.mkdir()
+    history = [
+        {"previous_mode": None, "current_mode": "Navigator", "time_loc": "2026-07-01T00:00:00+00:00"},
+        {"previous_mode": "Navigator", "current_mode": "Analyst", "time_loc": "2026-07-03T00:00:00+00:00"},
+    ]
+    (helm_dir / "mode_history.json").write_text(json.dumps(history), encoding="utf-8")
+    a = EcoAdapter(workspace_id=str(workspace))
+    result = a.get_record("mode", "current")
+    assert result.data["current_mode"] == "Analyst"
+
+
+def test_mode_malformed_json_treated_as_absent(workspace: Path, eco_dir: Path) -> None:
+    helm_dir = eco_dir / "helm"
+    helm_dir.mkdir()
+    (helm_dir / "mode_history.json").write_text("not json", encoding="utf-8")
+    a = EcoAdapter(workspace_id=str(workspace))
+    result = a.get_record("mode", "current")
+    assert result.data["current_mode"] is None
+    assert result.data["history"] == []
+
+
+def test_list_records_mode_returns_single_item(full_workspace: Path) -> None:
+    a = EcoAdapter(workspace_id=str(full_workspace))
+    result = a.list_records("mode")
+    assert len(result.data) == 1
+    assert "available_modes" in result.data[0]
+
+
+# ---------------------------------------------------------------------------
 # approve()
 # ---------------------------------------------------------------------------
 
@@ -415,7 +473,7 @@ def test_submit_without_runtime_client_raises(full_workspace: Path) -> None:
 
 def test_submit_wrong_record_type_raises(full_workspace: Path, runtime_client: MagicMock) -> None:
     a = EcoAdapter(workspace_id=str(full_workspace), runtime_client=runtime_client)
-    with pytest.raises(WriteNotSupportedError, match="record_type='run'"):
+    with pytest.raises(WriteNotSupportedError, match="'run', 'mode'"):
         a.submit("policy", {})
 
 
@@ -435,6 +493,41 @@ def test_submit_calls_runtime_client(full_workspace: Path, runtime_client: Magic
     assert result.data["run_id"] == "new-run-001"
     runtime_client.build_run_request.assert_called_once()
     runtime_client.execute_run.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# submit() — mode (no runtime_client required; pure file I/O)
+# ---------------------------------------------------------------------------
+
+def test_submit_mode_rejects_unknown_mode(full_workspace: Path) -> None:
+    a = EcoAdapter(workspace_id=str(full_workspace))
+    with pytest.raises(ValidationError, match="mode must be one of"):
+        a.submit("mode", {"mode": "Rogue"})
+
+
+def test_submit_mode_requires_no_runtime_client(full_workspace: Path) -> None:
+    a = EcoAdapter(workspace_id=str(full_workspace))
+    result = a.submit("mode", {"mode": "Navigator"})
+    assert result.data["current_mode"] == "Navigator"
+
+
+def test_submit_mode_creates_history_file(full_workspace: Path, eco_dir: Path) -> None:
+    a = EcoAdapter(workspace_id=str(full_workspace))
+    a.submit("mode", {"mode": "Builder"})
+    history_path = eco_dir / "helm" / "mode_history.json"
+    assert history_path.exists()
+    history = json.loads(history_path.read_text(encoding="utf-8"))
+    assert history[-1]["current_mode"] == "Builder"
+    assert history[-1]["previous_mode"] is None
+
+
+def test_submit_mode_appends_and_tracks_previous(full_workspace: Path) -> None:
+    a = EcoAdapter(workspace_id=str(full_workspace))
+    a.submit("mode", {"mode": "Navigator"})
+    result = a.submit("mode", {"mode": "Analyst"})
+    assert result.data["current_mode"] == "Analyst"
+    assert len(result.data["history"]) == 2
+    assert result.data["history"][-1]["previous_mode"] == "Navigator"
 
 
 # ---------------------------------------------------------------------------

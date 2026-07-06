@@ -106,6 +106,11 @@
     epActivePass: byId('ep-active-pass'),
     epRunState: byId('ep-run-state'),
     epGovState: byId('ep-gov-state'),
+    epModeState: byId('ep-mode-state'),
+    modeSelect: byId('mode-select'),
+    modeActivate: byId('mode-activate'),
+    modeCurrent: byId('mode-current'),
+    modeHistory: byId('mode-history'),
     wizardStepLabel: byId('wizard-step-label'),
     wizardStepIndicator: byId('wizard-step-indicator'),
     wizardContent: byId('wizard-content'),
@@ -195,6 +200,12 @@
 
   elements.openPolicy.addEventListener('click', function () {
     post({ type: 'eco.cockpit.openPolicy' });
+  });
+
+  elements.modeActivate.addEventListener('click', function () {
+    if (elements.modeSelect.value) {
+      post({ type: 'eco.cockpit.setHelmMode', mode: elements.modeSelect.value });
+    }
   });
 
   elements.wizardBack.addEventListener('click', function () {
@@ -293,6 +304,12 @@
       post({ type: 'eco.cockpit.refresh' });
       return;
     }
+    if (message.type === 'eco.cockpit.setHelmModeResult') {
+      const payload = message.payload || {};
+      showNotice(payload.ok === false ? (payload.error || 'Mode change failed.') : 'Operator mode updated.', payload.ok === false);
+      post({ type: 'eco.cockpit.refresh' });
+      return;
+    }
     if (message.type === 'eco.cockpit.error') {
       const payload = message.payload || {};
       showNotice(payload.message || 'Cockpit host error.', true, true);
@@ -346,7 +363,8 @@
     renderArtifacts();
     renderPolicy();
     renderGovernance(state.snapshot.governance);
-    renderEditorPlaneBar(records.runs, state.snapshot.governance);
+    renderHelmMode(state.snapshot.mode);
+    renderEditorPlaneBar(records.runs, state.snapshot.governance, state.snapshot.mode);
     renderWizard();
     renderWorkspaceExplorer(state.snapshot.marlin || {});
     renderWorkspaceRepos(state.snapshot.marlin || {});
@@ -578,13 +596,42 @@
     return contained ? 'contained' : 'violation';
   }
 
-  function renderEditorPlaneBar(runs, governance) {
+  function renderEditorPlaneBar(runs, governance, mode) {
     const latest = (runs && runs[0]) || null;
     elements.epActivePass.textContent = latest
       ? (latest.pass_name_or_id || latest.pass_id || latest.pass || '-')
       : '-';
     elements.epRunState.textContent = latest ? (latest.state || latest.status || '-') : '-';
     elements.epGovState.textContent = computeGovernanceState(governance);
+    elements.epModeState.textContent = (mode && mode.current_mode) || '-';
+  }
+
+  function renderHelmMode(mode) {
+    const helm = mode || {};
+    const availableModes = Array.isArray(helm.available_modes) ? helm.available_modes : [];
+    const history = Array.isArray(helm.history) ? helm.history : [];
+
+    if (elements.modeSelect.options.length !== availableModes.length) {
+      clear(elements.modeSelect);
+      availableModes.forEach(function (name) {
+        const option = document.createElement('option');
+        option.value = name;
+        option.textContent = name;
+        elements.modeSelect.appendChild(option);
+      });
+    }
+    if (helm.current_mode && elements.modeSelect.value !== helm.current_mode) {
+      elements.modeSelect.value = helm.current_mode;
+    }
+
+    elements.modeCurrent.textContent = helm.current_mode || '-';
+
+    renderList(elements.modeHistory, history.slice().reverse().map(function (entry) {
+      return {
+        title: (entry.previous_mode || '-') + ' → ' + (entry.current_mode || '-'),
+        detail: entry.time_loc || '',
+      };
+    }));
   }
 
   function renderWizard() {
@@ -1005,6 +1052,7 @@
       marlin: snapshot.marlin || {},
       records: Object.assign(emptyRecords(), snapshot.records || {}),
       governance: snapshot.governance || null,
+      mode: snapshot.mode || null,
       niji: snapshot.niji || {},
     };
   }
@@ -1016,6 +1064,7 @@
       marlin: {},
       records: emptyRecords(),
       governance: null,
+      mode: null,
       niji: {},
     };
   }
@@ -1104,6 +1153,13 @@
         hash_match: null,
         issues: [
           { severity: 'INFO', rule: 'preview-mode', message: 'Static browser preview is read-only.', file: 'cockpit/web/cockpit.html' },
+        ],
+      },
+      mode: {
+        current_mode: 'Navigator',
+        available_modes: ['Navigator', 'Builder', 'Analyst', 'Historian', 'Operator'],
+        history: [
+          { previous_mode: null, current_mode: 'Navigator', time_loc: '2026-07-05T20:00:00Z' },
         ],
       },
       niji: {

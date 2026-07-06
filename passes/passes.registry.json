@@ -555,6 +555,26 @@
         "CKP:1015"
       ],
       "originating_pass": "CKP.10.01"
+    },
+    {
+      "id": "CKP:1017",
+      "alias": "CKP.09.01",
+      "legacy_ids": [],
+      "title": "Mode Switching (HELM) - Host-Agnostic Adapter Read/Write",
+      "description": "Implements the v1.0 ladder's 'mode switching' item from docs/specifications/CKP.v1.0-scoping.md, which identified real prior art (HELM's 5-mode system, eco/passes/helm/HELM.00-02.md) rather than new invented scope. Per the CKP.03 three-phase architecture decision (Python package is host-agnostic; VS Code and any future standalone shell are adapters on top of it, not separate APIs), the entire feature - both reading current mode/history and writing a mode change - lives in EcoAdapter (new 'mode' record type; list_records/get_record read <workspace_root>/.eco/helm/mode_history.json with the same graceful-degradation pattern as CKP.08.07's governance record; submit('mode', {mode}) appends a HelmModeChange-shaped entry, pure file I/O, no subprocess or VS Code API). Explicitly does not port eco-vs's helm.ts/helm-session.ts implementation into eco-vscode and does not touch eco-vs or the eco repo at all - an earlier draft of this PASS proposed exactly that porting approach and was corrected mid-session after the portfolio owner objected that it would make the feature itself VS-Code-dependent, contradicting CKP.03. eco-vscode's role is limited to the same thin, generic message-relay every other write action (approve escalation, save policy, delete artifact) already requires. Bundle UI adds an 'Operator Mode' tile to the dashboard's editor-plane-sync status bar and a HELM Mode section (selector, Activate button, change history) to the Governance tab.",
+      "layer": "domain",
+      "cluster": "CKP",
+      "parent": "CKP:1011",
+      "status": "accepted",
+      "timestamp": "2026-07-05T00:00:00Z",
+      "path": "src/cockpit/adapters/eco.py",
+      "supersedes": [],
+      "superseded_by": null,
+      "depends_on": [
+        "CKP:1011",
+        "CKP:1007"
+      ],
+      "originating_pass": "CKP.09.01"
     }
   ]
 }

@@ -84,6 +84,13 @@ def _sample_snapshot() -> dict:
             ],
         },
         "governance": {"mode": "enforced", "health": "ok", "hash_match": True, "issues": []},
+        "mode": {
+            "current_mode": "Navigator",
+            "available_modes": ["Navigator", "Builder", "Analyst", "Historian", "Operator"],
+            "history": [
+                {"previous_mode": None, "current_mode": "Navigator", "time_loc": "2026-07-05T20:00:00Z"},
+            ],
+        },
         "niji": {
             "health": {"status": "ok"},
             "state": {"scheme_count": 17, "default_base_hex": "#336699"},
@@ -249,3 +256,26 @@ def test_refresh_button_posts_refresh_message(cockpit_page):
     cockpit_page.click("#refresh")
     last = cockpit_page.evaluate("window.__posted[window.__posted.length - 1]")
     assert last["type"] == "eco.cockpit.refresh"
+
+
+def test_helm_mode_renders_current_mode_and_status_tile(cockpit_page):
+    _send_state(cockpit_page, _sample_snapshot())
+
+    assert cockpit_page.locator("#ep-mode-state").inner_text() == "Navigator"
+
+    cockpit_page.click(".tab[data-tab='governance']")
+    assert cockpit_page.locator("#mode-current").inner_text() == "Navigator"
+    assert cockpit_page.locator("#mode-select option").count() == 5
+    assert cockpit_page.cockpit_errors == []
+
+
+def test_helm_mode_activate_posts_set_helm_mode(cockpit_page):
+    _send_state(cockpit_page, _sample_snapshot())
+    cockpit_page.click(".tab[data-tab='governance']")
+
+    cockpit_page.select_option("#mode-select", "Builder")
+    cockpit_page.click("#mode-activate")
+
+    last = cockpit_page.evaluate("window.__posted[window.__posted.length - 1]")
+    assert last["type"] == "eco.cockpit.setHelmMode"
+    assert last["mode"] == "Builder"
