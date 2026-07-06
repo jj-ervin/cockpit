@@ -10,6 +10,14 @@ const proxy = require('./proxy');
 
 const SESSION_COOKIE = 'cockpit_session';
 
+const READONLY_TOKEN_MIN_TTL_SECONDS = 60;
+const READONLY_TOKEN_MAX_TTL_SECONDS = 24 * 60 * 60;
+const READONLY_TOKEN_DEFAULT_TTL_SECONDS = 60 * 60;
+
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, value));
+}
+
 function parseCookies(header) {
   const out = {};
   if (!header) {
@@ -86,9 +94,22 @@ function createApp({
     }
   });
 
+  function extractBearerToken(req) {
+    const header = req.headers.authorization;
+    if (typeof header === 'string' && header.startsWith('Bearer ')) {
+      return header.slice('Bearer '.length).trim();
+    }
+    return null;
+  }
+
   function requireSession(req, res, next) {
     const cookies = parseCookies(req.headers.cookie);
-    const token = cookies[SESSION_COOKIE];
+    // A cookie is how the browser session flow authenticates; a Bearer
+    // token is how an issued read-only token (see /api/tokens/readonly
+    // below) gets used outside a browser - a script or third-party
+    // integration has no cookie jar. Cookie takes priority since it's the
+    // primary flow; Bearer is the fallback for non-browser callers.
+    const token = cookies[SESSION_COOKIE] || extractBearerToken(req);
     if (!token) {
       res.status(401).json({ error: 'No session.' });
       return;
@@ -121,6 +142,23 @@ function createApp({
     }
     res.status(429).json({ error: 'Rate limit exceeded for this tenant.' });
   }
+
+  app.post('/api/tokens/readonly', requireSession, (req, res) => {
+    // Any authenticated tenant may mint a narrower read-only token scoped
+    // to their own tenantId - this never escalates (the new token's
+    // capabilities are always exactly ['read'], regardless of the caller's
+    // own capabilities), so a read-only-scoped caller minting another
+    // read-only token is not a privilege escalation. This is the intended
+    // use: generating a share/embed link or a token for a read-only
+    // integration, without handing out the caller's own full session.
+    const requestedTtl = req.body && Number.isFinite(req.body.ttlSeconds) ? req.body.ttlSeconds : READONLY_TOKEN_DEFAULT_TTL_SECONDS;
+    const ttlSeconds = clamp(requestedTtl, READONLY_TOKEN_MIN_TTL_SECONDS, READONLY_TOKEN_MAX_TTL_SECONDS);
+    const now = nowFn();
+    const token = session.sign({
+      tenantId: req.tenant.id, capabilities: ['read'], ttlSeconds, now, secret: sessionSecret,
+    });
+    res.json({ token, capabilities: ['read'], expiresAt: new Date(now + ttlSeconds * 1000).toISOString() });
+  });
 
   app.post('/api/whoami', requireSession, (req, res) => {
     // Deliberately ignores any workspaceRoot/workspace field the client

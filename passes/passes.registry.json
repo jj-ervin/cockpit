@@ -3,7 +3,7 @@
   "namespace": "CKP",
   "meta": {
     "created_at": "2026-07-02T00:00:00Z",
-    "updated_at": "2026-07-06T00:00:02Z",
+    "updated_at": "2026-07-06T00:00:03Z",
     "allocation_authority": "jj-ervin",
     "namespace_file": "passes/namespace.yaml",
     "layers_file": "passes/layers.yaml",
@@ -671,6 +671,25 @@
         "CKP:1021"
       ],
       "originating_pass": "CKP.15.00"
+    },
+    {
+      "id": "CKP:1023",
+      "alias": "CKP.16.00",
+      "legacy_ids": [],
+      "title": "Read-Only Token Issuance Endpoint",
+      "description": "Closes CKP.14.00's named gap: capability-scoped tokens existed but there was no way to actually issue a narrower one. POST /api/tokens/readonly (server.js) lets any authenticated tenant mint a token scoped to exactly ['read'], regardless of the caller's own capabilities - never an escalation, since the issued token's capability set is fixed rather than inherited or widened. ttlSeconds is accepted and clamped to [60, 86400] (1 minute to 24 hours), defaulting to 1 hour, so a caller cannot mint an effectively-permanent token via an absurd TTL. A necessary companion change: requireSession only read the cockpit_session cookie, so a token minted here would have had no way to actually be used by a non-browser caller (no cookie jar) - requireSession now also accepts Authorization: Bearer <token> as a fallback after the cookie, same session.verify() call, no new trust boundary.",
+      "layer": "domain",
+      "cluster": "CKP",
+      "parent": "CKP:1021",
+      "status": "accepted",
+      "timestamp": "2026-07-06T00:00:00Z",
+      "path": "host-cloud/server.js",
+      "supersedes": [],
+      "superseded_by": null,
+      "depends_on": [
+        "CKP:1021"
+      ],
+      "originating_pass": "CKP.16.00"
     }
   ]
 }

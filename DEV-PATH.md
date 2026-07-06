@@ -1226,3 +1226,47 @@ unchanged). Confirmed the refusal path is real: `resolveRuntimeSecurity`
 throws for the default (`HOST` unset → `0.0.0.0`, no TLS/insecure flag)
 rather than silently starting insecure, which is what `CKP.12.00`-`14.00`
 shipped before this fix.
+
+## Phase 21 — Read-Only Token Issuance Endpoint (CKP.16.00)
+
+**Recorded:** 2026-07-06
+**Source:** `CKP.14.00`'s "Deliberately not built this PASS" list — capability
+tokens existed with no endpoint to actually issue a narrower one
+
+### Decision
+
+`POST /api/tokens/readonly` (`server.js`) lets any authenticated tenant
+mint a new token scoped to exactly `['read']`, regardless of the caller's
+own capabilities — this never escalates, since the issued token's
+capability set is fixed, not inherited or widened. `ttlSeconds` is
+accepted in the body and clamped to `[60, 86400]` (1 minute to 24 hours),
+defaulting to 1 hour, so a caller can't mint an effectively-permanent
+token by requesting an absurd TTL.
+
+The intended use is generating a share/embed link or a token for a
+read-only integration without handing out the caller's own full session.
+
+### A second, necessary change: Bearer-token authentication
+
+A token minted by this endpoint would have been useless without a way to
+actually use it — `requireSession` only read `cockpit_session` from a
+cookie, and a non-browser caller (a script, a third-party read-only
+integration) has no cookie jar. `requireSession` now also accepts
+`Authorization: Bearer <token>`, checked as a fallback after the cookie.
+This doesn't change any existing behavior for browser sessions (cookie
+still takes priority) and doesn't add any new trust boundary — it's the
+same `session.verify()` call, just fed from a different transport.
+
+### Validation
+
+66 tests in `host-cloud/tests/` (5 new: token issuance, TTL clamping,
+requires-session, Bearer-header auth round trip, and a read-only Bearer
+token still rejected from a write action), 65 passing, 1 self-skipped
+(symlink permission, unchanged).
+
+### Next
+
+Real GitHub OAuth verification (currently mocked-fetch-only) needs a real
+GitHub OAuth App's credentials from the portfolio owner; real container
+orchestration remains blocked on Docker access; true filesystem quota
+enforcement remains unbuilt.

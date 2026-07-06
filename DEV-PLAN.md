@@ -745,3 +745,18 @@ non-loopback bind unless `COCKPIT_CLOUD_TLS_TERMINATED=1` or an explicit
 unaffected.
 
 **Validation:** 61 tests (7 new), 60 passing, 1 self-skipped (unchanged).
+
+---
+
+## CKP.16.00 Closure — Read-Only Token Issuance Endpoint
+
+**Closed:** 2026-07-06
+
+`POST /api/tokens/readonly` lets any authenticated tenant mint a token
+scoped to exactly `['read']`, regardless of their own capabilities (never
+an escalation). `ttlSeconds` is clamped to `[60, 86400]`. `requireSession`
+also gained `Authorization: Bearer <token>` support (cookie still takes
+priority) — a token minted here would otherwise have no way to actually be
+used, since non-browser callers have no cookie jar.
+
+**Validation:** 66 tests (5 new), 65 passing, 1 self-skipped (unchanged).

@@ -274,3 +274,104 @@ test('POST /api/bridge returns 507 and skips the process/proxy call when a write
     assert.equal(processManager.calls.length, 0);
   });
 });
+
+test('POST /api/tokens/readonly issues a token scoped to read only', async () => {
+  const registry = createTenantRegistry({ dataDir: makeTmpDataDir() });
+  const alice = registry.createTenant({ githubId: 1, login: 'alice' });
+  const app = createApp({ tenantRegistry: registry, sessionSecret: SECRET, github: {} });
+  const session = require('../session');
+  const fullToken = session.sign({ tenantId: alice.id, secret: SECRET });
+
+  await withServer(app, async (base) => {
+    const res = await fetch(`${base}/api/tokens/readonly`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Cookie: `cockpit_session=${fullToken}` },
+      body: '{}',
+    });
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.deepEqual(body.capabilities, ['read']);
+    const claims = session.verify(body.token, { secret: SECRET });
+    assert.equal(claims.tenantId, alice.id);
+    assert.deepEqual(claims.capabilities, ['read']);
+  });
+});
+
+test('POST /api/tokens/readonly clamps an out-of-range ttlSeconds instead of honoring it verbatim', async () => {
+  const registry = createTenantRegistry({ dataDir: makeTmpDataDir() });
+  const alice = registry.createTenant({ githubId: 1, login: 'alice' });
+  const app = createApp({ tenantRegistry: registry, sessionSecret: SECRET, github: {} });
+  const session = require('../session');
+  const fullToken = session.sign({ tenantId: alice.id, secret: SECRET });
+
+  await withServer(app, async (base) => {
+    const res = await fetch(`${base}/api/tokens/readonly`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Cookie: `cockpit_session=${fullToken}` },
+      body: JSON.stringify({ ttlSeconds: 999999999 }),
+    });
+    const body = await res.json();
+    const claims = session.verify(body.token, { secret: SECRET, now: Date.now() });
+    // Clamped to the 24h max, not the requested ~31.7 years.
+    const expiresAt = new Date(body.expiresAt).getTime();
+    assert.ok(expiresAt - Date.now() <= 24 * 60 * 60 * 1000 + 5000);
+  });
+});
+
+test('POST /api/tokens/readonly requires an existing session', async () => {
+  const registry = createTenantRegistry({ dataDir: makeTmpDataDir() });
+  const app = createApp({ tenantRegistry: registry, sessionSecret: SECRET, github: {} });
+  await withServer(app, async (base) => {
+    const res = await fetch(`${base}/api/tokens/readonly`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}',
+    });
+    assert.equal(res.status, 401);
+  });
+});
+
+test('a read-only token issued via /api/tokens/readonly can authenticate via Bearer header, no cookie needed', async () => {
+  const registry = createTenantRegistry({ dataDir: makeTmpDataDir() });
+  const alice = registry.createTenant({ githubId: 1, login: 'alice' });
+  const app = createApp({ tenantRegistry: registry, sessionSecret: SECRET, github: {} });
+  const session = require('../session');
+  const fullToken = session.sign({ tenantId: alice.id, secret: SECRET });
+
+  await withServer(app, async (base) => {
+    const issueRes = await fetch(`${base}/api/tokens/readonly`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Cookie: `cockpit_session=${fullToken}` },
+      body: '{}',
+    });
+    const { token: readOnlyToken } = await issueRes.json();
+
+    const whoamiRes = await fetch(`${base}/api/whoami`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${readOnlyToken}` },
+      body: '{}',
+    });
+    assert.equal(whoamiRes.status, 200);
+    const body = await whoamiRes.json();
+    assert.equal(body.tenantId, alice.id);
+  });
+});
+
+test('a read-only token used via Bearer still cannot invoke a write action', async () => {
+  const registry = createTenantRegistry({ dataDir: makeTmpDataDir() });
+  const alice = registry.createTenant({ githubId: 1, login: 'alice' });
+  const processManager = fakeProcessManager({ [alice.id]: 9010 });
+  const app = createApp({
+    tenantRegistry: registry, sessionSecret: SECRET, github: {}, processManager,
+    deps: { proxyForward: async () => [{ type: 'eco.cockpit.actionResult', payload: { ok: true } }] },
+  });
+  const session = require('../session');
+  const readOnlyToken = session.sign({ tenantId: alice.id, secret: SECRET, capabilities: ['read'] });
+
+  await withServer(app, async (base) => {
+    const res = await fetch(`${base}/api/bridge`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${readOnlyToken}` },
+      body: JSON.stringify({ type: 'eco.cockpit.submitRun', payload: {} }),
+    });
+    assert.equal(res.status, 403);
+  });
+});
