@@ -232,6 +232,20 @@ def test_niji_provider_panel_renders_without_error(cockpit_page):
     assert cockpit_page.cockpit_errors == []
 
 
+def test_providers_tile_reflects_marlin_and_niji_reachability(cockpit_page):
+    snapshot = _sample_snapshot()
+    _send_state(cockpit_page, snapshot)
+    assert cockpit_page.locator("#providers-status").inner_text() == "2/2 ok"
+
+    snapshot["marlin"]["error"] = "bridge unreachable"
+    cockpit_page.evaluate(
+        "(payload) => window.postMessage({ type: 'eco.cockpit.state', payload }, '*')",
+        snapshot,
+    )
+    cockpit_page.wait_for_function("document.getElementById('providers-status').textContent === '1/2 ok'")
+    assert cockpit_page.locator("#providers-status").inner_text() == "1/2 ok"
+
+
 def test_workspace_explorer_renders_and_posts_structured_intents(cockpit_page):
     _send_state(cockpit_page, _sample_snapshot())
     cockpit_page.click(".tab[data-tab='workspace-tab']")

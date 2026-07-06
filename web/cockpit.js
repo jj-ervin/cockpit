@@ -65,6 +65,7 @@
     ecoRoot: byId('eco-root'),
     backend: byId('backend'),
     workspace: byId('workspace'),
+    providersStatus: byId('providers-status'),
     tabs: Array.from(document.querySelectorAll('.tab')),
     panels: Array.from(document.querySelectorAll('.tab-panel')),
     runCounts: byId('run-counts'),
@@ -369,6 +370,7 @@
     renderWorkspaceExplorer(state.snapshot.marlin || {});
     renderWorkspaceRepos(state.snapshot.marlin || {});
     renderNiji(state.snapshot.niji || {});
+    renderProviderSummary(state.snapshot.marlin || {}, state.snapshot.niji || {});
 
     if (workspace.bridgeError) {
       elements.footer.textContent = workspace.bridgeError;
@@ -596,6 +598,18 @@
       return typeof issue.rule === 'string' && issue.rule.indexOf('containment') === 0;
     });
     return contained ? 'contained' : 'violation';
+  }
+
+  function renderProviderSummary(marlin, niji) {
+    const providers = [
+      { name: 'Marlin', ok: !marlin.error },
+      { name: 'Niji', ok: !niji.error },
+    ];
+    const okCount = providers.filter(function (p) { return p.ok; }).length;
+    elements.providersStatus.textContent = okCount + '/' + providers.length + ' ok';
+    elements.providersStatus.title = providers.map(function (p) {
+      return p.name + ': ' + (p.ok ? 'ok' : 'unavailable');
+    }).join(', ');
   }
 
   function renderEditorPlaneBar(runs, governance, mode) {
