@@ -24,6 +24,10 @@ venv/
 # Headless Chromium (pytest-playwright) GPU process log
 debug.log
 
+# Local pytest finish artifacts
+.pytest-tmp-finish/
+.pytest-tmp-finish-all/
+
 # Node (host-web)
 node_modules/
 npm-debug.log*
