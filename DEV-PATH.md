@@ -818,3 +818,36 @@ snapshot reflecting the new mode and history — was exercised in a real VS
 Code Extension Development Host against a scratch `.eco/` workspace and
 works. The one remaining unknown flagged at the end of `CKP.09.01`'s original
 implementation is closed.
+
+## Correction — Dashboard Degrades By Provider, Not By Eco Workspace (2026-07-05)
+
+User pointed out Cockpit should function without eco. Checked the actual
+`buildCockpitSnapshot` behavior first: it already only hard-requires *a VS
+Code folder be open*, not an `.eco/` workspace — `EcoAdapter`'s own methods
+already return empty/degraded data rather than raising when `.eco/` is
+absent, so Marlin, Niji, HELM Mode, and Workspace Explorer already populate
+with real data in any folder. The actual bug was presentation: the top
+dashboard status-grid (`Status`/`Total runs`/`Escalations`/`Artifacts`/
+`Health`/`.eco root`) is entirely eco-scoped data, but its labels didn't say
+so — so `Health: degraded` (accurate for the eco adapter specifically, since
+`EcoAdapter.health()` correctly reports degraded without an eco root) read as
+"Cockpit itself is broken," even when every other provider tab was working.
+
+Fix: relabeled the top-grid tiles (`Status`→`Eco Status`, `Total runs`→
+`Eco Runs`, etc., `Health`→`Eco Health`) so scope is explicit at a glance, and
+reworded the initial-load footer placeholder from "Open an eco-governed
+workspace to load Cockpit state" to name which tabs need `.eco/` (Runs,
+Escalations, Artifacts, Policy, Governance) versus which don't (Marlin, Niji,
+Workspace, Mode). No backend/adapter changes — this was a labeling bug, not a
+functional one. A follow-up worth doing later (not done here, kept this fix
+small per explicit instruction): a compact non-eco "Providers" summary tile
+on the dashboard, so the top-of-page view isn't 100% eco-flavored even in
+its accurate labels.
+
+**Not done, considered and deferred:** a standalone (no VS Code, no eco, open
+a URL) public web shell — Cockpit's own `CKP.03` Phase 3, still unbuilt. That
+would be the real fix for "Cockpit as a free public offering," but is a
+substantial separate build, not part of this correction.
+
+**Validation:** 127/127 pytest (cockpit's own `.venv`), `node --check
+web/cockpit.js` clean.

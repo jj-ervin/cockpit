@@ -375,7 +375,9 @@
     } else if (workspace.workspaceRoot) {
       elements.footer.textContent = workspace.workspaceRoot + ' | refreshed ' + workspace.refreshedAt;
     } else {
-      elements.footer.textContent = 'Open an eco-governed workspace to load Cockpit state.';
+      elements.footer.textContent = 'Open a workspace folder to load Cockpit. Eco-specific tabs (Runs, ' +
+        'Escalations, Artifacts, Policy, Governance) need a .eco workspace; Marlin, Niji, Workspace, and ' +
+        'Mode work in any folder.';
     }
   }
 
