@@ -33,10 +33,18 @@ The governing specs and original implementation lineage include:
 Local verification:
 
 ```powershell
+python -m venv .venv                   # cockpit-local venv - do not reuse another repo's venv
+.venv\Scripts\Activate.ps1
 pip install -e ".[test]"
 python -m playwright install chromium  # one-time, needed for the web bundle smoke tests
 python -m pytest
 ```
+
+Cockpit must work regardless of which venv or platform runs it. Installing
+into another repo's shared venv (e.g. running these commands with `eco`'s
+`.venv` active instead of cockpit's own) works by accident but breaks the
+"self-contained, portable" standard this portfolio holds every repo to -
+always use a dedicated `cockpit/.venv`.
 
 Phase 1 package install automation:
 
