@@ -656,3 +656,31 @@ design itself.
 skeleton (no container orchestration yet) as the first bounded
 implementation PASS — see the spec doc's own "Recommended Next Bounded
 PASS" section for the concrete test plan.
+
+---
+
+## CKP.13.00 Closure — Auth Model Decision + Tenant-Registry Skeleton
+
+**Closed:** 2026-07-06
+
+Closed `CKP.12.00`'s open auth-model decision (GitHub OAuth, per that doc's
+recommendation) and built the first real slice of the Phase 4 control
+plane: new `host-cloud/` directory with a JSON-file-backed tenant registry,
+a stateless HMAC-signed session token, a GitHub OAuth login/callback flow,
+and a `POST /api/whoami` proof endpoint. `host-web` and the Python `cockpit`
+package are unchanged.
+
+Proves the core Phase 4 invariant end-to-end, not just by design: a
+session's `workspaceRoot` is resolved only from the server-owned tenant
+registry, and a request body cannot override it (dedicated regression test
+in `host-cloud/tests/server.test.js`). Also closes the symlink/junction
+containment gap `CKP.12.00` flagged, via a new `resolveContainedPathStrict`
+that resolves through `fs.realpath` before the containment check.
+
+**Not built:** container orchestration, rate limiting/quotas/idle-teardown,
+capability-scoped tokens, and actual proxying to a tenant's `host-web`
+instance — all named as future scope, not attempted in this PASS.
+
+**Validation:** 24 new tests (`host-cloud/tests/`), 23 passing, 1
+self-skipped (symlink creation needs elevated privileges on this Windows
+dev machine — confirmed `EPERM`, not silently swallowed).

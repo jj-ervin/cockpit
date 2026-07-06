@@ -1002,3 +1002,77 @@ Recommended next bounded PASS: close the auth model decision and build a
 minimal tenant-registry skeleton (no container orchestration yet) — see the
 spec doc's "Recommended Next Bounded PASS" section for the concrete test
 plan. Phase 4 as a whole remains planned-not-started.
+
+## Phase 18 — Auth Model Decision + Tenant-Registry Skeleton (CKP.13.00)
+
+**Recorded:** 2026-07-06
+**Source:** `CKP.12.00`'s "Recommended Next Bounded PASS" section
+
+### Decision
+
+Closed the auth model decision `CKP.12.00` left open: **GitHub OAuth**, per
+that doc's own recommendation (no credential storage, fits a dev-tooling
+audience). Built the smallest real slice of the control plane: a new
+`host-cloud/` directory (colocated in this repo, sibling to `host-web/`),
+containing a JSON-file-backed tenant registry, a stateless signed session
+token (HMAC-SHA256, not a JWT library — a small self-written signer for a
+fixed, tiny claim set), a GitHub OAuth login/callback flow, and one proof
+endpoint (`POST /api/whoami`) demonstrating the core invariant end-to-end.
+
+**No container orchestration yet** — `host-cloud` runs as a single process
+today; per-tenant container lifecycle remains future scope, as `CKP.12.00`
+itself scoped out.
+
+### The core invariant, proven not just asserted
+
+`server.js`'s `requireSession` middleware is the only place `req.tenant` is
+ever set, and it derives `workspaceRoot` exclusively from the tenant record
+looked up by the session token's `tenantId` claim — never from
+`req.body`/`req.query`/`req.headers`. A dedicated test
+(`host-cloud/tests/server.test.js`, "a request cannot override its resolved
+workspaceRoot/tenant via the request body") sends a body containing both a
+forged `workspaceRoot: '/etc'` and a forged `tenantId` for another tenant,
+and asserts the response still reflects the authenticated caller's own
+record. This is the exact Phase 3 gap `CKP.12.00`'s design identified,
+closed for `host-cloud`'s new code path (`host-web` itself is unchanged).
+
+### Symlink-aware containment, closing the gap `CKP.12.00` flagged
+
+`host-cloud/pathContainment.js` adds `resolveContainedPathStrict`, resolving
+through `fs.realpathSync` (walking up to the nearest existing ancestor for
+not-yet-created paths, then reattaching the suffix) before the containment
+comparison — unlike `host-web/pathContainment.js`'s lexical-only
+`path.resolve`/`path.relative` check, this one is not fooled by a symlink
+inside the workspace pointing outside it.
+`host-cloud/tests/pathContainment.test.js` includes a real symlink-escape
+test; it skips itself (via `t.skip`, not a hard failure) in environments
+where symlink creation needs elevated privileges (confirmed on this Windows
+dev machine: `EPERM`, no Developer Mode enabled) rather than silently
+passing or failing the whole suite.
+
+### Deliberately not built this PASS
+
+- Container orchestration / per-tenant process isolation (still plain JSON
+  file and directory storage, not containers).
+- Rate limiting, concurrency caps, disk quotas, idle-teardown (all named in
+  `CKP.12.00`'s "Abuse / Resource Limits" section, none implemented here).
+- Capability-scoped tokens (read-only vs. mutating action classes) —
+  today's session token only carries `tenantId`; per-action-class claims
+  are future scope.
+- Actual proxying to a tenant's `host-web` instance — `/api/whoami` proves
+  the resolution invariant without a real `host-web` process behind it yet.
+
+### Validation
+
+24 new tests in `host-cloud/tests/` (`tenantRegistry.test.js`,
+`session.test.js`, `githubAuth.test.js`, `pathContainment.test.js`,
+`server.test.js`): 23 passing, 1 self-skipped (symlink creation permission
+in this environment). No changes to `host-web/` or any Python code in this
+PASS.
+
+### Next
+
+The items listed under "Deliberately not built this PASS" are the natural
+follow-on slices — container orchestration is the largest of them and
+warrants its own bounded PASS rather than being combined with anything
+else.

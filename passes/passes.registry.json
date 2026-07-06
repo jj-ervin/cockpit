@@ -614,6 +614,25 @@
         "CKP:1018"
       ],
       "originating_pass": "CKP.12.00"
+    },
+    {
+      "id": "CKP:1020",
+      "alias": "CKP.13.00",
+      "legacy_ids": [],
+      "title": "Auth Model Decision + Tenant-Registry Skeleton",
+      "description": "Closes CKP.12.00's open auth-model decision (GitHub OAuth, per that doc's recommendation) and builds the first real implementation slice of the Phase 4 control plane: new host-cloud/ directory (colocated in this repo, sibling to host-web/), containing a JSON-file-backed tenant registry (tenantRegistry.js), a stateless HMAC-SHA256-signed session token (session.js, a small self-written signer rather than a JWT dependency, for a fixed tiny claim set), a GitHub OAuth login/callback flow (githubAuth.js), and one proof endpoint (POST /api/whoami) demonstrating the core design invariant end-to-end: workspaceRoot is resolved only from the server-owned tenant record looked up by the session token's tenantId claim, never from request body/query/headers - proven by a dedicated regression test in host-cloud/tests/server.test.js that sends a forged workspaceRoot and tenantId in the body and asserts the response still reflects the authenticated caller's own record. Also closes the symlink/junction containment gap CKP.12.00 flagged: host-cloud/pathContainment.js adds resolveContainedPathStrict, resolving through fs.realpathSync before the containment comparison, unlike host-web/pathContainment.js's lexical-only check; a real symlink-escape test exists and self-skips (not silently passes) in environments where symlink creation needs elevated privileges. No container orchestration, rate limiting/quotas/idle-teardown, capability-scoped tokens, or actual proxying to a tenant's host-web instance were built in this pass - all named as future scope. host-web and the Python cockpit package are unchanged.",
+      "layer": "domain",
+      "cluster": "CKP",
+      "parent": "CKP:1019",
+      "status": "accepted",
+      "timestamp": "2026-07-06T00:00:00Z",
+      "path": "host-cloud/server.js",
+      "supersedes": [],
+      "superseded_by": null,
+      "depends_on": [
+        "CKP:1019"
+      ],
+      "originating_pass": "CKP.13.00"
     }
   ]
 }
