@@ -36,6 +36,7 @@ class SystemAdapter(CockpitAdapter):
     """
 
     BACKEND_ID = "system"
+    REQUIRES_WORKSPACE_ID = False  # defaults to the literal "system" when omitted
     RECORD_TYPES = frozenset({"environment"})
 
     def __init__(self, workspace_id: str | None = None, node_id: str | None = None) -> None:

@@ -75,6 +75,14 @@ class WriteNotSupportedError(CockpitAdapterError):
 # Base adapter
 # ---------------------------------------------------------------------------
 
+#: Registry of every concrete adapter, keyed by BACKEND_ID. Populated
+#: automatically by __init_subclass__ below — a new adapter registers itself
+#: just by declaring BACKEND_ID and being imported (see adapters/__init__.py),
+#: with no edit required anywhere else (previously host_bridge.py's
+#: _build_adapter needed a new if/elif branch per adapter).
+ADAPTER_REGISTRY: dict[str, type["CockpitAdapter"]] = {}
+
+
 class CockpitAdapter(ABC):
     """Abstract base for all Cockpit backend adapters.
 
@@ -84,6 +92,27 @@ class CockpitAdapter(ABC):
     Phase 2+ callers instantiate multiple adapters and aggregate results
     at the host layer — not here.
     """
+
+    #: Stable lowercase identifier this adapter registers under. Subclasses
+    #: must set this (enforced in __init_subclass__, not just by convention).
+    BACKEND_ID: str = ""
+
+    #: Whether this backend requires a real, non-empty workspace_id to
+    #: construct (eco reads from a real .eco/ filesystem layout and cannot
+    #: function without one). Backends with a sensible default location
+    #: (marlin, niji, system) override this to False.
+    REQUIRES_WORKSPACE_ID: bool = True
+
+    def __init_subclass__(cls, **kwargs: Any) -> None:
+        super().__init_subclass__(**kwargs)
+        if not cls.BACKEND_ID:
+            return  # allow intermediate abstract subclasses with no BACKEND_ID
+        if cls.BACKEND_ID in ADAPTER_REGISTRY and ADAPTER_REGISTRY[cls.BACKEND_ID] is not cls:
+            raise ValueError(
+                f"BACKEND_ID {cls.BACKEND_ID!r} already registered to "
+                f"{ADAPTER_REGISTRY[cls.BACKEND_ID].__name__}, cannot reuse for {cls.__name__}"
+            )
+        ADAPTER_REGISTRY[cls.BACKEND_ID] = cls
 
     def __init__(self, workspace_id: str, node_id: str | None = None) -> None:
         self._workspace_id = workspace_id

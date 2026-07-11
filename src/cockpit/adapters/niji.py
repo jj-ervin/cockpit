@@ -31,6 +31,7 @@ class NijiAdapter(CockpitAdapter):
     """
 
     BACKEND_ID = "niji"
+    REQUIRES_WORKSPACE_ID = False  # falls back to _default_niji_root() when omitted
     RECORD_TYPES = frozenset({"scheme", "palette-preview"})
 
     def __init__(self, workspace_id: str | None = None, node_id: str | None = None) -> None:

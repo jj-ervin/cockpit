@@ -48,6 +48,7 @@ class MarlinAdapter(CockpitAdapter):
     """
 
     BACKEND_ID = "marlin"
+    REQUIRES_WORKSPACE_ID = False  # falls back to _default_marlin_home() when omitted
     RECORD_TYPES = frozenset({"package", "install-readiness", "workspace-tree", "repo-status"})
     WORKSPACE_SKIP_DIRS = frozenset({
         ".git",

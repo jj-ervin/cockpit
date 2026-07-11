@@ -13,11 +13,8 @@ import sys
 from dataclasses import asdict
 from typing import Any
 
-from cockpit.adapters.eco import EcoAdapter
-from cockpit.adapters.marlin import MarlinAdapter
-from cockpit.adapters.niji import NijiAdapter
-from cockpit.adapters.system import SystemAdapter
-from cockpit.core.adapter import CockpitAdapter
+import cockpit.adapters  # noqa: F401 — import for its registration side-effect only
+from cockpit.core.adapter import ADAPTER_REGISTRY, CockpitAdapter
 
 
 _OPERATIONS = frozenset({
@@ -112,32 +109,21 @@ def _build_adapter(
     workspace_id: Any,
     node_id: Any,
 ) -> CockpitAdapter:
-    normalized_node_id = str(node_id) if node_id is not None else None
+    """Looks up the adapter class registered under `backend` and constructs
+    it. No branch here names a specific adapter — adding one (see
+    adapters/__init__.py's docstring) never requires touching this function.
+    """
+    adapter_cls = ADAPTER_REGISTRY.get(backend)
+    if adapter_cls is None:
+        raise ValueError(f"unknown backend: {backend}")
 
-    if backend == "eco":
-        return EcoAdapter(
-            workspace_id=_require_string_value(workspace_id, "workspace_id"),
-            node_id=normalized_node_id,
-        )
-    if backend == "marlin":
+    normalized_node_id = str(node_id) if node_id is not None else None
+    if adapter_cls.REQUIRES_WORKSPACE_ID:
+        normalized_workspace: str | None = _require_string_value(workspace_id, "workspace_id")
+    else:
         normalized_workspace = str(workspace_id) if workspace_id else None
-        return MarlinAdapter(
-            workspace_id=normalized_workspace,
-            node_id=normalized_node_id,
-        )
-    if backend == "niji":
-        normalized_workspace = str(workspace_id) if workspace_id else None
-        return NijiAdapter(
-            workspace_id=normalized_workspace,
-            node_id=normalized_node_id,
-        )
-    if backend == "system":
-        normalized_workspace = str(workspace_id) if workspace_id else None
-        return SystemAdapter(
-            workspace_id=normalized_workspace,
-            node_id=normalized_node_id,
-        )
-    raise ValueError(f"unknown backend: {backend}")
+
+    return adapter_cls(workspace_id=normalized_workspace, node_id=normalized_node_id)
 
 
 def _serialize_result(result: Any) -> dict[str, Any]:
