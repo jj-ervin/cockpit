@@ -1,0 +1,16 @@
+{
+  "schema_version": "cockpit-provider-v1",
+  "id": "marlin",
+  "name": "Marlin",
+  "version": "0.2.0",
+  "description": "Package, governance, and workspace operations.",
+  "transport": { "kind": "stdio-json", "protocol": "cockpit-provider-v1" },
+  "commands": [
+    { "id": "marlin.governance.validate", "title": "Validate governance", "action": "governance.validate", "mutation": false, "placements": ["command-palette", "view"] },
+    { "id": "marlin.governance.remediate", "title": "Apply governance remediation", "action": "governance.remediate", "mutation": true, "requires_confirmation": true, "placements": ["command-palette", "view"] }
+  ],
+  "views": [{ "id": "marlin.governance.status", "title": "Governance Status", "kind": "panel", "placement": "primary" }],
+  "capabilities": ["read", "write", "execute", "filesystem", "evidence"],
+  "permissions": [{ "id": "workspace.write", "reason": "Apply approved governance remediation to the selected workspace.", "required": false }],
+  "appearance": { "icon": "asset:marlin.svg", "accent_token": "provider.marlin", "preferred_view": "marlin.governance.status" }
+}

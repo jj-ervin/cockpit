@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cockpit.dev/schemas/cockpit-provider-v1.schema.json",
+  "title": "Cockpit Provider Manifest v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "id", "name", "version", "transport", "commands", "views", "capabilities"],
+  "properties": {
+    "schema_version": { "const": "cockpit-provider-v1" },
+    "id": { "type": "string", "pattern": "^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*$" },
+    "name": { "type": "string", "minLength": 1, "maxLength": 80 },
+    "version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+(?:[-+][0-9A-Za-z.-]+)?$" },
+    "description": { "type": "string", "maxLength": 500 },
+    "transport": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind"],
+      "properties": {
+        "kind": { "const": "stdio-json" },
+        "protocol": { "const": "cockpit-provider-v1" }
+      }
+    },
+    "commands": { "type": "array", "items": { "$ref": "#/$defs/command" }, "uniqueItems": true },
+    "views": { "type": "array", "items": { "$ref": "#/$defs/view" }, "uniqueItems": true },
+    "capabilities": { "type": "array", "items": { "enum": ["read", "write", "execute", "filesystem", "network", "secrets", "notifications", "evidence"] }, "uniqueItems": true },
+    "permissions": { "type": "array", "items": { "$ref": "#/$defs/permission" }, "default": [] },
+    "appearance": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "icon": { "type": "string", "pattern": "^asset:[a-zA-Z0-9._/-]+$" },
+        "accent_token": { "type": "string", "pattern": "^provider\\.[a-z][a-z0-9.-]+$" },
+        "preferred_view": { "type": "string" }
+      }
+    }
+  },
+  "$defs": {
+    "command": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "title", "action", "mutation"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)+$" },
+        "title": { "type": "string", "minLength": 1 },
+        "action": { "type": "string", "minLength": 1 },
+        "mutation": { "type": "boolean" },
+        "requires_confirmation": { "type": "boolean", "default": false },
+        "placements": { "type": "array", "items": { "enum": ["command-palette", "toolbar", "context-menu", "view"] }, "uniqueItems": true }
+      },
+      "allOf": [{ "if": { "properties": { "mutation": { "const": true } }, "required": ["mutation"] }, "then": { "required": ["requires_confirmation"], "properties": { "requires_confirmation": { "const": true } } } }]
+    },
+    "view": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "title", "kind"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)+$" },
+        "title": { "type": "string", "minLength": 1 },
+        "kind": { "enum": ["panel", "workspace", "inspector", "settings", "custom-canvas"] },
+        "placement": { "enum": ["primary", "sidebar", "bottom", "right", "settings"] }
+      }
+    },
+    "permission": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "reason"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "reason": { "type": "string", "minLength": 1 },
+        "required": { "type": "boolean", "default": true }
+      }
+    }
+  }
+}

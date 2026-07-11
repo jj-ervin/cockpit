@@ -793,3 +793,19 @@ shell-escaping, not a real bug — re-verified with a real script file.
 **Validation:** 145 Python tests (145/145, +15 new), 15 Playwright bundle
 smoke tests (+2 new), 28 `host-web` tests (unchanged). `eco-vscode`:
 `tsc --noEmit` and `npm run build` both clean.
+## cockpit-provider-v1 Contract Slice (2026-07-11)
+
+The first implementation slice of the v1 provider contract now exists:
+versioned JSON Schemas for provider manifests, operation requests/results,
+and Marlin-issued installation attestations; zero-trust Marlin and Niji
+fixtures; and a generic `ProviderRegistry` that validates schemas, matches
+provider identity/version, verifies the exact manifest SHA-256 digest, resolves
+only an existing absolute executable from the Marlin attestation, and denies
+unknown providers or commands. Provider manifests cannot choose executables.
+Mutations must declare confirmation. Appearance is limited to validated
+semantic identity; Cockpit retains trust chrome and global theme authority.
+
+Validation: 155 Python tests pass, including 10 provider-contract/registry
+tests. The v1 release gate remains in progress: `host_bridge.py` still uses
+built-in adapter branches and must be migrated to registry-backed provider
+dispatch before provider registration can be called portable end to end.

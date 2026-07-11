@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cockpit.dev/schemas/cockpit-operation-result-v1.schema.json",
+  "title": "Cockpit Provider Operation Result v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "operation_id", "provider_id", "status", "timestamp", "data", "evidence"],
+  "properties": {
+    "schema_version": { "const": "cockpit-operation-result-v1" },
+    "operation_id": { "type": "string", "minLength": 1 },
+    "provider_id": { "type": "string", "minLength": 1 },
+    "command_id": { "type": "string", "minLength": 1 },
+    "status": { "enum": ["succeeded", "failed", "cancelled", "pending-approval"] },
+    "timestamp": { "type": "string", "format": "date-time" },
+    "data": {},
+    "error": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["code", "message"],
+      "properties": { "code": { "type": "string" }, "message": { "type": "string" }, "retryable": { "type": "boolean" } }
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "ref"],
+        "properties": {
+          "kind": { "type": "string" },
+          "ref": { "type": "string" },
+          "digest": { "type": "string" }
+        }
+      }
+    }
+  }
+}

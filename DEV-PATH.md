@@ -1356,3 +1356,17 @@ Quick-Bar and "environment emergence UI" remain the two blocked v1.0
 ladder items (upstream `devxtoolkit-v2-x` still Phase 0; the design itself
 still undefined). v1.0 is now 3-of-5 real; those two remain genuinely
 outside Cockpit's control.
+## cockpit-provider-v1 — Contract and Trusted Registry Foundation (2026-07-11)
+
+Defined the portable provider boundary as code rather than a Marlin-specific
+UI convention. Cockpit owns shell rendering, permissions, approvals, themes,
+accessibility, and trust chrome; providers own domain commands and views;
+Marlin owns verified installation identity. The provider manifest is therefore
+declarative and cannot select an executable. A separate Marlin attestation
+binds provider ID/version and manifest digest to an installed executable.
+
+The v1 wire baseline is one JSON request on stdin and one structured JSON
+result on stdout. Marlin is the first full provider and Niji is the independent
+portability fixture. Generic registration is implemented and tested; replacing
+`host_bridge.py`'s built-in adapter selection with registry-backed dispatch is
+the next implementation boundary, not claimed complete here.
