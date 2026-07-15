@@ -809,3 +809,27 @@ Validation: 155 Python tests pass, including 10 provider-contract/registry
 tests. The v1 release gate remains in progress: `host_bridge.py` still uses
 built-in adapter branches and must be migrated to registry-backed provider
 dispatch before provider registration can be called portable end to end.
+
+## QUEUED IDEAS
+
+### Host-view and navigation character themes (2026-07-14)
+
+Explore Cockpit-owned appearance modes that alter presentation and navigation
+character without changing provider contracts, trust chrome, permissions, or
+underlying information architecture:
+
+- a legally distributable LCARS-adjacent mode using condensed geometric type,
+  segmented information bands, strong hierarchy, and spatial navigation —
+  inspired by optimistic control-room interfaces without copying Star Trek
+  marks, terminology, exact layouts, or proprietary font assets;
+- a modern aviation mode influenced by glass cockpits, flight-management
+  systems, restrained instrument panels, and high-legibility operational data;
+- a vintage aviation mode influenced by analog gauges, placards, charting,
+  navigation logs, and tactile cockpit materials while retaining accessible
+  contrast and contemporary interaction behavior.
+
+Treat these as host-view/theme experiments, not separate product forks. A
+future design pass should determine whether they are full themes, navigation
+profiles, optional host shells, or smaller visual modes. Cockpit remains the
+authority for global theme and trust presentation; provider-supplied appearance
+must not override safety-critical states.
