@@ -2,7 +2,7 @@
 
 **AUTHORITY LEVEL: AL:1**
 **Status:** SCAFFOLD / ACTIVE PRODUCT DIRECTION
-**Updated:** 2026-06-21
+**Updated:** 2026-07-26
 **Authority:** CK.00, CK.01, CK.02 in `C:\dev\eco`
 
 ---
@@ -122,7 +122,7 @@ Cockpit does not own:
 | --- | --- | --- |
 | CKP.0 | Recover standalone Cockpit planning docs | Done |
 | CKP.1 | Inventory current eco Cockpit implementation and gaps | Planned |
-| CKP.2 | Package Cockpit as an installable standalone module/SKU | Planned |
+| CKP.2 | Package Cockpit as an installable standalone module/SKU | In progress — Electron x64 host and offline NSIS installer are buildable locally; release and Marlin registry publication remain gated. |
 | CKP.3 | Embed Cockpit cleanly in eco.vs sidebar/panel flow | Planned |
 | CKP.4 | Wire HELM mode integration against Cockpit state | Planned |
 | CKP.5 | Define standalone plugin/extension contract | Planned |
@@ -833,3 +833,18 @@ future design pass should determine whether they are full themes, navigation
 profiles, optional host shells, or smaller visual modes. Cockpit remains the
 authority for global theme and trust presentation; provider-supplied appearance
 must not override safety-critical states.
+
+## Niji Hosted-Session Adapter Completion (2026-07-26)
+
+Completed the Niji provider's v1.1 hosting gaps without changing its read-only
+authority boundary. Cockpit now consumes Niji's installed integration facade,
+not a sibling-checkout `sys.path` fallback. The adapter creates a host-scoped
+session, hands off host context, and records Niji lifecycle events through the
+existing `NijiEventSink` protocol. Generic bridge `activate`/`close`
+operations remain non-mutating for all providers; only Niji implements them
+today. `submit` and `update_record` still fail closed for Niji.
+
+**Validation:** 157 Cockpit Python tests passed; Niji's 19 integration API
+tests passed. Installed-provider end-to-end smoke remains blocked only by the
+current virtual-environment dependency mismatch, not by a sibling-path
+fallback in source.

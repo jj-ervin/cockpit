@@ -14,6 +14,7 @@ T = TypeVar("T")
 # Provenance
 # ---------------------------------------------------------------------------
 
+
 @dataclass(frozen=True)
 class AdapterOrigin:
     """Provenance metadata attached to every adapter result.
@@ -35,6 +36,7 @@ class AdapterOrigin:
 # Result envelope
 # ---------------------------------------------------------------------------
 
+
 @dataclass(frozen=True)
 class AdapterResult(Generic[T]):
     """Typed result with provenance. Every adapter method returns this."""
@@ -46,6 +48,7 @@ class AdapterResult(Generic[T]):
 # ---------------------------------------------------------------------------
 # Error hierarchy
 # ---------------------------------------------------------------------------
+
 
 class CockpitAdapterError(Exception):
     """Base for all adapter errors."""
@@ -107,7 +110,10 @@ class CockpitAdapter(ABC):
         super().__init_subclass__(**kwargs)
         if not cls.BACKEND_ID:
             return  # allow intermediate abstract subclasses with no BACKEND_ID
-        if cls.BACKEND_ID in ADAPTER_REGISTRY and ADAPTER_REGISTRY[cls.BACKEND_ID] is not cls:
+        if (
+            cls.BACKEND_ID in ADAPTER_REGISTRY
+            and ADAPTER_REGISTRY[cls.BACKEND_ID] is not cls
+        ):
             raise ValueError(
                 f"BACKEND_ID {cls.BACKEND_ID!r} already registered to "
                 f"{ADAPTER_REGISTRY[cls.BACKEND_ID].__name__}, cannot reuse for {cls.__name__}"
@@ -264,3 +270,22 @@ class CockpitAdapter(ABC):
         raise WriteNotSupportedError(
             f"'{self.backend_id}' adapter does not support restore_record"
         )
+
+    # --- Optional: host lifecycle ------------------------------------------
+
+    def activate(
+        self, context: dict[str, Any] | None = None
+    ) -> AdapterResult[dict[str, Any]]:
+        """Activate a host-scoped backend session when the backend supports one.
+
+        Lifecycle is deliberately separate from mutation authority: activating a
+        provider may establish transient host context, but does not grant Cockpit
+        permission to save or alter provider-owned data.
+        """
+        raise ValidationError(
+            f"'{self.backend_id}' adapter does not support activation"
+        )
+
+    def close(self) -> AdapterResult[dict[str, Any]]:
+        """Close a host-scoped backend session when the backend supports one."""
+        raise ValidationError(f"'{self.backend_id}' adapter does not support closure")

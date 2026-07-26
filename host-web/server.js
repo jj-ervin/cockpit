@@ -63,7 +63,7 @@ function renderHtml() {
   return html;
 }
 
-function createApp({ workspaceRoot, pythonExecutable, deps } = {}) {
+function createApp({ workspaceRoot, pythonExecutable, bridgeExecutable, deps } = {}) {
   const app = express();
   app.use(express.json());
 
@@ -75,7 +75,7 @@ function createApp({ workspaceRoot, pythonExecutable, deps } = {}) {
 
   app.post('/api/bridge', async (req, res) => {
     try {
-      const messages = await dispatch(req.body.type, req.body, { workspaceRoot, pythonExecutable, deps });
+      const messages = await dispatch(req.body.type, req.body, { workspaceRoot, pythonExecutable, bridgeExecutable, deps });
       res.json(messages);
     } catch (err) {
       res.json([{ type: 'eco.cockpit.error', payload: { message: err instanceof Error ? err.message : String(err) } }]);

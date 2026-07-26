@@ -16,18 +16,21 @@ from typing import Any
 import cockpit.adapters  # noqa: F401 — import for its registration side-effect only
 from cockpit.core.adapter import ADAPTER_REGISTRY, CockpitAdapter
 
-
-_OPERATIONS = frozenset({
-    "health",
-    "get_state",
-    "list_records",
-    "get_record",
-    "submit",
-    "approve",
-    "update_record",
-    "delete_record",
-    "restore_record",
-})
+_OPERATIONS = frozenset(
+    {
+        "health",
+        "get_state",
+        "list_records",
+        "get_record",
+        "submit",
+        "approve",
+        "update_record",
+        "delete_record",
+        "restore_record",
+        "activate",
+        "close",
+    }
+)
 
 
 def execute(request: dict[str, Any]) -> dict[str, Any]:
@@ -80,7 +83,16 @@ def execute(request: dict[str, Any]) -> dict[str, Any]:
         record_type = _require_string(request, "record_type")
         record_id = _require_string(request, "record_id")
         trash_ref = _require_string(request, "trash_ref")
-        return _serialize_result(adapter.restore_record(record_type, record_id, trash_ref))
+        return _serialize_result(
+            adapter.restore_record(record_type, record_id, trash_ref)
+        )
+    if operation == "activate":
+        context = request.get("context") or {}
+        if not isinstance(context, dict):
+            raise ValueError("context must be an object")
+        return _serialize_result(adapter.activate(context))
+    if operation == "close":
+        return _serialize_result(adapter.close())
 
     raise AssertionError(f"unhandled operation: {operation}")
 
@@ -94,12 +106,17 @@ def main() -> int:
         sys.stdout.write("\n")
         return 0
     except Exception as exc:
-        sys.stdout.write(json.dumps({
-            "error": {
-                "type": exc.__class__.__name__,
-                "message": str(exc),
-            }
-        }, separators=(",", ":")))
+        sys.stdout.write(
+            json.dumps(
+                {
+                    "error": {
+                        "type": exc.__class__.__name__,
+                        "message": str(exc),
+                    }
+                },
+                separators=(",", ":"),
+            )
+        )
         sys.stdout.write("\n")
         return 1
 
@@ -119,7 +136,9 @@ def _build_adapter(
 
     normalized_node_id = str(node_id) if node_id is not None else None
     if adapter_cls.REQUIRES_WORKSPACE_ID:
-        normalized_workspace: str | None = _require_string_value(workspace_id, "workspace_id")
+        normalized_workspace: str | None = _require_string_value(
+            workspace_id, "workspace_id"
+        )
     else:
         normalized_workspace = str(workspace_id) if workspace_id else None
 

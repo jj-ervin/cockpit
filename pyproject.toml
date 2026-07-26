@@ -18,6 +18,9 @@ test = [
     "pytest>=8.0",
     "pytest-playwright>=0.7",
 ]
+package = [
+    "pyinstaller>=6.0",
+]
 
 [project.scripts]
 cockpit-install-phase1 = "cockpit.install_phase1:main"

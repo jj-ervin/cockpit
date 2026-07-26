@@ -32,12 +32,12 @@ const { resolveContainedPath } = require('./pathContainment');
  *     and skipping confirmation for a real package-mutating action would
  *     be a real safety regression, not just a missing nicety.
  */
-async function dispatch(type, message, { workspaceRoot, pythonExecutable, deps } = {}) {
+async function dispatch(type, message, { workspaceRoot, pythonExecutable, bridgeExecutable, deps } = {}) {
   const bridge = (deps && deps.callBridge) || callBridge;
   const snapshot = (deps && deps.buildSnapshot) || buildSnapshot;
   const marlin = (deps && deps.marlinCli) || marlinCli;
   const osOps = (deps && deps.osOpen) || osOpen;
-  const opts = { pythonExecutable };
+  const opts = { pythonExecutable, bridgeExecutable };
 
   const eco = (operation, extra = {}) => bridge({ backend: 'eco', workspace_id: workspaceRoot, operation, ...extra }, opts);
 

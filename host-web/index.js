@@ -25,13 +25,15 @@ if (require.main === module) {
   const workspaceRoot = parseWorkspaceArg(process.argv) || process.env.WORKSPACE_ROOT || process.cwd();
   const port = process.env.PORT ? Number(process.env.PORT) : 4174;
   const pythonExecutable = process.env.COCKPIT_PYTHON || 'python';
+  const bridgeExecutable = process.env.COCKPIT_BRIDGE || null;
   const host = resolveHost(process.env);
 
-  const app = createApp({ workspaceRoot, pythonExecutable });
+  const app = createApp({ workspaceRoot, pythonExecutable, bridgeExecutable });
   app.listen(port, host, () => {
     console.log(`Cockpit (standalone web host) listening on http://${host}:${port}`);
     console.log(`Workspace: ${workspaceRoot}`);
     console.log(`Python interpreter: ${pythonExecutable} (set COCKPIT_PYTHON to override)`);
+    if (bridgeExecutable) console.log(`Bridge executable: ${bridgeExecutable}`);
   });
 }
 

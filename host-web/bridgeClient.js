@@ -20,6 +20,7 @@ const DEFAULT_TIMEOUT_MS = 30000;
  */
 function callBridge(request, {
   pythonExecutable = process.env.COCKPIT_PYTHON || 'python',
+  bridgeExecutable = process.env.COCKPIT_BRIDGE || null,
   timeoutMs = DEFAULT_TIMEOUT_MS,
   spawnFn = spawn,
 } = {}) {
@@ -27,12 +28,13 @@ function callBridge(request, {
     let settled = false;
     let child;
     try {
-      child = spawnFn(pythonExecutable, ['-m', 'cockpit.host_bridge'], {
-        shell: process.platform === 'win32',
+      const executable = bridgeExecutable || pythonExecutable;
+      child = spawnFn(executable, bridgeExecutable ? [] : ['-m', 'cockpit.host_bridge'], {
+        shell: bridgeExecutable ? false : process.platform === 'win32',
         windowsHide: true,
       });
     } catch (err) {
-      reject(wrapError(err, pythonExecutable));
+      reject(wrapError(err, bridgeExecutable || pythonExecutable));
       return;
     }
 
@@ -68,7 +70,7 @@ function callBridge(request, {
     child.stdout && child.stdout.on('data', (chunk) => { stdout += chunk.toString('utf-8'); });
     child.stderr && child.stderr.on('data', (chunk) => { stderr += chunk.toString('utf-8'); });
     child.on('error', (err) => {
-      finishReject(wrapError(err, pythonExecutable));
+      finishReject(wrapError(err, bridgeExecutable || pythonExecutable));
     });
     child.on('close', () => {
       let parsed;

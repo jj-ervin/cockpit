@@ -2,42 +2,36 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
 import pytest
 
 from cockpit.adapters.niji import NijiAdapter
-from cockpit.core.adapter import RecordNotFoundError, ValidationError, WriteNotSupportedError
+from cockpit.core.adapter import (
+    RecordNotFoundError,
+    ValidationError,
+    WriteNotSupportedError,
+)
 
-
-@pytest.fixture()
-def niji_root(tmp_path: Path) -> Path:
-    package = tmp_path / "src" / "niji"
-    package.mkdir(parents=True)
-    (package / "__init__.py").write_text("", encoding="utf-8")
-    (package / "api.py").write_text(
-        """
-API_VERSION = "1.0"
 
 class Color:
-    def __init__(self, value):
+    def __init__(self, value: str) -> None:
         self.value = value
-    @classmethod
-    def from_hex(cls, value):
-        return cls(value)
-    def to_hex(self):
+
+    def to_hex(self) -> str:
         return self.value
 
+
 class Swatch:
-    def __init__(self, name, role, color):
+    def __init__(self, name: str, role: str, color: Color) -> None:
         self.name = name
         self.role = role
         self.color = color
 
+
 class Palette:
-    def __init__(self, scheme, swatches):
+    def __init__(self, scheme: str, swatches: list[Swatch]) -> None:
         self.scheme = scheme
         self.swatches = tuple(swatches)
+
 
 class Scheme:
     key = "complementary"
@@ -45,53 +39,79 @@ class Scheme:
     description = "Opposite hue pairing"
     roles = ("base", "accent")
 
-class ColorEngine:
-    @staticmethod
-    def available_schemes():
+
+class FakeNijiAdapter:
+    def __init__(self) -> None:
+        self.sinks = []
+
+    def register_sink(self, sink) -> None:
+        self.sinks.append(sink)
+
+    def get_schemes(self):
         return (Scheme(),)
-    @staticmethod
-    def generate_palette(base_color, scheme_key):
-        return Palette(scheme_key, [Swatch("Base", "base", base_color), Swatch("Accent", "accent", Color("#ff6633"))])
-""",
-        encoding="utf-8",
+
+    def generate(self, base_hex: str, scheme_key: str) -> Palette:
+        palette = Palette(
+            scheme_key,
+            [
+                Swatch("Base", "base", Color(base_hex)),
+                Swatch("Accent", "accent", Color("#ff6633")),
+            ],
+        )
+        for sink in self.sinks:
+            sink.on_palette_generated(palette)
+        return palette
+
+
+@pytest.fixture()
+def adapter() -> NijiAdapter:
+    return NijiAdapter(
+        workspace_id="/workspace/niji", niji_adapter_factory=FakeNijiAdapter
     )
-    return tmp_path
 
 
-def test_health_ok(niji_root: Path) -> None:
-    adapter = NijiAdapter(workspace_id=str(niji_root))
+def test_health_ok(adapter: NijiAdapter) -> None:
     result = adapter.health()
     assert result.data["status"] == "ok"
-    assert result.data["api_version"] == "1.0"
+    assert result.data["dependency"] == "installed"
     assert result.origin.backend == "niji"
 
 
-def test_list_schemes(niji_root: Path) -> None:
-    adapter = NijiAdapter(workspace_id=str(niji_root))
+def test_list_schemes(adapter: NijiAdapter) -> None:
     result = adapter.list_records("scheme")
     assert result.data[0]["id"] == "complementary"
 
 
-def test_palette_preview(niji_root: Path) -> None:
-    adapter = NijiAdapter(workspace_id=str(niji_root))
+def test_palette_preview(adapter: NijiAdapter) -> None:
     result = adapter.get_record("palette-preview", "sample")
     assert result.data["scheme"] == "complementary"
     assert result.data["swatches"][0]["hex"] == "#3366ff"
+    assert [event["type"] for event in result.data["session"]["events"]] == [
+        "activated",
+        "palette_generated",
+    ]
 
 
-def test_unknown_record_type(niji_root: Path) -> None:
-    adapter = NijiAdapter(workspace_id=str(niji_root))
+def test_unknown_record_type(adapter: NijiAdapter) -> None:
     with pytest.raises(ValidationError, match="unknown record type"):
         adapter.list_records("package")
 
 
-def test_missing_scheme(niji_root: Path) -> None:
-    adapter = NijiAdapter(workspace_id=str(niji_root))
+def test_missing_scheme(adapter: NijiAdapter) -> None:
     with pytest.raises(RecordNotFoundError):
         adapter.get_record("scheme", "missing")
 
 
-def test_submit_raises(niji_root: Path) -> None:
-    adapter = NijiAdapter(workspace_id=str(niji_root))
+def test_submit_raises(adapter: NijiAdapter) -> None:
     with pytest.raises(WriteNotSupportedError):
         adapter.submit("palette-preview", {})
+
+
+def test_host_session_accepts_context_and_closes(adapter: NijiAdapter) -> None:
+    active = adapter.activate({"workspace": "rainforest", "host": "cockpit"})
+    assert active.data["active"] is True
+    assert active.data["context_keys"] == ["host", "workspace"]
+
+    closed = adapter.close()
+    assert closed.data["active"] is False
+    assert closed.data["events"][-1]["type"] == "closed"
