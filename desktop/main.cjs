@@ -4,6 +4,10 @@ const path = require('path');
 
 let localServer;
 
+function windowIconPath() {
+  return path.join(__dirname, 'assets', 'cockpit-icon-pack', 'cockpit.ico');
+}
+
 function exposeDesktopDependenciesToHost() {
   // host-web is deliberately shipped as a resource so the same host-agnostic
   // bundle can also be used by its standalone Node host. In a packaged
@@ -50,7 +54,7 @@ async function createWindow() {
   const url = await startHost();
   const window = new BrowserWindow({
     width: 1440, height: 960, minWidth: 980, minHeight: 680,
-    title: 'Cockpit',
+    title: 'Cockpit', icon: windowIconPath(),
     webPreferences: { preload: path.join(__dirname, 'preload.cjs'), contextIsolation: true, nodeIntegration: false, sandbox: true },
   });
   await window.loadURL(url);

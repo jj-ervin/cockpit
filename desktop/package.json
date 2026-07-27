@@ -5,6 +5,8 @@
   "description": "Electron desktop host for Cockpit's standalone web shell.",
   "main": "main.cjs",
   "scripts": {
+    "icons:verify": "node scripts/verify-icon-pack.cjs",
+    "prebuild:win": "npm run icons:verify",
     "start": "electron .",
     "check": "node --check main.cjs && node --check preload.cjs",
     "build:win": "electron-builder --win nsis --x64"
@@ -22,6 +24,7 @@
     "files": [
       "main.cjs",
       "preload.cjs",
+      "assets/cockpit-icon-pack/cockpit.ico",
       "package.json"
     ],
     "extraResources": [
@@ -46,6 +49,7 @@
       }
     ],
     "win": {
+      "icon": "assets/cockpit-icon-pack/cockpit.ico",
       "target": [
         "nsis"
       ]

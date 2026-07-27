@@ -1,0 +1,16 @@
+{
+  "name": "Cockpit Core Palette",
+  "status": "locked",
+  "colors": {
+    "sonicGold": "#FFC200",
+    "seahawksBlue": "#002244",
+    "electricCyan": "#00FFFF",
+    "aquasoxBlue": "#00B5E2"
+  },
+  "roles": {
+    "sonicGold": "Human control, approval, attention",
+    "seahawksBlue": "Structure, chassis, foundation",
+    "electricCyan": "Primary system, interface, information",
+    "aquasoxBlue": "Secondary accents, touch surfaces, highlights"
+  }
+}
