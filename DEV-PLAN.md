@@ -981,3 +981,40 @@ this is not a copy of Niji's read-only pattern: it needs a manifest with
 real `mutation`/`requires_confirmation`-gated commands, an execution path,
 verification, and evidence-bundle export, per the discover→validate→
 remediate→approve→execute→verify→evidence-export vertical slice.
+
+## CKP.17.03 (working name, not yet registered) Closure — Marlin Provider, Built and Verified in the marlin Repo
+
+**Closed:** 2026-08-05. Full implementation, tests, and closure detail live
+in `marlin/DEV-PLAN.md` (this lane's code changes are entirely in the
+`marlin` repo — `packages/marlin-dxp/src/provider.ts`,
+`core/selfProvider.ts`, `cli/provider.ts`, `provider/marlin.provider.json`).
+Recorded here only for cross-reference since this repo owns the
+`ProviderRegistry`/`provider_discovery.py` side of the contract Marlin now
+conforms to.
+
+Marlin exposes four real commands (`marlin.audit.validate`,
+`marlin.audit.normalize.preview`, `marlin.audit.normalize.apply` —
+mutating, confirmation-gated — `marlin.audit.verify`), each wrapping the
+same GC-AUDIT machinery `marlin audit` already used from the terminal, with
+a real signed evidence bundle on every run. Verified for real through
+Cockpit's own `python -m cockpit.host_bridge` entrypoint against a real,
+isolated `marlin provider register-self` registration — the identical
+discovery/dispatch path proven in `CKP.17.02`, now exercised against a
+second real provider, not just Niji.
+
+**Important, out-of-scope finding surfaced by that real run:** dispatching
+against this actual `c:\dev` portfolio failed — not from anything in
+`CKP.17.01`-`.03`, but a pre-existing YAML syntax error in
+`governance-commons/gc-audit/GC-AUDIT-REGISTRY.yaml` (confirmed by
+reproducing the identical failure with the plain, unmodified `marlin audit
+validate` command). This currently breaks `marlin audit` for every verb
+against the real portfolio, not just the provider path. See
+`marlin/DEV-PLAN.md`'s `CKP.17.03` entry for the exact line and cause. Not
+fixed here — GC-AUDIT registry content is a different repo/domain requiring
+its own authorized PLAY per DEV-ACCORD-CI-42/43.
+
+**Next:** the full discover→validate→remediate→approve→execute→verify→
+evidence-export vertical slice against the real portfolio is blocked only
+on that registry fix now — the mechanism itself (all three CKP.17 lanes) is
+proven end to end against a scratch portfolio and a real Marlin-installed
+Niji provider.
