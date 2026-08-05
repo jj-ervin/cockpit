@@ -3,7 +3,7 @@
   "namespace": "CKP",
   "meta": {
     "created_at": "2026-07-02T00:00:00Z",
-    "updated_at": "2026-07-06T00:00:04Z",
+    "updated_at": "2026-08-05T16:48:18Z",
     "allocation_authority": "jj-ervin",
     "namespace_file": "passes/namespace.yaml",
     "layers_file": "passes/layers.yaml",
@@ -709,6 +709,83 @@
         "CKP:1011"
       ],
       "originating_pass": "CKP.09.02"
+    },
+    {
+      "id": "CKP:1025",
+      "alias": "CKP.17.00",
+      "legacy_ids": [],
+      "title": "Provider Architecture Runtime Closure",
+      "description": "Closes the provider-architecture runtime slice across Cockpit and Marlin: real installed-provider discovery, registry-backed command dispatch, strict request/result validation and identity correlation, confirmation-gated mutation, a conforming Marlin stdio provider, signed evidence export, and real end-to-end execution through Cockpit's bridge and HTTP host surface. Browser approval/rendering and the full stranger-install release gate remain separate v1.0.0 release work.",
+      "layer": "domain",
+      "cluster": "CKP",
+      "parent": null,
+      "status": "accepted",
+      "timestamp": "2026-08-05T16:48:18Z",
+      "path": "DEV-PLAN.md",
+      "supersedes": [],
+      "superseded_by": null,
+      "depends_on": [
+        "CKP:1011",
+        "CKP:1013"
+      ],
+      "originating_pass": "CKP.17.00"
+    },
+    {
+      "id": "CKP:1026",
+      "alias": "CKP.17.01",
+      "legacy_ids": [],
+      "title": "Installed Provider Runtime Verification",
+      "description": "Diagnosed the installed-provider environment mismatch and proved real discovery and stdio invocation of a Marlin-installed Niji provider from an isolated install, with an opt-in non-mocked end-to-end smoke test.",
+      "layer": "domain",
+      "cluster": "CKP",
+      "parent": "CKP:1025",
+      "status": "accepted",
+      "timestamp": "2026-08-05T16:48:18Z",
+      "path": "src/cockpit/tests/test_provider_registry.py",
+      "supersedes": [],
+      "superseded_by": null,
+      "depends_on": [
+        "CKP:1013"
+      ],
+      "originating_pass": "CKP.17.01"
+    },
+    {
+      "id": "CKP:1027",
+      "alias": "CKP.17.02",
+      "legacy_ids": [],
+      "title": "Registry-Backed Provider Dispatch",
+      "description": "Moved external provider command execution onto ProviderRegistry while preserving local adapter dispatch, added request and result schema validation, strict operation/provider/command correlation, literal-boolean mutation confirmation, and a real host-web HTTP-to-bridge-to-provider process path.",
+      "layer": "domain",
+      "cluster": "CKP",
+      "parent": "CKP:1025",
+      "status": "accepted",
+      "timestamp": "2026-08-05T16:48:18Z",
+      "path": "src/cockpit/host_bridge.py",
+      "supersedes": [],
+      "superseded_by": null,
+      "depends_on": [
+        "CKP:1026"
+      ],
+      "originating_pass": "CKP.17.02"
+    },
+    {
+      "id": "CKP:1028",
+      "alias": "CKP.17.03",
+      "legacy_ids": [],
+      "title": "Conforming Marlin Provider",
+      "description": "Exposed Marlin as a cockpit-provider-v1 stdio provider with a manifest, self-registration attestation, audit validate/normalize/verify commands, explicit confirmation for mutating apply, and Marlin-issued signed evidence bundles; proved it through Cockpit against both a scratch portfolio and the real portfolio.",
+      "layer": "domain",
+      "cluster": "CKP",
+      "parent": "CKP:1025",
+      "status": "accepted",
+      "timestamp": "2026-08-05T16:48:18Z",
+      "path": "DEV-PLAN.md",
+      "supersedes": [],
+      "superseded_by": null,
+      "depends_on": [
+        "CKP:1027"
+      ],
+      "originating_pass": "CKP.17.03"
     }
   ]
 }

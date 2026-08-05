@@ -289,6 +289,8 @@ def fake_provider(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
         "    result['operation_id'] = 'spoofed-operation-id'\n"
         "elif misbehave == 'wrong_provider_id':\n"
         "    result['provider_id'] = 'other-provider'\n"
+        "elif misbehave == 'missing_command_id':\n"
+        "    del result['command_id']\n"
         "elif misbehave == 'schema_violation':\n"
         "    result['evidence'] = [{'kind': 'x', 'ref': 'y', 'bundle': {'not': 'allowed'}}]\n"
         "print(json.dumps(result))\n",
@@ -463,6 +465,22 @@ def test_invoke_provider_command_rejects_spoofed_provider_id(
 ) -> None:
     monkeypatch.setenv("FAKE_PROVIDER_MISBEHAVE", "wrong_provider_id")
     with pytest.raises(ValueError, match="provider_id"):
+        execute({
+            "backend": "fake",
+            "workspace_id": "ws-1",
+            "operation": "invoke_provider_command",
+            "command_id": "fake.read",
+            "input": {},
+        })
+
+
+def test_invoke_provider_command_rejects_missing_command_id(
+    fake_provider: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The result schema permits an omitted command_id, but dispatch must
+    still correlate every provider result to the exact command requested."""
+    monkeypatch.setenv("FAKE_PROVIDER_MISBEHAVE", "missing_command_id")
+    with pytest.raises(ValueError, match="command_id"):
         execute({
             "backend": "fake",
             "workspace_id": "ws-1",

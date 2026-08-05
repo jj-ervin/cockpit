@@ -1370,3 +1370,23 @@ result on stdout. Marlin is the first full provider and Niji is the independent
 portability fixture. Generic registration is implemented and tested; replacing
 `host_bridge.py`'s built-in adapter selection with registry-backed dispatch is
 the next implementation boundary, not claimed complete here.
+
+## CKP.17.00 Provider Architecture Runtime Closure (2026-08-05)
+
+The external-provider boundary is now executable end to end. Cockpit discovers
+Marlin-attested installations through `ProviderRegistry`, validates complete
+operation requests and provider results against the shared v1 schemas, requires
+exact operation/provider/command identity correlation, and gates mutations on
+the literal JSON boolean `true`. Local built-in adapters remain on their
+existing registry and are not conflated with external executable providers.
+
+Niji proves an independently installed provider can be discovered and spawned;
+Marlin now also exposes a conforming stdio provider whose mutating apply command
+requires confirmation and whose runs produce Marlin-signed evidence bundles.
+The standalone web host exposes this execution path over `/api/bridge`, with
+real process-boundary coverage.
+
+This completes the provider runtime architecture (`CKP.17.00`-.03), not the
+v1.0.0 product release. The remaining product boundary is browser-side command
+rendering and approval plus the full stranger-install release exercise. Those
+remain release work and must not be inferred from the runtime closure.

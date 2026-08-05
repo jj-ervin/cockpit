@@ -1027,3 +1027,22 @@ real vertical-slice proof against this actual portfolio then succeeded:
 `marlin.audit.validate` returned `status: succeeded` with a real signed
 evidence bundle, `conformant: true`. Neither blocker remains open. See
 `marlin/DEV-PLAN.md`'s `CKP.17.03` addendum for the full detail.
+
+## CKP.17.00 Closure — Provider Architecture Runtime Slice
+
+**Closed:** 2026-08-05. The umbrella and its three completed lanes are now
+registered at closure as `CKP:1025` (`CKP.17.00`) through `CKP:1028`
+(`CKP.17.03`). The final adversarial review found one correlation hole left
+after schema validation: because `command_id` is optional in the shared result
+schema, a provider could omit it and still have its response accepted. The
+bridge now requires exact equality with the requested command in every result,
+and a real-subprocess regression test covers omission as well as spoofed
+operation/provider identities.
+
+This closes the provider runtime architecture claimed by CKP.17: installed
+provider discovery, trusted registry dispatch, strict request/result validation,
+literal confirmation for mutations, the Marlin provider and attestation, real
+HTTP-to-bridge-to-provider execution, and signed evidence export. It does not
+close Cockpit v1.0.0. The browser bundle still needs an approval/rendering path
+that invokes provider commands, and the release still requires its complete
+stranger-install scenario; those stay open in `DEV-RELEASE.md`.

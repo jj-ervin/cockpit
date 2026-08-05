@@ -239,7 +239,7 @@ def _execute_provider_command(request: dict[str, Any]) -> dict[str, Any]:
             f"{result.get('provider_id')!r} does not match requested provider {provider_id!r}"
         )
     result_command_id = result.get("command_id")
-    if result_command_id is not None and result_command_id != command_id:
+    if result_command_id != command_id:
         raise ValueError(
             f"provider '{provider_id}' result command_id {result_command_id!r} "
             f"does not match requested command {command_id!r}"
