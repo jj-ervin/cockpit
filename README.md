@@ -71,24 +71,27 @@ npm run build
 code --new-window --extensionDevelopmentPath=C:\dev\eco-vscode C:\dev\eco --command eco.openCockpit
 ```
 
-## Standalone Windows desktop
+## Marlin-managed Windows desktop
 
-Cockpit v1.0.0's distributable SKU is a per-user Windows x64 NSIS installer.
-It bundles Electron, the loopback Express host, the web UI, the frozen Cockpit
-bridge, and the provider protocol schemas; it requires neither VS Code nor a
-Python installation. Build and verify it from the repository root:
+Cockpit v1.0.0 supplies a Windows x64 `cockpit-core` payload; it does not own
+an installer. `MarlinSetup.exe` is the bootstrap installer, and Marlin verifies,
+extracts, records, launches, updates, and removes Cockpit as a managed package.
+The payload includes Electron, the loopback Express host, the web UI, the
+frozen Cockpit bridge, and the provider schemas. Build the payload here, then
+build MarlinSetup from the Marlin repository:
 
 ```powershell
-.\scripts\build-standalone.ps1
-.\scripts\stranger-install-smoke.ps1
+.\scripts\build-marlin-payload.ps1
+C:\dev\marlin\scripts\build-windows-setup.ps1 `
+  -CockpitArtifact .\dist\marlin\cockpit-core-1.0.0-windows-x64.zip `
+  -CockpitManifest .\marlin.pkg.yaml
+.\scripts\stranger-install-smoke.ps1 -SandboxRoot C:\sandbox
 ```
 
-The verifier copies the installer to an isolated temp directory, installs it
-without elevation, opens an ordinary Git repository outside the portfolio,
-waits for the real packaged shell and bridge, validates packaged resource
-paths, then uninstalls and removes the proof. Set `COCKPIT_WORKSPACE` when
-launching the installed app from a terminal or desktop integration to select a
-repository; otherwise it opens the process working directory.
+The verifier copies MarlinSetup into an isolated sandbox, installs the
+bootstrapper without elevation, and lets Marlin checksum-verify and install
+`cockpit-core` into its own app directory. Marlin state and the launched
+Cockpit resource paths must both prove that ownership before the gate passes.
 
 ## Standalone web host (Phase 3)
 

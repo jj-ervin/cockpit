@@ -1108,3 +1108,12 @@ opened a new ordinary Git repository, rendered the packaged 13-tab shell with
 installed-only resource paths, emitted SHA-256-addressed PASS evidence, and
 uninstalled cleanly. All v1.0.0 entry gates are closed; publishing the installer
 and Marlin registry entries remains separate release authority.
+
+### CKP.18.04 Corrective Closure — MarlinSetup Is the Installer
+
+The CKP.18.03 Cockpit-owned NSIS decision violated the established product
+boundary and is superseded. Cockpit now builds only the `cockpit-core` runtime
+ZIP plus `marlin.pkg.yaml`. MarlinSetup embeds that checksum-pinned artifact and
+delegates installation to Marlin's `installPackage`; Cockpit does not extract,
+register, or record itself. The real `C:\sandbox` proof shows Marlin's state,
+managed install path, registered bin, and launched packaged shell all agree.

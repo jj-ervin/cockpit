@@ -47,7 +47,7 @@ The durable boundary, verbatim from `CKP.v1.0-scoping.md`:
 | Version | Name | Description | Status |
 | --- | --- | --- | --- |
 | v0.1.0 | Foundation | VS Code WebviewPanel host, five CK.01 surfaces, workspace-local governance | ✅ Done 2026-07-02 (`CKP.05`-`CKP.08.10`) |
-| v1.0.0 | Marlin Provider Slice | Portable provider registration/commands/views/capabilities/lifecycle; Marlin as first conforming provider; repo discovery → governance status → remediation approval → evidence export | ✅ Entry gates closed 2026-08-05; publication pending |
+| v1.0.0 | Marlin Provider Slice | Portable provider registration/commands/views/capabilities/lifecycle; Marlin as first conforming provider; repo discovery → governance status → remediation approval → evidence export | ✅ Entry gates closed through MarlinSetup 2026-08-05; publication pending |
 | v1.1.0 | Second-Provider Proof | A second, smaller provider (e.g. Niji status/launch/export) proves the provider contract is generic, not Marlin-specific | ⬜ |
 | v2.0.0 | Developer OS Controls | Multi-agent orchestration console display, workspace graph, profile management | ⬜ |
 
@@ -73,8 +73,8 @@ integration was built:
       evidence
 - [x] Structured JSON operation results only — no screen-scraping,
       hardcoded paths, or duplicated governance decisions in Cockpit itself
-- [x] Stranger installs Cockpit without the `C:\dev` portfolio workspace or
-      eco present
+- [x] Stranger installs Cockpit through MarlinSetup without the `C:\dev`
+      portfolio workspace or eco present
 - [x] At least one non-Marlin provider scoped (need not ship in v1.0) to
       confirm the contract isn't accidentally Marlin-specific
 
@@ -146,23 +146,23 @@ Marlin provider → PowerShell GC-AUDIT → file mutation → verification →
 evidence-download path against an isolated portfolio. The only remaining
 v1.0.0 entry gate is the stranger installation of Cockpit itself.
 
-### CKP.18.03 standalone stranger-install closure (2026-08-05)
+### CKP.18.04 Marlin-owned stranger-install closure (2026-08-05)
 
-The v1.0.0 Cockpit distribution is a non-admin, per-user Windows x64 NSIS
-installer. Its payload contains the Electron shell, loopback Express host,
-shared web bundle, frozen `cockpit-bridge.exe`, and provider protocol schemas;
-the installed shell does not require VS Code, Python, an eco workspace, or a
-`C:\dev` checkout. Marlin and its providers remain separately installed
-authorities discovered through their attested per-user provider layout.
+CKP.18.03's Cockpit-owned NSIS decision was architecturally wrong and is
+superseded. Cockpit supplies a checksum-pinned Windows x64 `cockpit-core` ZIP;
+`MarlinSetup.exe` is the sole bootstrap installer. Its embedded Marlin engine
+verifies the payload, executes the manifest, records package state, places the
+runtime under Marlin's managed app directory, and launches Cockpit.
 
-The release exercise copied the freshly built installer to an isolated temp
-directory, installed it silently, initialized an ordinary Git repository
-beside the install, launched the real packaged Electron shell with an isolated
-profile, and verified that all resources and the bridge resolved beneath the
-installed directory. The shell rendered 13 tabs and reported the external
-repository in its footer. The verifier then ran the uninstaller and removed
-the isolated proof. Installer SHA-256:
-`e3ed051d1f64138c8745d7a6a676ef10f5d3bc936c94e635a506c2e848ca2718`.
+The corrected release exercise copied MarlinSetup to `C:\sandbox`, installed
+the bootstrapper silently, and let Marlin install `cockpit-core@1.0.0` into an
+isolated `MARLIN_HOME`. `state.yaml` records the package and `cockpit` bin;
+the launched shell resolved all resources and its bridge beneath
+`marlin-home\apps\cockpit-core\1.0.0`, opened an ordinary repository outside
+the portfolio, and rendered all 13 tabs. MarlinSetup SHA-256:
+`6df57d9266f87fe9a49082ff2913b493d236b1deca88a6137ad574e4fe35e9e9`.
+Cockpit payload SHA-256:
+`af79263b367db790f68ff9d340d282ba7a0309a8b561e8df4104cb39062ff6cc`.
 
 This closes every v1.0.0 entry condition. Artifact publication and Marlin
 registry publication remain explicit release operations; no publication is
@@ -182,8 +182,8 @@ claimed by this closure.
 - Portable provider contract (`cockpit-provider-v1`) as real, versioned schema/code — not just prose in a scoping doc
 - Cockpit development readiness plus Marlin provider package/audit operations → approval → execution → evidence, rendered inside Cockpit's shell
 - Common shell primitives needed to prove portability: navigation, panels, command palette, approval/confirmation UX, evidence/history viewer
-- Electron desktop host that wraps the existing standalone loopback web host;
-  it is packaged with the Cockpit JSON bridge and has no VS Code dependency.
+- Marlin-managed `cockpit-core` desktop payload wrapping the loopback web host
+  and Cockpit JSON bridge, with no VS Code or target-machine Python dependency.
 
 ## What does not ship in v1.0.0 (deferred, not abandoned)
 
@@ -197,7 +197,7 @@ claimed by this closure.
 
 A stranger with no portfolio context:
 
-1. Installs Cockpit standalone (no eco, no `C:\dev` workspace)
+1. Installs Cockpit through MarlinSetup (no eco, no `C:\dev` workspace)
 2. Connects an ordinary repository
 3. Runs GC validation through the Marlin provider
 4. Reviews findings, approves a remediation, sees it execute through Marlin

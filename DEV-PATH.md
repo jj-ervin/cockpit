@@ -1440,3 +1440,14 @@ one frozen Python process per snapshot field. Item errors stay isolated and
 structured; required adapter failures still fail closed, while missing optional
 providers degrade their own integration only. Frozen schema resolution uses
 PyInstaller's extraction root and retains the source-tree path in development.
+
+### CKP.18.04 correction — Marlin owns installation
+
+The Cockpit-owned NSIS conclusion above was rejected by the portfolio owner and
+is superseded. The useful runtime fixes remain, but Cockpit now emits only a
+`cockpit-core` ZIP and package manifest. MarlinSetup is the only NSIS bootstrap;
+it invokes Marlin's real installer API, which verifies the exact payload digest,
+runs the package steps, records `state.yaml`, registers the `cockpit` bin, and
+launches the managed executable. A real copied-MarlinSetup proof under
+`C:\sandbox` installed and launched Cockpit entirely from
+`marlin-home\apps\cockpit-core\1.0.0`.

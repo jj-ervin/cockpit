@@ -1,6 +1,7 @@
 [CmdletBinding()]
 param(
-    [switch] $SkipNpmCi
+    [switch] $SkipNpmCi,
+    [string] $OutputDirectory = ""
 )
 
 Set-StrictMode -Version Latest
@@ -9,6 +10,11 @@ $ErrorActionPreference = "Stop"
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $pyInstaller = Join-Path $repoRoot ".venv\Scripts\pyinstaller.exe"
 $desktopRoot = Join-Path $repoRoot "desktop"
+if (-not $OutputDirectory) {
+    $OutputDirectory = Join-Path $repoRoot "dist\marlin"
+}
+$payloadDirectory = Join-Path $desktopRoot "release\win-unpacked"
+$payloadPath = Join-Path $OutputDirectory "cockpit-core-1.0.0-windows-x64.zip"
 
 if (-not (Test-Path -LiteralPath $pyInstaller -PathType Leaf)) {
     throw "PyInstaller is unavailable at $pyInstaller. Install Cockpit's package extra first."
@@ -28,7 +34,7 @@ try {
         & npm run check
         if ($LASTEXITCODE -ne 0) { throw "Desktop syntax checks failed with exit code $LASTEXITCODE." }
         & npm run build:win
-        if ($LASTEXITCODE -ne 0) { throw "Desktop installer build failed with exit code $LASTEXITCODE." }
+        if ($LASTEXITCODE -ne 0) { throw "Desktop payload build failed with exit code $LASTEXITCODE." }
     } finally {
         Pop-Location
     }
@@ -36,8 +42,16 @@ try {
     Pop-Location
 }
 
-$installer = Join-Path $desktopRoot "release\Cockpit-1.0.0-windows-x64-setup.exe"
-if (-not (Test-Path -LiteralPath $installer -PathType Leaf)) {
-    throw "Expected installer was not produced at $installer."
+if (-not (Test-Path -LiteralPath $payloadDirectory -PathType Container)) {
+    throw "Expected unpacked Cockpit payload was not produced at $payloadDirectory."
 }
-Write-Output $installer
+New-Item -ItemType Directory -Path $OutputDirectory -Force | Out-Null
+if (Test-Path -LiteralPath $payloadPath) {
+    Remove-Item -LiteralPath $payloadPath -Force
+}
+Compress-Archive -Path (Join-Path $payloadDirectory "*") -DestinationPath $payloadPath -CompressionLevel Optimal
+$hash = (Get-FileHash -LiteralPath $payloadPath -Algorithm SHA256).Hash.ToLowerInvariant()
+[pscustomobject]@{
+    artifact = $payloadPath
+    sha256 = $hash
+} | ConvertTo-Json -Compress

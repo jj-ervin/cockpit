@@ -2,14 +2,14 @@
   "name": "cockpit-desktop",
   "version": "1.0.0",
   "private": true,
-  "description": "Electron desktop host for Cockpit's standalone web shell.",
+  "description": "Electron desktop runtime packaged as a Marlin-managed Cockpit Core payload.",
   "main": "main.cjs",
   "scripts": {
     "icons:verify": "node scripts/verify-icon-pack.cjs",
     "prebuild:win": "npm run icons:verify",
     "start": "electron .",
     "check": "node --check main.cjs && node --check preload.cjs",
-    "build:win": "electron-builder --win nsis --x64"
+    "build:win": "electron-builder --win dir --x64"
   },
   "devDependencies": {
     "electron": "^43.2.0",
@@ -22,7 +22,6 @@
       "output": "release"
     },
     "compression": "normal",
-    "artifactName": "Cockpit-${version}-windows-x64-setup.${ext}",
     "files": [
       "main.cjs",
       "preload.cjs",
@@ -54,15 +53,7 @@
     ],
     "win": {
       "icon": "assets/cockpit-icon-pack/cockpit.ico",
-      "target": [
-        "nsis"
-      ]
-    },
-    "nsis": {
-      "oneClick": false,
-      "perMachine": false,
-      "allowElevation": false,
-      "allowToChangeInstallationDirectory": true
+      "target": ["dir"]
     }
   },
   "dependencies": {
