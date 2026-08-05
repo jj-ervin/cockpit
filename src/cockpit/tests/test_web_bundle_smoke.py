@@ -51,7 +51,9 @@ def _sample_snapshot() -> dict:
                     {"id": "cockpit/README.md", "name": "README.md", "path": "cockpit/README.md", "kind": "file", "depth": 2, "skipped": False},
                 ],
             },
-            "repoStatus": [],
+            "repoStatus": [
+                {"name": "demo", "path": "demo", "absolute_path": "C:/fake/workspace/demo", "has_git": True},
+            ],
         },
         "marlin": {"health": {"status": "ok", "reachable": True}, "error": None},
         "records": {
@@ -341,4 +343,80 @@ def test_diagnostics_tab_handles_missing_diagnostics_gracefully(cockpit_page):
 
     assert cockpit_page.locator("#diag-integration-eco").inner_text() == "-"
     assert cockpit_page.locator("#diag-pipeline-table tr").count() == 1  # empty-state row
+    assert cockpit_page.cockpit_errors == []
+
+
+def _provider_result(command_id: str, operation_id: str, status: str = "succeeded") -> dict:
+    severity = "pass" if status == "succeeded" else "error"
+    bundle = {
+        "bundle_id": f"bundle-{operation_id}",
+        "operation": command_id,
+        "findings": [{
+            "id": f"finding-{operation_id}",
+            "severity": severity,
+            "description": f"{command_id} structured finding",
+            "remediation": "Apply the previewed normalization." if severity == "error" else None,
+        }],
+    }
+    return {
+        "schema_version": "cockpit-operation-result-v1",
+        "operation_id": operation_id,
+        "provider_id": "marlin",
+        "command_id": command_id,
+        "status": status,
+        "timestamp": "2026-08-05T00:00:00Z",
+        "data": {"message": f"{command_id} completed", "evidence_bundle": bundle},
+        "evidence": [{"kind": "gc-audit.evidence-bundle", "ref": bundle["bundle_id"], "digest": "sha256:" + "a" * 64}],
+    }
+
+
+def _send_provider_result(page, result: dict) -> None:
+    page.evaluate(
+        "(payload) => window.postMessage({ type: 'eco.cockpit.providerCommandResult', payload }, '*')",
+        result,
+    )
+
+
+def test_marlin_audit_ui_binds_approval_executes_verifies_and_exports(cockpit_page):
+    _send_state(cockpit_page, _sample_snapshot())
+    cockpit_page.click(".tab[data-tab='marlin-audit']")
+    cockpit_page.select_option("#audit-repository", "C:/fake/workspace/demo")
+
+    cockpit_page.click("#audit-validate")
+    request = cockpit_page.evaluate("window.__posted[window.__posted.length - 1]")
+    assert request["commandId"] == "marlin.audit.validate"
+    assert request["input"] == {"target": "C:/fake/workspace/demo"}
+    assert request["confirm"] is False
+
+    _send_provider_result(cockpit_page, _provider_result("marlin.audit.validate", "validate-1", "failed"))
+    assert cockpit_page.locator("#audit-findings-count").inner_text() == "1 findings"
+    assert "structured finding" in cockpit_page.locator("#audit-validation-result").inner_text()
+
+    cockpit_page.click("#audit-preview")
+    _send_provider_result(cockpit_page, _provider_result("marlin.audit.normalize.preview", "preview-1"))
+    cockpit_page.click("#audit-request-approval")
+    assert cockpit_page.locator("#audit-approval-dialog").is_visible()
+    scope_text = cockpit_page.locator("#audit-approval-scope").inner_text()
+    assert "marlin.audit.normalize.apply" in scope_text
+    assert "C:/fake/workspace/demo" in scope_text
+    assert "preview-1" in scope_text
+
+    cockpit_page.check("#audit-approval-check")
+    cockpit_page.click("#audit-confirm-approval")
+    apply_request = cockpit_page.evaluate("window.__posted[window.__posted.length - 1]")
+    assert apply_request["commandId"] == "marlin.audit.normalize.apply"
+    assert apply_request["confirm"] is True
+    assert apply_request["approval"]["token"]
+    assert apply_request["approval"]["scope"] == '{"command_id":"marlin.audit.normalize.apply","input":{"target":"C:/fake/workspace/demo"},"provider_id":"marlin"}'
+
+    _send_provider_result(cockpit_page, _provider_result("marlin.audit.normalize.apply", "apply-1"))
+    verify_request = cockpit_page.evaluate("window.__posted[window.__posted.length - 1]")
+    assert verify_request["commandId"] == "marlin.audit.verify"
+    assert verify_request["confirm"] is False
+
+    _send_provider_result(cockpit_page, _provider_result("marlin.audit.verify", "verify-1"))
+    assert cockpit_page.locator("#audit-evidence-status").inner_text() == "Ready to export"
+    with cockpit_page.expect_download() as download_info:
+        cockpit_page.click("#audit-export-evidence")
+    assert download_info.value.suggested_filename == "bundle-verify-1.json"
     assert cockpit_page.cockpit_errors == []

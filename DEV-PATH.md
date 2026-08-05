@@ -1400,3 +1400,21 @@ attested provider alone owns installed package state, registry search, and
 package installation. Hosts transport provider requests but do not resolve or
 spawn the Marlin CLI. Literal confirmation remains mandatory for installation,
 and a missing Marlin provider leaves Cockpit-native workspace views usable.
+
+## CKP.18.02 — Browser Provider Workflow and Bound Approval
+
+Cockpit now owns a provider-neutral browser interaction path for the Marlin
+v1 slice: repository discovery/selection, structured findings, remediation
+preview, human approval, execution, verification, and evidence export. The
+approval dialog binds the exact Marlin provider, normalize-apply command,
+target input, and preview operation. The bridge independently checks a
+canonical provider/command/input scope before spawning a confirmed mutation.
+
+Real browser testing exposed and corrected a host-envelope bug: both host-web
+and eco-vscode previously treated any top-level `error` property as a bridge
+crash, even though a valid failed provider result is required to carry one.
+Hosts now distinguish the bridge's error-only envelope from
+`cockpit-operation-result-v1`, allowing failed validation findings to remain
+visible and actionable. The isolated end-to-end proof uses the actual built
+Marlin provider and real GC-AUDIT PowerShell execution, including mutation,
+verification, and browser evidence download.

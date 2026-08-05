@@ -149,6 +149,7 @@ async function dispatch(type, message, { workspaceRoot, pythonExecutable, bridge
           command_id: require1(message.commandId, 'commandId'),
           input: (message.input && typeof message.input === 'object') ? message.input : {},
           confirm: message.confirm === true,
+          approval: message.approval,
         }, opts);
         return [{ type: 'eco.cockpit.providerCommandResult', payload: result }];
       }
@@ -160,10 +161,12 @@ async function dispatch(type, message, { workspaceRoot, pythonExecutable, bridge
             payload: { ok: false, error: 'Package install requires literal boolean confirmation.' },
           }];
         }
+        const installInput = { package_name: require1(message.packageName, 'packageName') };
         const result = await bridge({
           backend: 'marlin', workspace_id: workspaceRoot,
           operation: 'invoke_provider_command', command_id: 'marlin.package.install',
-          input: { package_name: require1(message.packageName, 'packageName') }, confirm: true,
+          input: installInput, confirm: true,
+          approval: boundApproval('marlin', 'marlin.package.install', installInput),
         }, opts);
         return [{
           type: 'eco.cockpit.marlinInstallResult',
@@ -226,4 +229,19 @@ function errorMessage(err) {
   return err instanceof Error ? err.message : String(err);
 }
 
-module.exports = { dispatch, actionResult };
+function boundApproval(providerId, commandId, input) {
+  return {
+    token: `host-web-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    scope: canonicalStringify({ provider_id: providerId, command_id: commandId, input }),
+  };
+}
+
+function canonicalStringify(value) {
+  if (Array.isArray(value)) return `[${value.map(canonicalStringify).join(',')}]`;
+  if (value && typeof value === 'object') {
+    return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${canonicalStringify(value[key])}`).join(',')}}`;
+  }
+  return JSON.stringify(value);
+}
+
+module.exports = { dispatch, actionResult, boundApproval };

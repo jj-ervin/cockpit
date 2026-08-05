@@ -45,6 +45,7 @@
       <button class="tab" type="button" data-tab="policy">Policy</button>
       <span class="nav-label">Providers</span>
       <button class="tab" type="button" data-tab="governance">Governance</button>
+      <button class="tab" type="button" data-tab="marlin-audit">Marlin Audit</button>
       <button class="tab" type="button" data-tab="diagnostics-tab">Diagnostics</button>
       <button class="tab" type="button" data-tab="wizard">Setup Wizard</button>
       <button class="tab" type="button" data-tab="workspace-tab">Workspace</button>
@@ -89,6 +90,55 @@
         </div>
         <p class="panel-note" id="marlin-approval">Package mutation requires explicit human approval.</p>
       </section>
+    </section>
+
+    <section class="tab-panel" id="marlin-audit">
+      <section class="panel">
+        <div class="panel-header wrap">
+          <div>
+            <p class="eyebrow">Provider workflow</p>
+            <h2>Governance validation and remediation</h2>
+          </div>
+          <label class="inline-control">Repository
+            <select id="audit-repository"></select>
+          </label>
+        </div>
+        <p class="panel-note">Cockpit renders this workflow and owns approval. Marlin performs validation, remediation, verification, and evidence production.</p>
+        <ol class="audit-progress" aria-label="Marlin audit workflow">
+          <li><span>1</span><strong>Discover</strong><small id="audit-discover-status">Choose a repository</small></li>
+          <li><span>2</span><strong>Validate</strong><small id="audit-validate-status">Not run</small></li>
+          <li><span>3</span><strong>Preview</strong><small id="audit-preview-status">Not run</small></li>
+          <li><span>4</span><strong>Approve</strong><small id="audit-approval-status">Not requested</small></li>
+          <li><span>5</span><strong>Execute</strong><small id="audit-apply-status">Not run</small></li>
+          <li><span>6</span><strong>Verify</strong><small id="audit-verify-status">Not run</small></li>
+          <li><span>7</span><strong>Evidence</strong><small id="audit-evidence-status">Not available</small></li>
+        </ol>
+        <div class="button-row audit-actions">
+          <button id="audit-validate" type="button">Run validation</button>
+          <button id="audit-preview" type="button" disabled>Preview remediation</button>
+          <button id="audit-request-approval" type="button" disabled>Request approval</button>
+          <button id="audit-export-evidence" type="button" disabled>Export evidence</button>
+        </div>
+      </section>
+
+      <div class="panel-grid audit-results-grid">
+        <section class="panel">
+          <div class="panel-header"><h2>Validation findings</h2><span id="audit-findings-count">0 findings</span></div>
+          <div class="list" id="audit-validation-result"></div>
+        </section>
+        <section class="panel">
+          <div class="panel-header"><h2>Remediation preview</h2><span id="audit-preview-operation">-</span></div>
+          <div class="list" id="audit-preview-result"></div>
+        </section>
+        <section class="panel">
+          <div class="panel-header"><h2>Execution</h2><span id="audit-apply-operation">-</span></div>
+          <div class="list" id="audit-apply-result"></div>
+        </section>
+        <section class="panel">
+          <div class="panel-header"><h2>Verification and evidence</h2><span id="audit-verify-operation">-</span></div>
+          <div class="list" id="audit-verify-result"></div>
+        </section>
+      </div>
     </section>
 
     <section class="tab-panel" id="runs">
@@ -361,6 +411,20 @@
     </section>
 
     <section class="notice" id="notice" aria-live="polite"></section>
+
+    <section class="approval-overlay" id="audit-approval-dialog" role="dialog" aria-modal="true" aria-labelledby="audit-approval-title" hidden>
+      <div class="approval-dialog">
+        <p class="eyebrow">Human approval required</p>
+        <h2 id="audit-approval-title">Apply the exact remediation preview?</h2>
+        <p>This command may modify governance files in the selected repository. The approval is bound to the provider, command, target, and preview shown below.</p>
+        <dl class="metadata-list" id="audit-approval-scope"></dl>
+        <label class="approval-check"><input id="audit-approval-check" type="checkbox"> I approve this exact Marlin command and repository target.</label>
+        <div class="button-row">
+          <button id="audit-cancel-approval" type="button">Cancel</button>
+          <button id="audit-confirm-approval" type="button" disabled>Approve and execute</button>
+        </div>
+      </div>
+    </section>
     <footer id="footer">Loading Cockpit state...</footer>
   </main>
   <!-- cockpit-host-bootstrap -->

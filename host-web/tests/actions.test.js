@@ -156,7 +156,7 @@ test('invokeProviderCommand maps providerId/commandId/input/confirm onto the bri
   const deps = makeDeps({ callBridge: async (req) => { captured = req; return { status: 'succeeded' }; } });
   const messages = await dispatch(
     'eco.cockpit.invokeProviderCommand',
-    { providerId: 'marlin', commandId: 'marlin.audit.validate', input: { project: 'cockpit' }, confirm: true },
+    { providerId: 'marlin', commandId: 'marlin.audit.validate', input: { project: 'cockpit' }, confirm: true, approval: { token: 'a1', scope: 'scope-1' } },
     { workspaceRoot: WORKSPACE, deps },
   );
   assert.equal(captured.backend, 'marlin');
@@ -165,6 +165,7 @@ test('invokeProviderCommand maps providerId/commandId/input/confirm onto the bri
   assert.equal(captured.command_id, 'marlin.audit.validate');
   assert.deepEqual(captured.input, { project: 'cockpit' });
   assert.equal(captured.confirm, true);
+  assert.deepEqual(captured.approval, { token: 'a1', scope: 'scope-1' });
   assert.equal(messages[0].type, 'eco.cockpit.providerCommandResult');
   assert.equal(messages[0].payload.status, 'succeeded');
 });

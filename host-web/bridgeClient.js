@@ -80,7 +80,10 @@ function callBridge(request, {
         finishReject(new Error(`cockpit.host_bridge returned invalid JSON: ${stderr || stdout}`));
         return;
       }
-      if (parsed && parsed.error) {
+      // Provider operation results may legitimately have both `status: failed`
+      // and a structured `error` while still being a valid result the UI must
+      // render. Only the bridge's own error-only envelope is exceptional.
+      if (parsed && parsed.error && parsed.schema_version !== 'cockpit-operation-result-v1') {
         finishReject(new Error(`${parsed.error.type}: ${parsed.error.message}`));
         return;
       }

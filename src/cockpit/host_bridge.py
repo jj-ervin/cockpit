@@ -178,6 +178,22 @@ def _execute_provider_command(request: dict[str, Any]) -> dict[str, Any]:
             f"command '{command_id}' requires_confirmation and needs confirm: true"
         )
 
+    approval = request.get("approval")
+    if command.get("requires_confirmation"):
+        expected_scope = json.dumps(
+            {"command_id": command_id, "input": payload, "provider_id": provider_id},
+            sort_keys=True,
+            separators=(",", ":"),
+        )
+        if not isinstance(approval, dict):
+            raise ValueError(f"command '{command_id}' requires a bound approval object")
+        token = approval.get("token")
+        scope = approval.get("scope")
+        if not isinstance(token, str) or not token.strip():
+            raise ValueError("approval.token must be a non-empty string")
+        if scope != expected_scope:
+            raise ValueError("approval.scope does not match the exact provider, command, and input")
+
     operation_id = str(uuid.uuid4())
     operation_request = {
         "schema_version": "cockpit-operation-request-v1",
@@ -187,6 +203,8 @@ def _execute_provider_command(request: dict[str, Any]) -> dict[str, Any]:
         "workspace_id": workspace_id,
         "input": payload,
     }
+    if approval is not None:
+        operation_request["approval"] = approval
     try:
         _operation_request_schema().validate(operation_request)
     except JsonSchemaValidationError as exc:

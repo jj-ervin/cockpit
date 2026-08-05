@@ -805,6 +805,25 @@
         "CKP:1028"
       ],
       "originating_pass": "CKP.18.01"
+    },
+    {
+      "id": "CKP:1030",
+      "alias": "CKP.18.02",
+      "legacy_ids": [],
+      "title": "Browser Provider Vertical Slice",
+      "description": "Renders repository discovery, Marlin validation findings, remediation preview, exact-scope human approval, confirmation-gated execution, automatic verification, and evidence-bundle download in the shared Cockpit browser bundle; proves the complete path through host-web, the Python bridge, the built Marlin provider, and real GC-AUDIT scripts while preserving host parity in eco-vscode.",
+      "layer": "domain",
+      "cluster": "CKP",
+      "parent": null,
+      "status": "accepted",
+      "timestamp": "2026-08-05T19:57:12Z",
+      "path": "web/cockpit.js",
+      "supersedes": [],
+      "superseded_by": null,
+      "depends_on": [
+        "CKP:1029"
+      ],
+      "originating_pass": "CKP.18.02"
     }
   ]
 }

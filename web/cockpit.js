@@ -35,6 +35,13 @@
     marlinSearchResults: [],
     marlinInstallResult: null,
     selectedWorkspacePath: '',
+    audit: {
+      target: '',
+      activeCommand: '',
+      error: '',
+      approval: null,
+      results: { validate: null, preview: null, apply: null, verify: null },
+    },
     noticeTimer: null,
   };
 
@@ -139,6 +146,31 @@
     nijiBase: byId('niji-base'),
     nijiScheme: byId('niji-scheme'),
     nijiSwatches: byId('niji-swatches'),
+    auditRepository: byId('audit-repository'),
+    auditDiscoverStatus: byId('audit-discover-status'),
+    auditValidateStatus: byId('audit-validate-status'),
+    auditPreviewStatus: byId('audit-preview-status'),
+    auditApprovalStatus: byId('audit-approval-status'),
+    auditApplyStatus: byId('audit-apply-status'),
+    auditVerifyStatus: byId('audit-verify-status'),
+    auditEvidenceStatus: byId('audit-evidence-status'),
+    auditValidate: byId('audit-validate'),
+    auditPreview: byId('audit-preview'),
+    auditRequestApproval: byId('audit-request-approval'),
+    auditExportEvidence: byId('audit-export-evidence'),
+    auditFindingsCount: byId('audit-findings-count'),
+    auditValidationResult: byId('audit-validation-result'),
+    auditPreviewResult: byId('audit-preview-result'),
+    auditApplyResult: byId('audit-apply-result'),
+    auditVerifyResult: byId('audit-verify-result'),
+    auditPreviewOperation: byId('audit-preview-operation'),
+    auditApplyOperation: byId('audit-apply-operation'),
+    auditVerifyOperation: byId('audit-verify-operation'),
+    auditApprovalDialog: byId('audit-approval-dialog'),
+    auditApprovalScope: byId('audit-approval-scope'),
+    auditApprovalCheck: byId('audit-approval-check'),
+    auditCancelApproval: byId('audit-cancel-approval'),
+    auditConfirmApproval: byId('audit-confirm-approval'),
     lassoMode: byId('lasso-mode'),
     lassoPrompt: byId('lasso-prompt'),
     lassoUseCodex: byId('lasso-use-codex'),
@@ -265,6 +297,22 @@
     }
   });
 
+  elements.auditRepository.addEventListener('change', function () {
+    state.audit.target = elements.auditRepository.value;
+    resetAuditResults();
+    renderAuditWorkflow();
+  });
+
+  elements.auditValidate.addEventListener('click', function () { runAuditCommand('validate'); });
+  elements.auditPreview.addEventListener('click', function () { runAuditCommand('preview'); });
+  elements.auditRequestApproval.addEventListener('click', openAuditApproval);
+  elements.auditExportEvidence.addEventListener('click', exportAuditEvidence);
+  elements.auditApprovalCheck.addEventListener('change', function () {
+    elements.auditConfirmApproval.disabled = !elements.auditApprovalCheck.checked;
+  });
+  elements.auditCancelApproval.addEventListener('click', closeAuditApproval);
+  elements.auditConfirmApproval.addEventListener('click', confirmAuditApproval);
+
   elements.lassoMerge.addEventListener('click', function () {
     mergeLassoLanes();
   });
@@ -289,6 +337,11 @@
     }
     if (message.type === 'eco.cockpit.actionResult') {
       const payload = message.payload || {};
+      if (state.audit.activeCommand && payload.ok === false) {
+        state.audit.error = payload.message || 'Provider command failed.';
+        state.audit.activeCommand = '';
+        renderAuditWorkflow();
+      }
       showNotice(payload.message || 'Action completed.', payload.ok === false, payload.persist === true);
       if (payload.refresh !== false) {
         post({ type: 'eco.cockpit.refresh' });
@@ -318,6 +371,10 @@
       const payload = message.payload || {};
       showNotice(payload.ok === false ? (payload.error || 'Mode change failed.') : 'Operator mode updated.', payload.ok === false);
       post({ type: 'eco.cockpit.refresh' });
+      return;
+    }
+    if (message.type === 'eco.cockpit.providerCommandResult') {
+      handleAuditProviderResult(message.payload || {});
       return;
     }
     if (message.type === 'eco.cockpit.error') {
@@ -380,6 +437,8 @@
     renderWorkspaceExplorer(state.snapshot.workspace || {});
     renderWorkspaceRepos(state.snapshot.workspace || {});
     renderNiji(state.snapshot.niji || {});
+    syncAuditRepositories();
+    renderAuditWorkflow();
     renderProviderSummary(state.snapshot.marlin || {}, state.snapshot.niji || {});
 
     if (workspace.bridgeError) {
@@ -867,6 +926,268 @@
     block.className = 'wizard-result';
     block.textContent = JSON.stringify(state.marlinInstallResult, null, 2);
     container.appendChild(block);
+  }
+
+  const AUDIT_COMMANDS = {
+    validate: 'marlin.audit.validate',
+    preview: 'marlin.audit.normalize.preview',
+    apply: 'marlin.audit.normalize.apply',
+    verify: 'marlin.audit.verify',
+  };
+
+  function syncAuditRepositories() {
+    const workspace = state.snapshot.workspace || {};
+    const repos = Array.isArray(workspace.repoStatus) ? workspace.repoStatus : [];
+    const workspaceRoot = String((state.snapshot.state || {}).workspaceRoot || '');
+    const choices = repos.filter(function (repo) {
+      return repo && typeof repo.absolute_path === 'string' && repo.absolute_path;
+    }).map(function (repo) {
+      return { label: String(repo.name || repo.path || repo.absolute_path), value: repo.absolute_path };
+    });
+    if (workspaceRoot && !choices.some(function (choice) { return choice.value === workspaceRoot; })) {
+      choices.unshift({ label: 'Connected workspace', value: workspaceRoot });
+    }
+
+    const previous = state.audit.target;
+    clear(elements.auditRepository);
+    if (!choices.length) {
+      const option = document.createElement('option');
+      option.value = '';
+      option.textContent = 'No repository discovered';
+      elements.auditRepository.appendChild(option);
+      state.audit.target = '';
+      return;
+    }
+    choices.forEach(function (choice) {
+      const option = document.createElement('option');
+      option.value = choice.value;
+      option.textContent = choice.label + ' — ' + choice.value;
+      elements.auditRepository.appendChild(option);
+    });
+    state.audit.target = choices.some(function (choice) { return choice.value === previous; })
+      ? previous
+      : choices[0].value;
+    elements.auditRepository.value = state.audit.target;
+  }
+
+  function resetAuditResults() {
+    state.audit.activeCommand = '';
+    state.audit.error = '';
+    state.audit.approval = null;
+    state.audit.results = { validate: null, preview: null, apply: null, verify: null };
+    closeAuditApproval();
+  }
+
+  function runAuditCommand(stage, approval) {
+    const commandId = AUDIT_COMMANDS[stage];
+    if (!commandId || !state.audit.target || state.audit.activeCommand) {
+      return;
+    }
+    state.audit.error = '';
+    state.audit.activeCommand = commandId;
+    renderAuditWorkflow();
+    post({
+      type: 'eco.cockpit.invokeProviderCommand',
+      providerId: 'marlin',
+      commandId: commandId,
+      input: { target: state.audit.target },
+      confirm: stage === 'apply',
+      approval: approval || undefined,
+    });
+  }
+
+  function handleAuditProviderResult(result) {
+    if (result.provider_id !== 'marlin') {
+      return;
+    }
+    const stage = Object.keys(AUDIT_COMMANDS).find(function (key) {
+      return AUDIT_COMMANDS[key] === result.command_id;
+    });
+    if (!stage) {
+      return;
+    }
+    state.audit.results[stage] = result;
+    state.audit.activeCommand = '';
+    state.audit.error = '';
+    renderAuditWorkflow();
+    if (stage === 'apply' && result.status === 'succeeded') {
+      runAuditCommand('verify');
+    }
+  }
+
+  function openAuditApproval() {
+    const preview = state.audit.results.preview;
+    if (!preview || preview.status !== 'succeeded' || !state.audit.target) {
+      return;
+    }
+    const input = { target: state.audit.target };
+    state.audit.approval = {
+      providerId: 'marlin',
+      commandId: AUDIT_COMMANDS.apply,
+      input: input,
+      previewOperationId: preview.operation_id,
+      token: approvalToken(),
+      scope: approvalScope('marlin', AUDIT_COMMANDS.apply, input),
+    };
+    clear(elements.auditApprovalScope);
+    [
+      ['Provider', state.audit.approval.providerId],
+      ['Command', state.audit.approval.commandId],
+      ['Repository', state.audit.target],
+      ['Preview operation', state.audit.approval.previewOperationId],
+    ].forEach(function (entry) {
+      const dt = document.createElement('dt');
+      const dd = document.createElement('dd');
+      dt.textContent = entry[0];
+      dd.textContent = entry[1];
+      elements.auditApprovalScope.appendChild(dt);
+      elements.auditApprovalScope.appendChild(dd);
+    });
+    elements.auditApprovalCheck.checked = false;
+    elements.auditConfirmApproval.disabled = true;
+    elements.auditApprovalDialog.hidden = false;
+    elements.auditApprovalCheck.focus();
+    renderAuditWorkflow();
+  }
+
+  function closeAuditApproval() {
+    elements.auditApprovalDialog.hidden = true;
+    elements.auditApprovalCheck.checked = false;
+    elements.auditConfirmApproval.disabled = true;
+  }
+
+  function confirmAuditApproval() {
+    const approval = state.audit.approval;
+    const preview = state.audit.results.preview;
+    if (!elements.auditApprovalCheck.checked || !approval || !preview ||
+        approval.previewOperationId !== preview.operation_id ||
+        approval.input.target !== state.audit.target) {
+      state.audit.error = 'Approval expired because the preview or repository changed.';
+      closeAuditApproval();
+      renderAuditWorkflow();
+      return;
+    }
+    closeAuditApproval();
+    runAuditCommand('apply', { token: approval.token, scope: approval.scope });
+  }
+
+  function approvalScope(providerId, commandId, input) {
+    return canonicalStringify({ provider_id: providerId, command_id: commandId, input: input });
+  }
+
+  function canonicalStringify(value) {
+    if (Array.isArray(value)) {
+      return '[' + value.map(canonicalStringify).join(',') + ']';
+    }
+    if (value && typeof value === 'object') {
+      return '{' + Object.keys(value).sort().map(function (key) {
+        return JSON.stringify(key) + ':' + canonicalStringify(value[key]);
+      }).join(',') + '}';
+    }
+    return JSON.stringify(value);
+  }
+
+  function approvalToken() {
+    if (window.crypto && typeof window.crypto.randomUUID === 'function') {
+      return window.crypto.randomUUID();
+    }
+    return 'cockpit-approval-' + Date.now() + '-' + Math.random().toString(16).slice(2);
+  }
+
+  function renderAuditWorkflow() {
+    const results = state.audit.results;
+    const active = state.audit.activeCommand;
+    const verifyBundle = evidenceBundle(results.verify);
+    elements.auditDiscoverStatus.textContent = state.audit.target || 'Choose a repository';
+    elements.auditValidateStatus.textContent = auditStageLabel('validate');
+    elements.auditPreviewStatus.textContent = auditStageLabel('preview');
+    elements.auditApprovalStatus.textContent = state.audit.approval ? 'Bound to preview ' + state.audit.approval.previewOperationId : 'Not requested';
+    elements.auditApplyStatus.textContent = auditStageLabel('apply');
+    elements.auditVerifyStatus.textContent = auditStageLabel('verify');
+    elements.auditEvidenceStatus.textContent = verifyBundle ? 'Ready to export' : 'Not available';
+
+    elements.auditRepository.disabled = Boolean(active);
+    elements.auditValidate.disabled = !state.audit.target || Boolean(active);
+    elements.auditPreview.disabled = !results.validate || Boolean(active);
+    elements.auditRequestApproval.disabled = !results.preview || results.preview.status !== 'succeeded' || Boolean(active);
+    elements.auditExportEvidence.disabled = !verifyBundle || Boolean(active);
+
+    renderAuditResult(elements.auditValidationResult, results.validate, 'Run validation to load findings.');
+    renderAuditResult(elements.auditPreviewResult, results.preview, 'Preview has not run.');
+    renderAuditResult(elements.auditApplyResult, results.apply, state.audit.error || 'No remediation has executed.');
+    renderAuditResult(elements.auditVerifyResult, results.verify, 'Verification has not run.');
+    elements.auditFindingsCount.textContent = String(auditFindings(results.validate).length) + ' findings';
+    elements.auditPreviewOperation.textContent = results.preview ? results.preview.operation_id : '-';
+    elements.auditApplyOperation.textContent = results.apply ? results.apply.operation_id : '-';
+    elements.auditVerifyOperation.textContent = results.verify ? results.verify.operation_id : '-';
+  }
+
+  function auditStageLabel(stage) {
+    if (state.audit.activeCommand === AUDIT_COMMANDS[stage]) return 'Running';
+    const result = state.audit.results[stage];
+    return result ? result.status : 'Not run';
+  }
+
+  function renderAuditResult(container, result, emptyText) {
+    clear(container);
+    if (!result) {
+      const empty = document.createElement('div');
+      empty.className = 'item';
+      empty.textContent = emptyText;
+      container.appendChild(empty);
+      return;
+    }
+    const summary = document.createElement('div');
+    summary.className = 'item audit-result-summary';
+    const title = document.createElement('strong');
+    const detail = document.createElement('span');
+    title.textContent = result.status + ' — ' + (result.command_id || 'provider command');
+    detail.textContent = String((result.data && result.data.message) || (result.error && result.error.message) || 'Structured provider result received.');
+    summary.appendChild(title);
+    summary.appendChild(detail);
+    container.appendChild(summary);
+
+    auditFindings(result).forEach(function (finding) {
+      const row = document.createElement('div');
+      const findingTitle = document.createElement('strong');
+      const findingDetail = document.createElement('span');
+      row.className = 'item audit-finding' + (finding.severity === 'error' ? ' is-error' : '');
+      findingTitle.textContent = String(finding.severity || 'finding') + ' — ' + String(finding.id || finding.rule || 'GC-AUDIT');
+      findingDetail.textContent = String(finding.description || '') + (finding.remediation ? ' Remediation: ' + finding.remediation : '');
+      row.appendChild(findingTitle);
+      row.appendChild(findingDetail);
+      container.appendChild(row);
+    });
+
+    (Array.isArray(result.evidence) ? result.evidence : []).forEach(function (evidence) {
+      const row = document.createElement('div');
+      row.className = 'item audit-evidence-ref';
+      row.textContent = String(evidence.kind || 'evidence') + ': ' + String(evidence.ref || '') + (evidence.digest ? ' (' + evidence.digest + ')' : '');
+      container.appendChild(row);
+    });
+  }
+
+  function evidenceBundle(result) {
+    return result && result.data && result.data.evidence_bundle ? result.data.evidence_bundle : null;
+  }
+
+  function auditFindings(result) {
+    const bundle = evidenceBundle(result);
+    return bundle && Array.isArray(bundle.findings) ? bundle.findings : [];
+  }
+
+  function exportAuditEvidence() {
+    const bundle = evidenceBundle(state.audit.results.verify);
+    if (!bundle) return;
+    const blob = new Blob([JSON.stringify(bundle, null, 2) + '\n'], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = String(bundle.bundle_id || 'marlin-verify-evidence') + '.json';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(function () { URL.revokeObjectURL(url); }, 0);
   }
 
   function renderNiji(niji) {

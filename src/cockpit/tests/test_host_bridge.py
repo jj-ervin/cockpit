@@ -410,15 +410,39 @@ def test_invoke_provider_command_rejects_truthy_non_boolean_confirm(fake_provide
 
 
 def test_invoke_provider_command_allows_confirmed_mutation(fake_provider: Path) -> None:
+    payload: dict[str, object] = {}
     result = execute({
+        "backend": "fake",
+        "workspace_id": "ws-1",
+        "operation": "invoke_provider_command",
+        "command_id": "fake.mutate",
+        "input": payload,
+        "confirm": True,
+        "approval": {
+            "token": "approval-1",
+            "scope": json.dumps(
+                {"command_id": "fake.mutate", "input": payload, "provider_id": "fake"},
+                sort_keys=True,
+                separators=(",", ":"),
+            ),
+        },
+    })
+    assert result["status"] == "succeeded"
+
+
+def test_invoke_provider_command_rejects_unbound_or_mismatched_approval(fake_provider: Path) -> None:
+    request = {
         "backend": "fake",
         "workspace_id": "ws-1",
         "operation": "invoke_provider_command",
         "command_id": "fake.mutate",
         "input": {},
         "confirm": True,
-    })
-    assert result["status"] == "succeeded"
+    }
+    with pytest.raises(ValueError, match="bound approval"):
+        execute(request)
+    with pytest.raises(ValueError, match="does not match"):
+        execute({**request, "approval": {"token": "approval-1", "scope": "wrong"}})
 
 
 def test_invoke_provider_command_unknown_provider_fails_closed(fake_provider: Path) -> None:

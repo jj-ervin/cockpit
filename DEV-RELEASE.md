@@ -67,7 +67,7 @@ integration was built:
       2026-07-02: every write path raises `WriteNotSupportedError`, previews
       steps, hands back an `apply_command`) converted into a conforming
       `cockpit-provider-v1` provider, not just left as a special case
-- [ ] Vertical slice works end to end: discover repository → run GC
+- [x] Vertical slice works end to end: discover repository → run GC
       validation through Marlin → render findings → preview remediation →
       request human approval → execute through Marlin → verify → export
       evidence
@@ -128,6 +128,23 @@ Both host-web and eco-vscode use the same provider request/result protocol and
 retain no direct Marlin CLI spawn or resolution path. This closes the first of
 the three CKP.18 release actions; the clickable browser vertical slice and
 stranger installation remain open.
+
+### CKP.18.02 browser vertical-slice closure (2026-08-05)
+
+The shared Cockpit bundle now has a Marlin Audit workflow that selects a
+discovered repository, renders structured validation findings, runs a dry-run
+remediation preview, presents an exact-scope human approval dialog, executes
+the confirmation-gated Marlin normalization, automatically verifies the
+result, and downloads Marlin's final evidence bundle unchanged as JSON.
+
+The bridge requires literal `confirm: true` plus an approval token whose
+canonical scope exactly matches the provider ID, command ID, and input.
+Missing or mismatched scope fails before provider spawn. Both host-web and
+eco-vscode relay the same generic provider command/result envelope. A real
+Chromium test proves the complete browser → HTTP host → Python bridge → built
+Marlin provider → PowerShell GC-AUDIT → file mutation → verification →
+evidence-download path against an isolated portfolio. The only remaining
+v1.0.0 entry gate is the stranger installation of Cockpit itself.
 
 ## v1.1.0 Entry Conditions
 

@@ -1068,3 +1068,20 @@ Marlin provider package list/search/install/malformed-input/evidence tests and a
 real built-provider package-list subprocess, plus eco-vscode typecheck/build.
 The browser command-rendering/approval lane and stranger-install lane remain
 separate CKP.18 release work.
+
+## CKP.18.02 Closure — Browser Provider Vertical Slice
+
+**Closed:** 2026-08-05. Cockpit's shared browser bundle now renders the full
+Marlin governance workflow: repository selection, validation findings,
+normalization preview, exact-scope approval, execution, automatic verification,
+and final evidence-bundle download. Approval is bound to the canonical
+provider/command/input scope and rejected by `host_bridge.py` when absent or
+mismatched; provider failures remain structured results so findings can render
+instead of being mistaken for bridge crashes.
+
+The same generic provider message works through host-web and eco-vscode. The
+non-mocked Chromium gate starts the real Express host, real Python bridge, and
+the built Marlin stdio provider against an isolated GC-AUDIT portfolio; apply
+writes a real marker, verify observes it, and the browser downloads Marlin's
+real verify evidence bundle. Cockpit v1.0.0 now has one open entry condition:
+the stranger-install release exercise.

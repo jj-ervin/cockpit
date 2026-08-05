@@ -49,6 +49,24 @@ test('callBridge rejects when the bridge returns an error envelope', async () =>
   );
 });
 
+test('callBridge preserves a failed provider result as structured UI data', async () => {
+  const providerResult = {
+    schema_version: 'cockpit-operation-result-v1',
+    operation_id: 'op-1', provider_id: 'marlin', command_id: 'marlin.audit.validate',
+    status: 'failed', timestamp: '2026-08-05T00:00:00Z', data: {}, evidence: [],
+    error: { code: 'failed', message: 'one finding', retryable: false },
+  };
+  const spawnFn = () => {
+    const child = fakeChild();
+    setImmediate(() => {
+      child.stdout.emit('data', Buffer.from(JSON.stringify(providerResult)));
+      child.emit('close', 0);
+    });
+    return child;
+  };
+  assert.deepEqual(await callBridge({}, { spawnFn }), providerResult);
+});
+
 test('callBridge reports a clear message when the python executable is missing', async () => {
   const spawnFn = () => {
     const child = fakeChild();
