@@ -58,10 +58,10 @@ The durable boundary, verbatim from `CKP.v1.0-scoping.md`:
 These prove the universal-shell architecture works, not just that one
 integration was built:
 
-- [ ] `cockpit-provider-v1` protocol defined: manifest schema, commands,
+- [x] `cockpit-provider-v1` protocol defined: manifest schema, commands,
       views, capabilities, permissions, lifecycle, transport, structured
       operation results
-- [ ] Provider registration is portable — not hardcoded to Marlin's specific
+- [x] Provider registration is portable — not hardcoded to Marlin's specific
       commands/paths
 - [ ] Existing `MarlinAdapter`/`install_phase1.py` boundary (verified
       2026-07-02: every write path raises `WriteNotSupportedError`, previews
@@ -71,12 +71,51 @@ integration was built:
       validation through Marlin → render findings → preview remediation →
       request human approval → execute through Marlin → verify → export
       evidence
-- [ ] Structured JSON operation results only — no screen-scraping,
+- [x] Structured JSON operation results only — no screen-scraping,
       hardcoded paths, or duplicated governance decisions in Cockpit itself
 - [ ] Stranger installs Cockpit without the `C:\dev` portfolio workspace or
       eco present
-- [ ] At least one non-Marlin provider scoped (need not ship in v1.0) to
+- [x] At least one non-Marlin provider scoped (need not ship in v1.0) to
       confirm the contract isn't accidentally Marlin-specific
+
+### Reconciliation note (2026-08-05, CKP.17)
+
+Checked against real, tested evidence from CKP.17.01–.03 and its corrective
+pass (`DEV-PLAN.md`), not intent or plan:
+
+- **Protocol defined** — `schemas/cockpit-provider-v1.schema.json` and the
+  operation request/result schemas are real and, as of the corrective pass,
+  actually enforced by `host_bridge.py` (request/result validation,
+  operation_id/provider_id/command_id correlation) rather than merely
+  present on disk.
+- **Registration is portable** — `provider_discovery.py` + `ProviderRegistry`
+  carry zero Marlin-specific code and were proven against two independent
+  real providers (Niji, and Marlin's own new governance provider).
+- **Structured JSON only** — true across both the adapter and provider
+  paths; the corrective pass's schema enforcement closes the gap that would
+  have let a malformed result through unnoticed.
+- **Non-Marlin provider scoped** — Niji already satisfies this; not new
+  today, but never checked off.
+
+**Still open, honestly:**
+
+- **MarlinAdapter conversion** — not done. CKP.17.03 built a *new*,
+  separate `cockpit-provider-v1` provider for Marlin's governance surface
+  (`marlin-dxp/src/provider.ts`) — it did not touch or convert
+  `src/cockpit/adapters/marlin.py` (untouched since `c3d3752`). The old
+  install-readiness special case and the new governance provider currently
+  coexist; the old one was not converted or removed.
+- **Vertical slice end to end** — the *backend* chain is real and proven
+  live (discover via the existing workspace-tree/repo-status adapter data,
+  validate/preview/approve-gate/execute/verify/evidence-export all real
+  through the Marlin provider), reachable over real HTTP via host-web's
+  `/api/bridge`. No UI renders any of it yet — `web/cockpit.js` was not
+  touched by CKP.17. "Vertical slice works end to end" is true at the API
+  layer, not yet true as something a human can click through.
+- **Stranger installs Cockpit** — not attempted. CKP.17 proved provider
+  *discovery* has no `C:\dev`/eco coupling (isolated-home installs of both
+  Niji and Marlin's provider), but never tested installing Cockpit itself
+  outside this portfolio workspace.
 
 ## v1.1.0 Entry Conditions
 
