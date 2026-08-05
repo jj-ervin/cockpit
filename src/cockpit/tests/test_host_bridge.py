@@ -445,6 +445,23 @@ def test_invoke_provider_command_rejects_unbound_or_mismatched_approval(fake_pro
         execute({**request, "approval": {"token": "approval-1", "scope": "wrong"}})
 
 
+def test_batch_executes_independent_requests_and_contains_item_errors() -> None:
+    result = execute({
+        "operation": "batch",
+        "requests": [
+            {"backend": "system", "operation": "health"},
+            {"backend": "missing", "operation": "health"},
+            {"operation": "batch", "requests": []},
+        ],
+    })
+    assert result["results"][0]["ok"] is True
+    assert result["results"][0]["result"]["data"]["status"] == "ok"
+    assert result["results"][1]["ok"] is False
+    assert "unknown backend" in result["results"][1]["error"]["message"]
+    assert result["results"][2]["ok"] is False
+    assert "nested batch" in result["results"][2]["error"]["message"]
+
+
 def test_invoke_provider_command_unknown_provider_fails_closed(fake_provider: Path) -> None:
     with pytest.raises(ValueError, match="unknown or untrusted"):
         execute({

@@ -71,6 +71,25 @@ npm run build
 code --new-window --extensionDevelopmentPath=C:\dev\eco-vscode C:\dev\eco --command eco.openCockpit
 ```
 
+## Standalone Windows desktop
+
+Cockpit v1.0.0's distributable SKU is a per-user Windows x64 NSIS installer.
+It bundles Electron, the loopback Express host, the web UI, the frozen Cockpit
+bridge, and the provider protocol schemas; it requires neither VS Code nor a
+Python installation. Build and verify it from the repository root:
+
+```powershell
+.\scripts\build-standalone.ps1
+.\scripts\stranger-install-smoke.ps1
+```
+
+The verifier copies the installer to an isolated temp directory, installs it
+without elevation, opens an ordinary Git repository outside the portfolio,
+waits for the real packaged shell and bridge, validates packaged resource
+paths, then uninstalls and removes the proof. Set `COCKPIT_WORKSPACE` when
+launching the installed app from a terminal or desktop integration to select a
+repository; otherwise it opens the process working directory.
+
 ## Standalone web host (Phase 3)
 
 `host-web/` implements `CKP.03`'s Phase 3 — a universal standalone shell, no

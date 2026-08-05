@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -12,8 +13,15 @@ from jsonschema import Draft202012Validator
 from jsonschema.exceptions import ValidationError as JsonSchemaValidationError
 
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
-SCHEMA_ROOT = REPO_ROOT / "schemas"
+def _schema_root() -> Path:
+    """Resolve schemas from source or PyInstaller's extracted data root."""
+    frozen_root = getattr(sys, "_MEIPASS", None)
+    if frozen_root:
+        return Path(frozen_root) / "schemas"
+    return Path(__file__).resolve().parents[2] / "schemas"
+
+
+SCHEMA_ROOT = _schema_root()
 
 
 class ProviderRegistrationError(ValueError):

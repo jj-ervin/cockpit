@@ -21,6 +21,8 @@
     "directories": {
       "output": "release"
     },
+    "compression": "normal",
+    "artifactName": "Cockpit-${version}-windows-x64-setup.${ext}",
     "files": [
       "main.cjs",
       "preload.cjs",
@@ -33,7 +35,9 @@
         "to": "host-web",
         "filter": [
           "**/*",
-          "!tests/**"
+          "!tests/**",
+          "!node_modules/**",
+          "!package-lock.json"
         ]
       },
       {
@@ -56,6 +60,8 @@
     },
     "nsis": {
       "oneClick": false,
+      "perMachine": false,
+      "allowElevation": false,
       "allowToChangeInstallationDirectory": true
     }
   },

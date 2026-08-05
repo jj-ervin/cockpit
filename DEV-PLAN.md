@@ -1085,3 +1085,26 @@ the built Marlin stdio provider against an isolated GC-AUDIT portfolio; apply
 writes a real marker, verify observes it, and the browser downloads Marlin's
 real verify evidence bundle. Cockpit v1.0.0 now has one open entry condition:
 the stranger-install release exercise.
+
+## CKP.18.03 Closure — Standalone Distribution and Stranger Install
+
+**Closed:** 2026-08-05. Cockpit v1.0.0's standalone distribution is the
+per-user, non-admin Windows x64 NSIS installer produced by
+`scripts/build-standalone.ps1`. The installer contains Electron, host-web, the
+shared UI bundle, a PyInstaller-frozen bridge, and all provider schemas. The
+packaged app selects an ordinary repository through `COCKPIT_WORKSPACE`; it has
+no Python, VS Code, eco-workspace, or portfolio-checkout dependency.
+
+The real stranger exercise forced four source-only assumptions into the open
+and closed them: schemas were absent from the frozen bridge, the packaged host
+dropped its bridge executable during snapshot construction, optional Niji
+absence failed the whole shell, and 17 parallel frozen bridge starts exceeded
+the startup timeout. Schemas now resolve from PyInstaller's data root,
+snapshot construction preserves the bridge executable and uses one bounded
+batch request, and missing optional providers degrade independently.
+
+The final copied-artifact proof installed silently under the user temp area,
+opened a new ordinary Git repository, rendered the packaged 13-tab shell with
+installed-only resource paths, emitted SHA-256-addressed PASS evidence, and
+uninstalled cleanly. All v1.0.0 entry gates are closed; publishing the installer
+and Marlin registry entries remains separate release authority.

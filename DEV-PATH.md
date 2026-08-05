@@ -1418,3 +1418,25 @@ Hosts now distinguish the bridge's error-only envelope from
 visible and actionable. The isolated end-to-end proof uses the actual built
 Marlin provider and real GC-AUDIT PowerShell execution, including mutation,
 verification, and browser evidence download.
+
+## CKP.18.03 — Standalone Distribution Boundary
+
+Cockpit v1.0.0 distributes as a per-user Windows x64 Electron/NSIS desktop
+application. The installed boundary contains the loopback host, shared browser
+assets, frozen Python bridge, and protocol schemas. It deliberately does not
+absorb Marlin or provider installation: providers remain independently
+attested per-user installations discovered through the public layout contract.
+
+The stranger-install proof is artifact-first. It copies the installer away
+from the repository, installs without elevation into a fresh temp root, creates
+an ordinary Git repository and isolated Electron profile, starts the packaged
+shell, validates that resources and bridge resolve inside the installation,
+then uninstalls and removes the proof. `COCKPIT_WORKSPACE` is the packaged-app
+repository selection contract because Electron rejects unknown application
+switches before Cockpit code runs.
+
+Standalone startup now performs one bounded bridge batch instead of spawning
+one frozen Python process per snapshot field. Item errors stay isolated and
+structured; required adapter failures still fail closed, while missing optional
+providers degrade their own integration only. Frozen schema resolution uses
+PyInstaller's extraction root and retains the source-tree path in development.

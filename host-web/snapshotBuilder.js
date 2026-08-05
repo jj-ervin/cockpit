@@ -8,34 +8,16 @@ const { callBridge } = require('./bridgeClient');
  * unmodified web/cockpit.js bundle (normalizeSnapshot/emptySnapshot) renders
  * it identically regardless of which host built it.
  */
-async function buildSnapshot(workspaceRoot, { pythonExecutable, bridge = callBridge } = {}) {
-  const opts = { pythonExecutable };
-  const eco = (operation, extra = {}) => bridge({ backend: 'eco', workspace_id: workspaceRoot, operation, ...extra }, opts);
-  const cockpit = (operation, extra = {}) => bridge({ backend: 'cockpit', workspace_id: '', operation, ...extra }, opts);
-  const workspace = (operation, extra = {}) => bridge({ backend: 'workspace', workspace_id: workspaceRoot, operation, ...extra }, opts);
-  const niji = (operation, extra = {}) => bridge({ backend: 'niji', workspace_id: '', operation, ...extra }, opts);
-  const system = (operation, extra = {}) => bridge({ backend: 'system', operation, ...extra }, opts);
+async function buildSnapshot(workspaceRoot, { pythonExecutable, bridgeExecutable, bridge = callBridge } = {}) {
+  const opts = { pythonExecutable, bridgeExecutable };
+  const eco = (operation, extra = {}) => ({ backend: 'eco', workspace_id: workspaceRoot, operation, ...extra });
+  const cockpit = (operation, extra = {}) => ({ backend: 'cockpit', workspace_id: '', operation, ...extra });
+  const workspace = (operation, extra = {}) => ({ backend: 'workspace', workspace_id: workspaceRoot, operation, ...extra });
+  const niji = (operation, extra = {}) => ({ backend: 'niji', workspace_id: '', operation, ...extra });
+  const system = (operation, extra = {}) => ({ backend: 'system', operation, ...extra });
 
   try {
-    const [
-      state,
-      health,
-      runs,
-      escalations,
-      artifacts,
-      policies,
-      governance,
-      mode,
-      agentPipeline,
-      marlinReadiness,
-      marlinTree,
-      marlinRepoStatus,
-      marlinPackages,
-      nijiHealth,
-      nijiState,
-      nijiPalette,
-      systemEnvironment,
-    ] = await Promise.all([
+    const requests = [
       eco('get_state'),
       eco('health'),
       eco('list_records', { record_type: 'run' }),
@@ -48,13 +30,44 @@ async function buildSnapshot(workspaceRoot, { pythonExecutable, bridge = callBri
       cockpit('list_records', { record_type: 'development-readiness', filters: { workspace: workspaceRoot } }),
       workspace('list_records', { record_type: 'workspace-tree', filters: { max_depth: 3, max_items: 500 } }),
       workspace('list_records', { record_type: 'repo-status', filters: { max_items: 200 } }),
-      bridge({ backend: 'marlin', workspace_id: workspaceRoot, operation: 'invoke_provider_command', command_id: 'marlin.package.list', input: {}, confirm: false }, opts)
-        .catch((error) => ({ status: 'failed', error: { message: error instanceof Error ? error.message : String(error) }, data: {} })),
+      { backend: 'marlin', workspace_id: workspaceRoot, operation: 'invoke_provider_command', command_id: 'marlin.package.list', input: {}, confirm: false },
       niji('health'),
       niji('get_state'),
       niji('get_record', { record_type: 'palette-preview', record_id: 'sample' }),
       system('get_record', { record_type: 'environment', record_id: 'current' }),
-    ]);
+    ];
+    const batch = await bridge({ operation: 'batch', requests }, opts);
+    if (!batch || !Array.isArray(batch.results) || batch.results.length !== requests.length) {
+      throw new Error('cockpit.host_bridge returned an invalid batch result');
+    }
+    const required = (index) => {
+      const entry = batch.results[index];
+      if (!entry || entry.ok !== true) throw new Error((entry && entry.error && entry.error.message) || `bridge batch item ${index} failed`);
+      return entry.result;
+    };
+    const optional = (index, data) => {
+      const entry = batch.results[index];
+      return entry && entry.ok === true
+        ? entry.result
+        : { data, error: { message: (entry && entry.error && entry.error.message) || `bridge batch item ${index} failed` } };
+    };
+    const state = required(0);
+    const health = required(1);
+    const runs = required(2);
+    const escalations = required(3);
+    const artifacts = required(4);
+    const policies = required(5);
+    const governance = required(6);
+    const mode = required(7);
+    const agentPipeline = required(8);
+    const marlinReadiness = required(9);
+    const marlinTree = required(10);
+    const marlinRepoStatus = required(11);
+    const marlinPackages = optional(12, {});
+    const nijiHealth = optional(13, { reachable: false, status: 'degraded' });
+    const nijiState = optional(14, {});
+    const nijiPalette = optional(15, null);
+    const systemEnvironment = required(16);
 
     return {
       state: {
@@ -89,6 +102,7 @@ async function buildSnapshot(workspaceRoot, { pythonExecutable, bridge = callBri
         health: nijiHealth.data,
         state: nijiState.data,
         palettePreview: nijiPalette.data,
+        error: (nijiHealth.error || nijiState.error || nijiPalette.error || {}).message || null,
       },
       diagnostics: {
         integrations: { eco: health.data, marlin: marlinPackages.status === 'succeeded' ? { reachable: true, status: 'ok' } : { reachable: false, status: 'degraded', error: marlinPackages.error && marlinPackages.error.message }, niji: nijiHealth.data },

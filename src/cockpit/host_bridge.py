@@ -22,9 +22,9 @@ from jsonschema.exceptions import ValidationError as JsonSchemaValidationError
 import cockpit.adapters  # noqa: F401 — import for its registration side-effect only
 from cockpit.core.adapter import ADAPTER_REGISTRY, CockpitAdapter
 from cockpit.provider_discovery import discover_providers
-from cockpit.provider_registry import ProviderRegistry
+from cockpit.provider_registry import SCHEMA_ROOT, ProviderRegistry
 
-_SCHEMA_ROOT = Path(__file__).resolve().parents[2] / "schemas"
+_SCHEMA_ROOT = SCHEMA_ROOT
 
 _OPERATIONS = frozenset(
     {
@@ -89,6 +89,9 @@ def execute(request: dict[str, Any]) -> dict[str, Any]:
     node_id = request.get("node_id")
     operation = str(request.get("operation") or "")
 
+    if operation == "batch":
+        return _execute_batch(request)
+
     if operation not in _OPERATIONS:
         raise ValueError(f"unsupported bridge operation: {operation}")
 
@@ -147,6 +150,26 @@ def execute(request: dict[str, Any]) -> dict[str, Any]:
         return _serialize_result(adapter.close())
 
     raise AssertionError(f"unhandled operation: {operation}")
+
+
+def _execute_batch(request: dict[str, Any]) -> dict[str, Any]:
+    """Execute a bounded set of independent bridge reads in one process."""
+    requests = request.get("requests")
+    if not isinstance(requests, list) or not requests or len(requests) > 100:
+        raise ValueError("batch.requests must contain between 1 and 100 requests")
+    results: list[dict[str, Any]] = []
+    for item in requests:
+        if not isinstance(item, dict):
+            results.append({"ok": False, "error": {"type": "ValueError", "message": "batch item must be an object"}})
+            continue
+        if item.get("operation") == "batch":
+            results.append({"ok": False, "error": {"type": "ValueError", "message": "nested batch requests are not supported"}})
+            continue
+        try:
+            results.append({"ok": True, "result": execute(item)})
+        except Exception as exc:
+            results.append({"ok": False, "error": {"type": exc.__class__.__name__, "message": str(exc)}})
+    return {"results": results}
 
 
 def _execute_provider_command(request: dict[str, Any]) -> dict[str, Any]:

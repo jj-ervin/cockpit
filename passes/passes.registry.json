@@ -824,6 +824,25 @@
         "CKP:1029"
       ],
       "originating_pass": "CKP.18.02"
+    },
+    {
+      "id": "CKP:1031",
+      "alias": "CKP.18.03",
+      "legacy_ids": [],
+      "title": "Standalone Distribution and Stranger Install",
+      "description": "Defines Cockpit v1.0.0 as a non-admin per-user Windows x64 Electron/NSIS installer, bundles the frozen bridge and schemas, batches initial snapshot reads, degrades absent optional providers, and proves a copied artifact can install, open an ordinary external repository, render the packaged shell, and uninstall without C:\\dev, eco, VS Code, or Python.",
+      "layer": "domain",
+      "cluster": "CKP",
+      "parent": null,
+      "status": "accepted",
+      "timestamp": "2026-08-05T22:18:19Z",
+      "path": "scripts/stranger-install-smoke.ps1",
+      "supersedes": [],
+      "superseded_by": null,
+      "depends_on": [
+        "CKP:1030"
+      ],
+      "originating_pass": "CKP.18.03"
     }
   ]
 }

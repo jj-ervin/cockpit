@@ -47,7 +47,7 @@ The durable boundary, verbatim from `CKP.v1.0-scoping.md`:
 | Version | Name | Description | Status |
 | --- | --- | --- | --- |
 | v0.1.0 | Foundation | VS Code WebviewPanel host, five CK.01 surfaces, workspace-local governance | ✅ Done 2026-07-02 (`CKP.05`-`CKP.08.10`) |
-| v1.0.0 | Marlin Provider Slice | Portable provider registration/commands/views/capabilities/lifecycle; Marlin as first conforming provider; repo discovery → governance status → remediation approval → evidence export | ⬜ In progress |
+| v1.0.0 | Marlin Provider Slice | Portable provider registration/commands/views/capabilities/lifecycle; Marlin as first conforming provider; repo discovery → governance status → remediation approval → evidence export | ✅ Entry gates closed 2026-08-05; publication pending |
 | v1.1.0 | Second-Provider Proof | A second, smaller provider (e.g. Niji status/launch/export) proves the provider contract is generic, not Marlin-specific | ⬜ |
 | v2.0.0 | Developer OS Controls | Multi-agent orchestration console display, workspace graph, profile management | ⬜ |
 
@@ -73,7 +73,7 @@ integration was built:
       evidence
 - [x] Structured JSON operation results only — no screen-scraping,
       hardcoded paths, or duplicated governance decisions in Cockpit itself
-- [ ] Stranger installs Cockpit without the `C:\dev` portfolio workspace or
+- [x] Stranger installs Cockpit without the `C:\dev` portfolio workspace or
       eco present
 - [x] At least one non-Marlin provider scoped (need not ship in v1.0) to
       confirm the contract isn't accidentally Marlin-specific
@@ -145,6 +145,28 @@ Chromium test proves the complete browser → HTTP host → Python bridge → bu
 Marlin provider → PowerShell GC-AUDIT → file mutation → verification →
 evidence-download path against an isolated portfolio. The only remaining
 v1.0.0 entry gate is the stranger installation of Cockpit itself.
+
+### CKP.18.03 standalone stranger-install closure (2026-08-05)
+
+The v1.0.0 Cockpit distribution is a non-admin, per-user Windows x64 NSIS
+installer. Its payload contains the Electron shell, loopback Express host,
+shared web bundle, frozen `cockpit-bridge.exe`, and provider protocol schemas;
+the installed shell does not require VS Code, Python, an eco workspace, or a
+`C:\dev` checkout. Marlin and its providers remain separately installed
+authorities discovered through their attested per-user provider layout.
+
+The release exercise copied the freshly built installer to an isolated temp
+directory, installed it silently, initialized an ordinary Git repository
+beside the install, launched the real packaged Electron shell with an isolated
+profile, and verified that all resources and the bridge resolved beneath the
+installed directory. The shell rendered 13 tabs and reported the external
+repository in its footer. The verifier then ran the uninstaller and removed
+the isolated proof. Installer SHA-256:
+`e3ed051d1f64138c8745d7a6a676ef10f5d3bc936c94e635a506c2e848ca2718`.
+
+This closes every v1.0.0 entry condition. Artifact publication and Marlin
+registry publication remain explicit release operations; no publication is
+claimed by this closure.
 
 ## v1.1.0 Entry Conditions
 
