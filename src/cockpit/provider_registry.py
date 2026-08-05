@@ -67,6 +67,19 @@ class ProviderRegistry:
         if not executable.is_absolute() or not executable.is_file():
             raise ProviderRegistrationError("attested provider executable must be an existing absolute file")
 
+        # `package_digest`, when present, is the digest of the downloaded install
+        # archive that Marlin verified against the registry's declared checksum
+        # *before* extraction (see marlin/packages/marlin/src/installer.ts,
+        # verifyChecksum). It is not a digest of `executable` itself — the
+        # archive is gone by the time this registration runs, so there is
+        # nothing left here to re-hash it against. Confirmed against a real
+        # Marlin-installed niji 1.1.1 attestation, where hashing `executable`
+        # does not reproduce `package_digest` even though the install was
+        # legitimate. Treat it as install-time provenance only; it does not
+        # protect against the executable being swapped after Marlin installed
+        # it (open gap — closing it needs a Marlin-side digest of the
+        # extracted executable, a separate attestation-schema change).
+
         provider = RegisteredProvider(
             manifest=manifest,
             attestation=attestation,

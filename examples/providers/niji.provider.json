@@ -2,7 +2,7 @@
   "schema_version": "cockpit-provider-v1",
   "id": "niji",
   "name": "Niji",
-  "version": "1.0.0",
+  "version": "1.1.1",
   "description": "Read-only palette generation preview.",
   "transport": { "kind": "stdio-json", "protocol": "cockpit-provider-v1" },
   "commands": [{ "id": "niji.palette.preview", "title": "Preview palette", "action": "palette.preview", "mutation": false, "placements": ["command-palette", "view"] }],

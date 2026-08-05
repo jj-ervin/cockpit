@@ -848,3 +848,66 @@ today. `submit` and `update_record` still fail closed for Niji.
 tests passed. Installed-provider end-to-end smoke remains blocked only by the
 current virtual-environment dependency mismatch, not by a sibling-path
 fallback in source.
+
+## CKP.17.01 (working name, not yet registered) Closure — Real Installed-Provider Smoke, Not a Venv Blocker
+
+**Closed:** 2026-08-05. Registration deferred to `CKP.17.00`'s close, per the
+compound PASS brief this lane belongs to.
+
+The prior note's "virtual-environment dependency mismatch" did not reproduce:
+`cockpit`'s own `.venv` and unit tests were already clean. What was actually
+missing was a real installed-provider smoke test — one that installs through
+the unmodified Marlin CLI into an isolated home (`APPDATA` override, no
+`C:\dev`, no eco, no sibling checkout on the resolved path), registers the
+resulting Marlin attestation through `ProviderRegistry` exactly as a host
+would, and sends one real `cockpit-operation-request-v1` to the installed
+`niji-provider.exe` over stdio. That test now exists:
+`test_real_marlin_installed_provider_stdio_roundtrip` in
+`test_provider_registry.py`, opt-in via
+`COCKPIT_REAL_PROVIDER_SMOKE_MARLIN_CLI` (needs network + `gh` auth for
+niji's private release, so it does not run in default `pytest`). A manual run
+against the real Marlin CLI and the real published niji 1.1.1 release passed
+end to end: checksum-verified download, real attestation, real stdio spawn,
+real palette response.
+
+**Stale fixture found and fixed:** `examples/providers/niji.provider.json`
+still declared `"version": "1.0.0"`; the real, currently published Niji
+provider is 1.1.1. Updated to match, and `test_provider_registry.py`'s
+`write_registration()` fixture updated to the real attested shape
+(`provider_version: "1.1.1"`, populated `package_digest`, `args: []` instead
+of a fabricated `["provider", "--stdio"]` that no real attestation ever had).
+
+**Real bug found and fixed, then a second real bug found in the fix itself:**
+`ProviderRegistry.register()` accepted `package_digest` in the schema but
+never verified it — an executable swapped after Marlin's install would
+register without complaint. First fix hashed `executable` and compared
+against `package_digest`. Running that against the real Marlin-installed
+niji 1.1.1 attestation immediately failed: `package_digest` is the digest of
+the downloaded install **archive**, verified once by Marlin before
+extraction (`marlin/packages/marlin/src/installer.ts`'s `verifyChecksum`),
+not a digest of the extracted `executable`. The archive no longer exists by
+the time Cockpit registers the provider, so there is nothing left to
+re-verify that field against. Reverted to treating `package_digest` as
+install-time provenance only, documented in a code comment, with a test
+(`test_package_digest_is_not_verified_against_executable_bytes`) that proves
+and records the real, current behavior rather than a wrong assumption.
+**Open gap, not closed here:** Cockpit cannot currently detect a provider
+executable being swapped after Marlin installed it. Closing that needs
+Marlin to attest a digest of the extracted executable itself — a new
+attestation-schema field, out of this PASS's authorized scope.
+
+**Cleanup:** the manual verification pass installed niji into a scratch
+`APPDATA`, which added that scratch path to the real Windows user `PATH` (a
+Marlin install side effect) and left install files on disk. Both removed
+after verification; the automated opt-in test uses a pytest `tmp_path` and
+does not touch the real user `PATH`.
+
+**Validation:** 159 Cockpit Python tests passing (7 in
+`test_provider_registry.py`, including the opt-in real smoke, +2 net new),
+1 pre-existing self-skip (symlink permission) unrelated to this change.
+`node --check web/cockpit.js` clean.
+
+**Next:** `CKP.17.02` — `host_bridge.py` already dispatches generically via
+`ADAPTER_REGISTRY` for local Python adapters (eco, marlin, niji, system); it
+has no path yet to `ProviderRegistry`-backed external stdio providers. Add
+that dispatch without touching the existing local-adapter path.
