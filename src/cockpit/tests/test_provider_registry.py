@@ -47,6 +47,15 @@ def test_registers_attested_provider_and_resolves_declared_command(tmp_path: Pat
     assert registry.get("niji") is provider
 
 
+def test_schema_invalid_manifest_raises_registration_error_not_jsonschema_error(
+    tmp_path: Path,
+) -> None:
+    manifest, attestation, _ = write_registration(tmp_path)
+    manifest.write_text('{"not": "a valid provider manifest"}', encoding="utf-8")
+    with pytest.raises(ProviderRegistrationError, match="schema validation failed"):
+        ProviderRegistry(ROOT / "schemas").register(manifest, attestation)
+
+
 def test_rejects_manifest_changed_after_attestation(tmp_path: Path) -> None:
     manifest, attestation, _ = write_registration(tmp_path)
     data = json.loads(manifest.read_text(encoding="utf-8"))

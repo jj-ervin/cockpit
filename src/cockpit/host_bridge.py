@@ -9,12 +9,16 @@ supported or requires runtime authority.
 from __future__ import annotations
 
 import json
+import subprocess
 import sys
+import uuid
 from dataclasses import asdict
 from typing import Any
 
 import cockpit.adapters  # noqa: F401 — import for its registration side-effect only
 from cockpit.core.adapter import ADAPTER_REGISTRY, CockpitAdapter
+from cockpit.provider_discovery import discover_providers
+from cockpit.provider_registry import ProviderRegistry
 
 _OPERATIONS = frozenset(
     {
@@ -29,8 +33,23 @@ _OPERATIONS = frozenset(
         "restore_record",
         "activate",
         "close",
+        "invoke_provider_command",
     }
 )
+
+_PROVIDER_TIMEOUT_SECONDS = 30
+
+#: Lazily populated on first invoke_provider_command call, not at import
+#: time — discovery touches disk (Marlin's home directory) and every other
+#: bridge operation must keep working with no Marlin installation present.
+_provider_registry: ProviderRegistry | None = None
+
+
+def _get_provider_registry() -> ProviderRegistry:
+    global _provider_registry
+    if _provider_registry is None:
+        _provider_registry, _ = discover_providers()
+    return _provider_registry
 
 
 def execute(request: dict[str, Any]) -> dict[str, Any]:
@@ -42,6 +61,9 @@ def execute(request: dict[str, Any]) -> dict[str, Any]:
 
     if operation not in _OPERATIONS:
         raise ValueError(f"unsupported bridge operation: {operation}")
+
+    if operation == "invoke_provider_command":
+        return _execute_provider_command(request)
 
     adapter = _build_adapter(backend, workspace_id, node_id)
 
@@ -95,6 +117,62 @@ def execute(request: dict[str, Any]) -> dict[str, Any]:
         return _serialize_result(adapter.close())
 
     raise AssertionError(f"unhandled operation: {operation}")
+
+
+def _execute_provider_command(request: dict[str, Any]) -> dict[str, Any]:
+    """Routes to a Marlin-installed external cockpit-provider-v1 provider
+    instead of a local Python ADAPTER_REGISTRY class. Separate from
+    ``execute()``'s dispatch above so local adapters keep their existing,
+    unmodified request/response shape; this path speaks the provider wire
+    protocol (``cockpit-operation-request-v1`` / ``-result-v1``) instead of
+    the adapter contract's fixed health/get_state/list_records/... vocabulary.
+    """
+    provider_id = str(request.get("backend") or "")
+    command_id = _require_string(request, "command_id")
+    payload = request.get("input") or {}
+    if not isinstance(payload, dict):
+        raise ValueError("input must be an object")
+    confirm = bool(request.get("confirm", False))
+
+    registry = _get_provider_registry()
+    provider = registry.get(provider_id)
+    command = provider.command(command_id)
+    if command.get("requires_confirmation") and not confirm:
+        raise ValueError(
+            f"command '{command_id}' requires_confirmation and needs confirm: true"
+        )
+
+    operation_request = {
+        "schema_version": "cockpit-operation-request-v1",
+        "operation_id": str(uuid.uuid4()),
+        "provider_id": provider_id,
+        "command_id": command_id,
+        "input": payload,
+    }
+    try:
+        completed = subprocess.run(
+            [str(provider.executable), *provider.args],
+            input=json.dumps(operation_request),
+            capture_output=True,
+            text=True,
+            timeout=_PROVIDER_TIMEOUT_SECONDS,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise ValueError(f"provider '{provider_id}' failed to run: {exc}") from exc
+
+    if completed.returncode != 0:
+        raise ValueError(
+            f"provider '{provider_id}' exited {completed.returncode}: "
+            f"{completed.stderr.strip()[:500]}"
+        )
+    try:
+        result = json.loads(completed.stdout)
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"provider '{provider_id}' returned invalid JSON: {exc}") from exc
+    if not isinstance(result, dict):
+        raise ValueError(f"provider '{provider_id}' result must be a JSON object")
+    return result
 
 
 def main() -> int:

@@ -911,3 +911,73 @@ does not touch the real user `PATH`.
 `ADAPTER_REGISTRY` for local Python adapters (eco, marlin, niji, system); it
 has no path yet to `ProviderRegistry`-backed external stdio providers. Add
 that dispatch without touching the existing local-adapter path.
+
+## CKP.17.02 (working name, not yet registered) Closure — External Provider Dispatch, Additive to ADAPTER_REGISTRY
+
+**Closed:** 2026-08-05. Registration deferred to `CKP.17.00`'s close, per the
+compound PASS brief this lane belongs to.
+
+Added a second, parallel dispatch path in `host_bridge.py` for Marlin-
+installed external `cockpit-provider-v1` providers, alongside — not
+replacing — the existing `ADAPTER_REGISTRY` dispatch for local Python
+adapters (eco, marlin, niji, system). The two protocols are genuinely
+different shapes: `ADAPTER_REGISTRY` backends implement Cockpit's fixed
+adapter vocabulary (`health`/`get_state`/`list_records`/...); external
+providers declare their own arbitrary `commands` in a manifest and speak
+`cockpit-operation-request-v1`/`-result-v1` over stdio. Forcing providers
+through the adapter ABC would have been the wrong shape; a new
+`invoke_provider_command` bridge operation carries `command_id`/`input`/
+`confirm` and routes to a new `cockpit/provider_discovery.py` +
+`ProviderRegistry` instead.
+
+**New module:** `provider_discovery.py` scans `<marlin_home>/providers/
+<id>/<version>/` for `manifest.json`+`attestation.json` pairs and registers
+the newest version per provider. Marlin home resolution mirrors
+`marlin/packages/marlin/src/platform.ts`'s own per-platform logic
+(`COCKPIT_MARLIN_HOME` override, else `%APPDATA%/marlin` /
+`~/Library/Application Support/marlin` / `$XDG_DATA_HOME/marlin`) —
+Cockpit does not import Marlin or depend on it as a package, only on its
+documented install-layout contract. One broken provider install is
+recorded as an error and skipped, not fatal to discovery.
+
+**Mutation confirmation, per the schema's own design, not an invented
+convention:** `cockpit-provider-v1.schema.json`'s command sub-schema already
+enforces `mutation: true` ⟹ `requires_confirmation: true` at the manifest
+level. `invoke_provider_command` gates on `requires_confirmation`
+specifically (not `mutation`) to match the schema's actual intent, and
+raises before ever spawning the provider process if an unconfirmed mutating
+command is requested.
+
+**Second `ProviderRegistry` bug found via this lane's own real test:**
+`register()` let a raw `jsonschema.ValidationError` escape uncaught on a
+schema-invalid manifest, contradicting the class's own docstring ("A
+provider failed schema, integrity, or executable verification" — implying
+`ProviderRegistrationError` for all three). Found because
+`test_broken_provider_install_is_reported_not_fatal` exercises a genuinely
+malformed manifest rather than a hand-picked failure mode. Fixed by wrapping
+both `validate()` calls; schema failures now raise `ProviderRegistrationError`
+like every other registration failure.
+
+**Real, non-fake verification:** beyond the fixture-based tests (a small
+Python script standing in for a provider executable, registered directly
+into the bridge's registry singleton via `monkeypatch`), ran the actual
+`python -m cockpit.host_bridge` module entrypoint — the exact process a VS
+Code or web host spawns — against a fresh, isolated real Marlin install of
+niji 1.1.1 (`COCKPIT_MARLIN_HOME` pointed at a scratch home, no `C:\dev`
+involvement in the resolved provider path). It discovered the real
+provider from disk and returned a real palette result over real stdio.
+
+**Validation:** 170 Cockpit Python tests passing (11 net new: 6 in
+`test_provider_discovery.py`, 6 in `test_host_bridge.py` minus 1 shared
+helper, 1 in `test_provider_registry.py` for the schema-error fix), 1
+pre-existing self-skip unrelated to this change. `node --check
+web/cockpit.js` clean. Real end-to-end proof against a live Marlin install,
+manually run and not part of the automated suite (same rationale as
+`CKP.17.01`'s opt-in real test — needs network + `gh` auth).
+
+**Next:** `CKP.17.03` — Marlin itself is not yet a conforming provider.
+Unlike Niji, Marlin's real value is mutating (install/audit/remediate), so
+this is not a copy of Niji's read-only pattern: it needs a manifest with
+real `mutation`/`requires_confirmation`-gated commands, an execution path,
+verification, and evidence-bundle export, per the discover→validate→
+remediate→approve→execute→verify→evidence-export vertical slice.

@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from jsonschema import Draft202012Validator
+from jsonschema.exceptions import ValidationError as JsonSchemaValidationError
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -51,8 +52,11 @@ class ProviderRegistry:
         manifest_bytes = manifest_path.read_bytes()
         manifest = _json_object(manifest_bytes, "provider manifest")
         attestation = _json_object(attestation_path.read_bytes(), "provider attestation")
-        self._manifest_validator.validate(manifest)
-        self._attestation_validator.validate(attestation)
+        try:
+            self._manifest_validator.validate(manifest)
+            self._attestation_validator.validate(attestation)
+        except JsonSchemaValidationError as exc:
+            raise ProviderRegistrationError(f"schema validation failed: {exc.message}") from exc
 
         if attestation["provider_id"] != manifest["id"]:
             raise ProviderRegistrationError("attestation provider_id does not match manifest id")
