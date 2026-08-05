@@ -84,3 +84,34 @@ def test_broken_provider_install_is_reported_not_fatal(tmp_path: Path) -> None:
     assert len(errors) == 1
     assert "niji" in next(iter(errors))
     assert registry.get("other").manifest["version"] == "2.0.0"
+
+
+def test_numeric_version_ordering_not_lexical(tmp_path: Path) -> None:
+    """1.9.0 must outrank 1.10.0 numerically. Lexical string sort would get
+    this backwards ("1.10.0" < "1.9.0")."""
+    _install_fixture(tmp_path, "niji", "1.9.0")
+    _install_fixture(tmp_path, "niji", "1.10.0")
+    registry, errors = discover_providers(tmp_path, ROOT / "schemas")
+    assert errors == {}
+    assert registry.get("niji").manifest["version"] == "1.10.0"
+
+
+def test_mixed_release_and_prerelease_directories_do_not_crash(tmp_path: Path) -> None:
+    """Real bug this guards: a schema-valid prerelease directory name like
+    "1.2.0-beta.1" alongside an ordinary "1.1.1" used to crash discovery
+    with `TypeError: '<' not supported between instances of 'str' and
+    'tuple'`. A release must also outrank a prerelease of the same version."""
+    _install_fixture(tmp_path, "niji", "1.1.1")
+    _install_fixture(tmp_path, "niji", "1.2.0-beta.1")
+    _install_fixture(tmp_path, "niji", "1.2.0")
+    registry, errors = discover_providers(tmp_path, ROOT / "schemas")
+    assert errors == {}
+    assert registry.get("niji").manifest["version"] == "1.2.0"
+
+
+def test_malformed_version_directory_name_is_skipped_not_fatal(tmp_path: Path) -> None:
+    _install_fixture(tmp_path, "niji", "not-a-version")
+    _install_fixture(tmp_path, "niji", "1.1.1")
+    registry, errors = discover_providers(tmp_path, ROOT / "schemas")
+    assert errors == {}
+    assert registry.get("niji").manifest["version"] == "1.1.1"

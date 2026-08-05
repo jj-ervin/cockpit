@@ -142,6 +142,18 @@ async function dispatch(type, message, { workspaceRoot, pythonExecutable, bridge
         return [{ type: 'eco.cockpit.marlinPackageSearchResult', payload: result }];
       }
 
+      case 'eco.cockpit.invokeProviderCommand': {
+        const result = await bridge({
+          backend: require1(message.providerId, 'providerId'),
+          workspace_id: workspaceRoot,
+          operation: 'invoke_provider_command',
+          command_id: require1(message.commandId, 'commandId'),
+          input: (message.input && typeof message.input === 'object') ? message.input : {},
+          confirm: message.confirm === true,
+        }, opts);
+        return [{ type: 'eco.cockpit.providerCommandResult', payload: result }];
+      }
+
       case 'eco.cockpit.marlinInstallPackage': {
         return [{
           type: 'eco.cockpit.marlinInstallResult',

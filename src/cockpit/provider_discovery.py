@@ -12,9 +12,19 @@ from __future__ import annotations
 
 import os
 import platform
+import re
 from pathlib import Path
 
 from cockpit.provider_registry import ProviderRegistrationError, ProviderRegistry
+
+#: Mirrors the manifest schema's own version pattern
+#: (schemas/cockpit-provider-v1.schema.json's `version` property), so a
+#: directory name is only ever treated as a version if a real provider
+#: manifest could declare it.
+_SEMVER_RE = re.compile(
+    r"^(?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+)"
+    r"(?:-(?P<prerelease>[0-9A-Za-z.-]+))?(?:\+[0-9A-Za-z.-]+)?$"
+)
 
 
 def default_marlin_home() -> Path:
@@ -33,12 +43,34 @@ def default_marlin_home() -> Path:
     return Path(base) / "marlin"
 
 
-def _version_sort_key(name: str) -> tuple[int, ...] | str:
-    parts = name.split(".")
-    try:
-        return tuple(int(part) for part in parts)
-    except ValueError:
-        return name  # non-semver directory name: falls back to string order
+def _version_sort_key(name: str) -> tuple[int, int, int, int, tuple[str, ...]] | None:
+    """A totally-ordered SemVer precedence key, or ``None`` if ``name``
+    isn't a valid version per the manifest schema's own pattern.
+
+    Real bug this replaced: the previous implementation returned a tuple
+    of ints for an ordinary version but fell back to the bare *string* for
+    anything int()-incompatible — including schema-valid prereleases like
+    "1.2.0-beta.1" (`"0-beta"` isn't an int). Sorting a directory listing
+    containing both shapes crashed with `TypeError: '<' not supported
+    between instances of 'str' and 'tuple'`. This always returns the same
+    shape (or None, filtered out by the caller before sorting — never
+    compared against a tuple).
+
+    Precedence follows SemVer: a release outranks a prerelease of the same
+    major.minor.patch; build metadata is ignored for ordering, matching the
+    SemVer spec. Prerelease identifiers are compared as plain strings
+    (not SemVer's full numeric-aware identifier comparison) — sufficient to
+    pick a reasonable newest-installed version without crashing; exact
+    prerelease-vs-prerelease ranking is not a real requirement here.
+    """
+    match = _SEMVER_RE.match(name)
+    if not match:
+        return None
+    major, minor, patch = int(match["major"]), int(match["minor"]), int(match["patch"])
+    prerelease = match["prerelease"]
+    if prerelease is None:
+        return (major, minor, patch, 1, ())
+    return (major, minor, patch, 0, tuple(prerelease.split(".")))
 
 
 def discover_providers(
@@ -60,10 +92,10 @@ def discover_providers(
         return registry, errors
 
     for provider_dir in sorted(p for p in providers_root.iterdir() if p.is_dir()):
-        version_dirs = sorted(
-            (v for v in provider_dir.iterdir() if v.is_dir()),
-            key=lambda p: _version_sort_key(p.name),
-        )
+        keyed = [
+            (key, v) for v in provider_dir.iterdir() if v.is_dir() and (key := _version_sort_key(v.name)) is not None
+        ]
+        version_dirs = [v for _key, v in sorted(keyed, key=lambda pair: pair[0])]
         for version_dir in reversed(version_dirs):
             manifest_path = version_dir / "manifest.json"
             attestation_path = version_dir / "attestation.json"

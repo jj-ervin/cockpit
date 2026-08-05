@@ -13,12 +13,18 @@ import subprocess
 import sys
 import uuid
 from dataclasses import asdict
+from pathlib import Path
 from typing import Any
+
+from jsonschema import Draft202012Validator
+from jsonschema.exceptions import ValidationError as JsonSchemaValidationError
 
 import cockpit.adapters  # noqa: F401 — import for its registration side-effect only
 from cockpit.core.adapter import ADAPTER_REGISTRY, CockpitAdapter
 from cockpit.provider_discovery import discover_providers
 from cockpit.provider_registry import ProviderRegistry
+
+_SCHEMA_ROOT = Path(__file__).resolve().parents[2] / "schemas"
 
 _OPERATIONS = frozenset(
     {
@@ -50,6 +56,30 @@ def _get_provider_registry() -> ProviderRegistry:
     if _provider_registry is None:
         _provider_registry, _ = discover_providers()
     return _provider_registry
+
+
+_operation_request_validator: Draft202012Validator | None = None
+_operation_result_validator: Draft202012Validator | None = None
+
+
+def _load_validator(schema_name: str) -> Draft202012Validator:
+    schema = json.loads((_SCHEMA_ROOT / schema_name).read_text(encoding="utf-8"))
+    Draft202012Validator.check_schema(schema)
+    return Draft202012Validator(schema, format_checker=Draft202012Validator.FORMAT_CHECKER)
+
+
+def _operation_request_schema() -> Draft202012Validator:
+    global _operation_request_validator
+    if _operation_request_validator is None:
+        _operation_request_validator = _load_validator("cockpit-operation-request-v1.schema.json")
+    return _operation_request_validator
+
+
+def _operation_result_schema() -> Draft202012Validator:
+    global _operation_result_validator
+    if _operation_result_validator is None:
+        _operation_result_validator = _load_validator("cockpit-operation-result-v1.schema.json")
+    return _operation_result_validator
 
 
 def execute(request: dict[str, Any]) -> dict[str, Any]:
@@ -129,10 +159,16 @@ def _execute_provider_command(request: dict[str, Any]) -> dict[str, Any]:
     """
     provider_id = str(request.get("backend") or "")
     command_id = _require_string(request, "command_id")
+    workspace_id = _require_string(request, "workspace_id")
     payload = request.get("input") or {}
     if not isinstance(payload, dict):
         raise ValueError("input must be an object")
-    confirm = bool(request.get("confirm", False))
+
+    # Strict identity check, not bool(...): bool("false") is True in Python,
+    # so a bridge caller sending the JSON string "false" (a plausible bug in
+    # a host that stringifies form values) would silently authorize a
+    # mutating command. Only the literal JSON boolean true may confirm.
+    confirm = request.get("confirm", False) is True
 
     registry = _get_provider_registry()
     provider = registry.get(provider_id)
@@ -142,13 +178,22 @@ def _execute_provider_command(request: dict[str, Any]) -> dict[str, Any]:
             f"command '{command_id}' requires_confirmation and needs confirm: true"
         )
 
+    operation_id = str(uuid.uuid4())
     operation_request = {
         "schema_version": "cockpit-operation-request-v1",
-        "operation_id": str(uuid.uuid4()),
+        "operation_id": operation_id,
         "provider_id": provider_id,
         "command_id": command_id,
+        "workspace_id": workspace_id,
         "input": payload,
     }
+    try:
+        _operation_request_schema().validate(operation_request)
+    except JsonSchemaValidationError as exc:
+        # A bug in this function's own construction, not caller input —
+        # every field above is already validated individually.
+        raise AssertionError(f"constructed provider request failed schema validation: {exc.message}") from exc
+
     try:
         completed = subprocess.run(
             [str(provider.executable), *provider.args],
@@ -172,6 +217,34 @@ def _execute_provider_command(request: dict[str, Any]) -> dict[str, Any]:
         raise ValueError(f"provider '{provider_id}' returned invalid JSON: {exc}") from exc
     if not isinstance(result, dict):
         raise ValueError(f"provider '{provider_id}' result must be a JSON object")
+
+    try:
+        _operation_result_schema().validate(result)
+    except JsonSchemaValidationError as exc:
+        raise ValueError(
+            f"provider '{provider_id}' returned a result that fails schema validation: {exc.message}"
+        ) from exc
+
+    # Schema validation proves shape; it cannot prove this result is actually
+    # the answer to *this* request. A malformed or compromised provider could
+    # return a well-formed but spoofed/stale result otherwise.
+    if result.get("operation_id") != operation_id:
+        raise ValueError(
+            f"provider '{provider_id}' result operation_id "
+            f"{result.get('operation_id')!r} does not match request {operation_id!r}"
+        )
+    if result.get("provider_id") != provider_id:
+        raise ValueError(
+            f"provider '{provider_id}' result provider_id "
+            f"{result.get('provider_id')!r} does not match requested provider {provider_id!r}"
+        )
+    result_command_id = result.get("command_id")
+    if result_command_id is not None and result_command_id != command_id:
+        raise ValueError(
+            f"provider '{provider_id}' result command_id {result_command_id!r} "
+            f"does not match requested command {command_id!r}"
+        )
+
     return result
 
 

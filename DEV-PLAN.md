@@ -1018,3 +1018,12 @@ evidence-export vertical slice against the real portfolio is blocked only
 on that registry fix now — the mechanism itself (all three CKP.17 lanes) is
 proven end to end against a scratch portfolio and a real Marlin-installed
 Niji provider.
+
+**Correction, 2026-08-05, same session:** the registry fix above was
+authorized and applied (governance-commons commit `120daa6`). It surfaced a
+second real bug — Marlin's own `console.log`/inherited-stdio output
+corrupting the provider's stdout — fixed in marlin commit `e2f4dfe`. The
+real vertical-slice proof against this actual portfolio then succeeded:
+`marlin.audit.validate` returned `status: succeeded` with a real signed
+evidence bundle, `conformant: true`. Neither blocker remains open. See
+`marlin/DEV-PLAN.md`'s `CKP.17.03` addendum for the full detail.

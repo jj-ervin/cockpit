@@ -261,20 +261,37 @@ def fake_provider(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     """Registers a fake stdio provider (a small Python script standing in for
     a real provider executable) with one read command and one mutating
     command, and points the bridge's provider registry singleton at it for
-    the duration of the test."""
+    the duration of the test.
+
+    Reads FAKE_PROVIDER_MISBEHAVE from its environment so individual tests
+    can make it return a spoofed/malformed result without needing a
+    separate script per failure mode — a real subprocess boundary is the
+    point (matching how a real compromised or buggy provider would behave),
+    not an in-process mock standing in for one.
+    """
     script = tmp_path / "fake_provider.py"
     script.write_text(
-        "import json, sys\n"
+        "import json, os, sys\n"
+        "from datetime import datetime, timezone\n"
         "req = json.loads(sys.stdin.read())\n"
-        "print(json.dumps({\n"
+        "misbehave = os.environ.get('FAKE_PROVIDER_MISBEHAVE')\n"
+        "result = {\n"
         "    'schema_version': 'cockpit-operation-result-v1',\n"
         "    'operation_id': req['operation_id'],\n"
         "    'provider_id': req['provider_id'],\n"
         "    'command_id': req['command_id'],\n"
         "    'status': 'succeeded',\n"
+        "    'timestamp': datetime.now(timezone.utc).isoformat(),\n"
         "    'data': {'echo': req['input']},\n"
         "    'evidence': [],\n"
-        "}))\n",
+        "}\n"
+        "if misbehave == 'wrong_operation_id':\n"
+        "    result['operation_id'] = 'spoofed-operation-id'\n"
+        "elif misbehave == 'wrong_provider_id':\n"
+        "    result['provider_id'] = 'other-provider'\n"
+        "elif misbehave == 'schema_violation':\n"
+        "    result['evidence'] = [{'kind': 'x', 'ref': 'y', 'bundle': {'not': 'allowed'}}]\n"
+        "print(json.dumps(result))\n",
         encoding="utf-8",
     )
 
@@ -332,6 +349,7 @@ def fake_provider(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 def test_invoke_provider_command_round_trips_through_real_stdio_spawn(fake_provider: Path) -> None:
     result = execute({
         "backend": "fake",
+        "workspace_id": "ws-1",
         "operation": "invoke_provider_command",
         "command_id": "fake.read",
         "input": {"hello": "world"},
@@ -341,19 +359,58 @@ def test_invoke_provider_command_round_trips_through_real_stdio_spawn(fake_provi
     assert result["data"]["echo"] == {"hello": "world"}
 
 
+def test_invoke_provider_command_requires_workspace_id(fake_provider: Path) -> None:
+    with pytest.raises(ValueError, match="workspace_id"):
+        execute({
+            "backend": "fake",
+            "operation": "invoke_provider_command",
+            "command_id": "fake.read",
+            "input": {},
+        })
+
+
 def test_invoke_provider_command_rejects_unconfirmed_mutation(fake_provider: Path) -> None:
     with pytest.raises(ValueError, match="requires_confirmation"):
         execute({
             "backend": "fake",
+            "workspace_id": "ws-1",
             "operation": "invoke_provider_command",
             "command_id": "fake.mutate",
             "input": {},
         })
 
 
+def test_invoke_provider_command_rejects_stringly_typed_confirm(fake_provider: Path) -> None:
+    """Real bug this guards: bool("false") is True in Python. A caller
+    sending the JSON string "false" (e.g. a host that stringifies form
+    values) must not silently authorize a mutating command."""
+    with pytest.raises(ValueError, match="requires_confirmation"):
+        execute({
+            "backend": "fake",
+            "workspace_id": "ws-1",
+            "operation": "invoke_provider_command",
+            "command_id": "fake.mutate",
+            "input": {},
+            "confirm": "false",
+        })
+
+
+def test_invoke_provider_command_rejects_truthy_non_boolean_confirm(fake_provider: Path) -> None:
+    with pytest.raises(ValueError, match="requires_confirmation"):
+        execute({
+            "backend": "fake",
+            "workspace_id": "ws-1",
+            "operation": "invoke_provider_command",
+            "command_id": "fake.mutate",
+            "input": {},
+            "confirm": 1,
+        })
+
+
 def test_invoke_provider_command_allows_confirmed_mutation(fake_provider: Path) -> None:
     result = execute({
         "backend": "fake",
+        "workspace_id": "ws-1",
         "operation": "invoke_provider_command",
         "command_id": "fake.mutate",
         "input": {},
@@ -366,6 +423,7 @@ def test_invoke_provider_command_unknown_provider_fails_closed(fake_provider: Pa
     with pytest.raises(ValueError, match="unknown or untrusted"):
         execute({
             "backend": "not-registered",
+            "workspace_id": "ws-1",
             "operation": "invoke_provider_command",
             "command_id": "fake.read",
             "input": {},
@@ -376,8 +434,57 @@ def test_invoke_provider_command_unknown_command_fails_closed(fake_provider: Pat
     with pytest.raises(ValueError, match="does not declare"):
         execute({
             "backend": "fake",
+            "workspace_id": "ws-1",
             "operation": "invoke_provider_command",
             "command_id": "fake.delete.everything",
+            "input": {},
+        })
+
+
+def test_invoke_provider_command_rejects_spoofed_operation_id(
+    fake_provider: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A malformed or compromised provider returning a well-formed but
+    spoofed/stale result (wrong operation_id) must not be trusted just
+    because it passes schema validation — schema shape is not identity."""
+    monkeypatch.setenv("FAKE_PROVIDER_MISBEHAVE", "wrong_operation_id")
+    with pytest.raises(ValueError, match="operation_id"):
+        execute({
+            "backend": "fake",
+            "workspace_id": "ws-1",
+            "operation": "invoke_provider_command",
+            "command_id": "fake.read",
+            "input": {},
+        })
+
+
+def test_invoke_provider_command_rejects_spoofed_provider_id(
+    fake_provider: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("FAKE_PROVIDER_MISBEHAVE", "wrong_provider_id")
+    with pytest.raises(ValueError, match="provider_id"):
+        execute({
+            "backend": "fake",
+            "workspace_id": "ws-1",
+            "operation": "invoke_provider_command",
+            "command_id": "fake.read",
+            "input": {},
+        })
+
+
+def test_invoke_provider_command_rejects_schema_invalid_result(
+    fake_provider: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Real bug this guards: an evidence item with an extra property (the
+    exact shape Marlin's provider produced before its own corrective fix)
+    must be rejected, not passed through as an untyped dict."""
+    monkeypatch.setenv("FAKE_PROVIDER_MISBEHAVE", "schema_violation")
+    with pytest.raises(ValueError, match="schema validation"):
+        execute({
+            "backend": "fake",
+            "workspace_id": "ws-1",
+            "operation": "invoke_provider_command",
+            "command_id": "fake.read",
             "input": {},
         })
 

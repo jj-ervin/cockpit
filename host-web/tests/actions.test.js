@@ -134,3 +134,47 @@ test('unhandled message types return an eco.cockpit.error message', async () => 
   assert.equal(messages[0].type, 'eco.cockpit.error');
   assert.match(messages[0].payload.message, /Unhandled message type/);
 });
+
+test('invokeProviderCommand maps providerId/commandId/input/confirm onto the bridge request', async () => {
+  let captured;
+  const deps = makeDeps({ callBridge: async (req) => { captured = req; return { status: 'succeeded' }; } });
+  const messages = await dispatch(
+    'eco.cockpit.invokeProviderCommand',
+    { providerId: 'marlin', commandId: 'marlin.audit.validate', input: { project: 'cockpit' }, confirm: true },
+    { workspaceRoot: WORKSPACE, deps },
+  );
+  assert.equal(captured.backend, 'marlin');
+  assert.equal(captured.workspace_id, WORKSPACE);
+  assert.equal(captured.operation, 'invoke_provider_command');
+  assert.equal(captured.command_id, 'marlin.audit.validate');
+  assert.deepEqual(captured.input, { project: 'cockpit' });
+  assert.equal(captured.confirm, true);
+  assert.equal(messages[0].type, 'eco.cockpit.providerCommandResult');
+  assert.equal(messages[0].payload.status, 'succeeded');
+});
+
+test('invokeProviderCommand coerces a non-boolean confirm to false, not truthy', () => {
+  // Same real bug class this closure fixed at the Python layer — the
+  // strict `=== true` check must survive the HTTP boundary too.
+  const capturedValues = [];
+  const deps = makeDeps({ callBridge: async (req) => { capturedValues.push(req.confirm); return {}; } });
+  return Promise.all([
+    dispatch('eco.cockpit.invokeProviderCommand', { providerId: 'p', commandId: 'c', confirm: 'false' }, { workspaceRoot: WORKSPACE, deps }),
+    dispatch('eco.cockpit.invokeProviderCommand', { providerId: 'p', commandId: 'c', confirm: 1 }, { workspaceRoot: WORKSPACE, deps }),
+    dispatch('eco.cockpit.invokeProviderCommand', { providerId: 'p', commandId: 'c' }, { workspaceRoot: WORKSPACE, deps }),
+  ]).then(() => {
+    assert.deepEqual(capturedValues, [false, false, false]);
+  });
+});
+
+test('invokeProviderCommand missing commandId returns a failed actionResult, not a thrown error', async () => {
+  const deps = makeDeps();
+  const messages = await dispatch(
+    'eco.cockpit.invokeProviderCommand',
+    { providerId: 'marlin' },
+    { workspaceRoot: WORKSPACE, deps },
+  );
+  assert.equal(messages[0].type, 'eco.cockpit.actionResult');
+  assert.equal(messages[0].payload.ok, false);
+  assert.match(messages[0].payload.message, /commandId/);
+});
