@@ -11,7 +11,6 @@ function makeDeps(overrides = {}) {
   return {
     callBridge: overrides.callBridge || (async () => ({ data: {}, origin: {} })),
     buildSnapshot: overrides.buildSnapshot || (async () => ({ snapshot: true })),
-    marlinCli: overrides.marlinCli || { search: async () => ({ packages: [] }) },
     osOpen: overrides.osOpen || { openWithDefaultApp: async () => {}, revealInFileManager: async () => {} },
   };
 }
@@ -89,7 +88,7 @@ test('openArtifact rejects a path that escapes the workspace root', async () => 
   assert.match(messages[0].payload.message, /outside the active workspace/);
 });
 
-test('marlinInstallPackage always declines - no bundle-side confirmation exists to gate a real install', async () => {
+test('marlinInstallPackage denies requests without literal confirmation', async () => {
   const deps = makeDeps();
   const messages = await dispatch(
     'eco.cockpit.marlinInstallPackage',
@@ -98,11 +97,12 @@ test('marlinInstallPackage always declines - no bundle-side confirmation exists 
   );
   assert.equal(messages[0].type, 'eco.cockpit.marlinInstallResult');
   assert.equal(messages[0].payload.ok, false);
-  assert.match(messages[0].payload.error, /interactive confirmation/);
+  assert.match(messages[0].payload.error, /literal boolean confirmation/);
 });
 
-test('marlinSearchPackages relays marlinCli.search results', async () => {
-  const deps = makeDeps({ marlinCli: { search: async (q) => ({ query: q, packages: ['x'] }) } });
+test('marlinSearchPackages invokes the Marlin provider', async () => {
+  let captured;
+  const deps = makeDeps({ callBridge: async (request) => { captured = request; return { data: { query: request.input.query, packages: ['x'] } }; } });
   const messages = await dispatch(
     'eco.cockpit.marlinSearchPackages',
     { query: 'foo' },
@@ -110,6 +110,22 @@ test('marlinSearchPackages relays marlinCli.search results', async () => {
   );
   assert.equal(messages[0].type, 'eco.cockpit.marlinPackageSearchResult');
   assert.deepEqual(messages[0].payload, { query: 'foo', packages: ['x'] });
+  assert.equal(captured.operation, 'invoke_provider_command');
+  assert.equal(captured.command_id, 'marlin.package.search');
+});
+
+test('marlinInstallPackage invokes the provider after literal confirmation', async () => {
+  let captured;
+  const deps = makeDeps({ callBridge: async (request) => { captured = request; return { status: 'succeeded', data: { package: { name: 'x' } } }; } });
+  const messages = await dispatch(
+    'eco.cockpit.marlinInstallPackage',
+    { packageName: 'x', confirm: true },
+    { workspaceRoot: WORKSPACE, deps },
+  );
+  assert.equal(captured.command_id, 'marlin.package.install');
+  assert.equal(captured.confirm, true);
+  assert.deepEqual(captured.input, { package_name: 'x' });
+  assert.equal(messages[0].payload.ok, true);
 });
 
 test('setHelmMode returns ok:true with the bridge result merged in on success', async () => {

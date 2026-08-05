@@ -63,7 +63,7 @@ integration was built:
       operation results
 - [x] Provider registration is portable — not hardcoded to Marlin's specific
       commands/paths
-- [ ] Existing `MarlinAdapter`/`install_phase1.py` boundary (verified
+- [x] Existing `MarlinAdapter`/`install_phase1.py` boundary (verified
       2026-07-02: every write path raises `WriteNotSupportedError`, previews
       steps, hands back an `apply_command`) converted into a conforming
       `cockpit-provider-v1` provider, not just left as a special case
@@ -117,6 +117,18 @@ pass (`DEV-PLAN.md`), not intent or plan:
   Niji and Marlin's provider), but never tested installing Cockpit itself
   outside this portfolio workspace.
 
+### CKP.18.01 ownership closure (2026-08-05)
+
+The former `MarlinAdapter` special case is now removed. Marlin's installed
+package state, registry search, and confirmation-gated install are provider
+commands (`marlin.package.list/search/install`) implemented by Marlin itself.
+Cockpit's own development-install preview is exposed by the `cockpit` adapter,
+and generic tree/repository status is exposed by the `workspace` adapter.
+Both host-web and eco-vscode use the same provider request/result protocol and
+retain no direct Marlin CLI spawn or resolution path. This closes the first of
+the three CKP.18 release actions; the clickable browser vertical slice and
+stranger installation remain open.
+
 ## v1.1.0 Entry Conditions
 
 - [ ] A second, smaller provider (candidate: Niji status/launch/export)
@@ -129,7 +141,7 @@ pass (`DEV-PLAN.md`), not intent or plan:
 ## What ships in v1.0.0
 
 - Portable provider contract (`cockpit-provider-v1`) as real, versioned schema/code — not just prose in a scoping doc
-- Marlin provider: install-readiness preview → approval → execution → evidence, rendered inside Cockpit's shell
+- Cockpit development readiness plus Marlin provider package/audit operations → approval → execution → evidence, rendered inside Cockpit's shell
 - Common shell primitives needed to prove portability: navigation, panels, command palette, approval/confirmation UX, evidence/history viewer
 - Electron desktop host that wraps the existing standalone loopback web host;
   it is packaged with the Cockpit JSON bridge and has no VS Code dependency.

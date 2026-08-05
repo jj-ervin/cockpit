@@ -786,6 +786,25 @@
         "CKP:1027"
       ],
       "originating_pass": "CKP.17.03"
+    },
+    {
+      "id": "CKP:1029",
+      "alias": "CKP.18.01",
+      "legacy_ids": [],
+      "title": "Provider Ownership Consolidation",
+      "description": "Removed the mixed-responsibility MarlinAdapter, moved package list/search/install behind Marlin's confirmation-gated attested provider, rehomed Cockpit development readiness and generic workspace status to Cockpit-owned adapters, and migrated host-web and eco-vscode off direct Marlin CLI subprocesses.",
+      "layer": "domain",
+      "cluster": "CKP",
+      "parent": null,
+      "status": "accepted",
+      "timestamp": "2026-08-05T18:37:00Z",
+      "path": "DEV-PLAN.md",
+      "supersedes": [],
+      "superseded_by": null,
+      "depends_on": [
+        "CKP:1028"
+      ],
+      "originating_pass": "CKP.18.01"
     }
   ]
 }

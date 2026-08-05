@@ -48,7 +48,7 @@
       title: 'Marlin Environment Setup',
       render: renderWizardMarlinStep,
       isComplete: function (snapshot) {
-        const readiness = snapshot.marlin && snapshot.marlin.installReadiness;
+        const readiness = snapshot.development && snapshot.development.installReadiness;
         return Boolean(readiness && (readiness.status === 'ready' || readiness.mode === 'preview'));
       },
     },
@@ -366,7 +366,7 @@
       { title: 'Policies', detail: String(records.policies.length) },
     ]);
 
-    renderMarlinReadiness(state.snapshot.marlin || {});
+    renderDevelopmentReadiness(state.snapshot.development || {});
     syncRunFilterOptions(records.runs);
     renderRuns();
     renderEscalations();
@@ -377,8 +377,8 @@
     renderHelmMode(state.snapshot.mode);
     renderEditorPlaneBar(records.runs, state.snapshot.governance, state.snapshot.mode);
     renderWizard();
-    renderWorkspaceExplorer(state.snapshot.marlin || {});
-    renderWorkspaceRepos(state.snapshot.marlin || {});
+    renderWorkspaceExplorer(state.snapshot.workspace || {});
+    renderWorkspaceRepos(state.snapshot.workspace || {});
     renderNiji(state.snapshot.niji || {});
     renderProviderSummary(state.snapshot.marlin || {}, state.snapshot.niji || {});
 
@@ -540,11 +540,11 @@
     }
   }
 
-  function renderMarlinReadiness(marlin) {
-    const readiness = marlin.installReadiness;
+  function renderDevelopmentReadiness(development) {
+    const readiness = development.installReadiness;
     if (!readiness) {
       elements.marlinStatus.textContent = 'Unavailable';
-      elements.marlinApplyCommand.textContent = marlin.error || 'Install readiness is not available.';
+      elements.marlinApplyCommand.textContent = development.error || 'Install readiness is not available.';
       elements.marlinApply.disabled = true;
       elements.marlinApproval.textContent = 'Package mutation requires explicit human approval.';
       renderList(elements.marlinSteps, []);
@@ -749,13 +749,13 @@
   }
 
   function renderWizardMarlinStep(container, snapshot) {
-    const marlin = snapshot.marlin || {};
-    const readiness = marlin.installReadiness;
+    const development = snapshot.development || {};
+    const readiness = development.installReadiness;
 
     if (!readiness) {
       const note = document.createElement('p');
       note.className = 'panel-note';
-      note.textContent = marlin.error || 'Install readiness is not available.';
+      note.textContent = development.error || 'Install readiness is not available.';
       container.appendChild(note);
       return;
     }
@@ -906,12 +906,12 @@
     });
   }
 
-  function renderWorkspaceExplorer(marlin) {
-    const tree = marlin.workspaceTree;
+  function renderWorkspaceExplorer(workspace) {
+    const tree = workspace.workspaceTree;
     clear(elements.workspaceTree);
     clear(elements.workspaceMetadata);
     if (!tree || !Array.isArray(tree.nodes)) {
-      elements.workspaceTreeStatus.textContent = marlin.error || 'Workspace tree not loaded.';
+      elements.workspaceTreeStatus.textContent = workspace.error || 'Workspace tree not loaded.';
       elements.workspaceTree.appendChild(emptyDiv('No workspace tree available from the host yet.'));
       renderWorkspaceSelection(null);
       return;
@@ -939,7 +939,7 @@
       button.textContent = icon + (node.name || node.path || '.');
       button.addEventListener('click', function () {
         state.selectedWorkspacePath = node.path || '.';
-        renderWorkspaceExplorer(marlin);
+        renderWorkspaceExplorer(workspace);
       });
       elements.workspaceTree.appendChild(button);
     });
@@ -972,8 +972,8 @@
     });
   }
 
-  function renderWorkspaceRepos(marlin) {
-    const repos = Array.isArray(marlin.repoStatus) ? marlin.repoStatus : [];
+  function renderWorkspaceRepos(workspace) {
+    const repos = Array.isArray(workspace.repoStatus) ? workspace.repoStatus : [];
     clear(elements.workspaceRepos);
     if (!repos.length) {
       elements.workspaceRepos.appendChild(emptyDiv('No repository status records available.'));
@@ -1132,6 +1132,8 @@
     return {
       state: snapshot.state || {},
       health: snapshot.health || {},
+      development: snapshot.development || {},
+      workspace: snapshot.workspace || {},
       marlin: snapshot.marlin || {},
       records: Object.assign(emptyRecords(), snapshot.records || {}),
       governance: snapshot.governance || null,
@@ -1145,6 +1147,8 @@
     return {
       state: {},
       health: {},
+      development: {},
+      workspace: {},
       marlin: {},
       records: emptyRecords(),
       governance: null,
@@ -1181,9 +1185,9 @@
         status: 'preview',
         eco_root_present: false,
       },
-      marlin: {
+      development: {
         installReadiness: {
-          id: 'install-readiness',
+          id: 'development-readiness',
           status: 'ready',
           mode: 'preview',
           requires_human_apply: true,
@@ -1194,6 +1198,8 @@
           ],
           apply_command: ['python', '-m', 'cockpit.install_phase1', '--workspace', 'C:\\dev\\eco', '--apply'],
         },
+      },
+      workspace: {
         workspaceTree: {
           id: 'static-root',
           root: 'C:/dev',
@@ -1213,6 +1219,10 @@
           { name: 'marlin', path: 'marlin', git: 'clean', registered: true },
           { name: 'eco-vscode', path: 'eco-vscode', git: 'clean', registered: true },
         ],
+        error: null,
+      },
+      marlin: {
+        health: { reachable: true, status: 'preview', provider_id: 'marlin' },
         error: null,
       },
       records: {

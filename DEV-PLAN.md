@@ -1046,3 +1046,25 @@ HTTP-to-bridge-to-provider execution, and signed evidence export. It does not
 close Cockpit v1.0.0. The browser bundle still needs an approval/rendering path
 that invokes provider commands, and the release still requires its complete
 stranger-install scenario; those stay open in `DEV-RELEASE.md`.
+
+## CKP.18.01 Closure — Provider Ownership Consolidation
+
+**Closed:** 2026-08-05. The four pre-implementation inventories were confirmed:
+installed package state was Marlin-owned, package search/install had two direct
+host subprocess paths, while development readiness and workspace status were
+mislabelled as Marlin capabilities. The `MarlinAdapter` is removed.
+
+Marlin now exposes `marlin.package.list`, `.search`, and `.install` through its
+existing attested stdio provider. Install is declared mutating and confirmation-
+gated, verifies Marlin's installed state, and emits a digest-addressed evidence
+bundle. Cockpit now owns separate `cockpit` development-readiness and `workspace`
+tree/repository-status adapters. host-web and eco-vscode both invoke the same
+provider request/result contract; no direct Marlin CLI resolution/spawn remains.
+Provider absence degrades only Marlin package status and does not suppress the
+Cockpit-owned workspace/readiness snapshot.
+
+Validation includes 163 Cockpit Python tests, host-web process/HTTP tests,
+Marlin provider package list/search/install/malformed-input/evidence tests and a
+real built-provider package-list subprocess, plus eco-vscode typecheck/build.
+The browser command-rendering/approval lane and stranger-install lane remain
+separate CKP.18 release work.

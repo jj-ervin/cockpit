@@ -1390,3 +1390,13 @@ This completes the provider runtime architecture (`CKP.17.00`-.03), not the
 v1.0.0 product release. The remaining product boundary is browser-side command
 rendering and approval plus the full stranger-install release exercise. Those
 remain release work and must not be inferred from the runtime closure.
+
+## CKP.18.01 — Correct Provider Ownership
+
+The old Marlin-labelled surface combined three owners. It is now split at the
+actual authority boundaries: Cockpit owns development readiness; the Cockpit
+workspace adapter owns local tree/git/project-registry inspection; and Marlin's
+attested provider alone owns installed package state, registry search, and
+package installation. Hosts transport provider requests but do not resolve or
+spawn the Marlin CLI. Literal confirmation remains mandatory for installation,
+and a missing Marlin provider leaves Cockpit-native workspace views usable.

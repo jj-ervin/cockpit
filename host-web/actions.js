@@ -4,7 +4,6 @@ const path = require('path');
 
 const { callBridge } = require('./bridgeClient');
 const { buildSnapshot } = require('./snapshotBuilder');
-const marlinCli = require('./marlinCli');
 const osOpen = require('./osOpen');
 const { resolveContainedPath } = require('./pathContainment');
 
@@ -26,16 +25,12 @@ const { resolveContainedPath } = require('./pathContainment');
  *   - openArtifact/openPolicy: opens the file with the OS default app
  *     instead of a VS Code editor tab (there's no in-bundle slot to render
  *     file content inline without a bundle change).
- *   - marlinInstallPackage: declines with an explanatory message. VS Code's
- *     version gates real installs behind a native modal confirm dialog;
- *     a headless Node process has no equivalent without a bundle change,
- *     and skipping confirmation for a real package-mutating action would
- *     be a real safety regression, not just a missing nicety.
+ *   - marlinInstallPackage: invokes the provider only when the bundle sends
+ *     the literal boolean confirmation required by the protocol.
  */
 async function dispatch(type, message, { workspaceRoot, pythonExecutable, bridgeExecutable, deps } = {}) {
   const bridge = (deps && deps.callBridge) || callBridge;
   const snapshot = (deps && deps.buildSnapshot) || buildSnapshot;
-  const marlin = (deps && deps.marlinCli) || marlinCli;
   const osOps = (deps && deps.osOpen) || osOpen;
   const opts = { pythonExecutable, bridgeExecutable };
 
@@ -132,14 +127,18 @@ async function dispatch(type, message, { workspaceRoot, pythonExecutable, bridge
       case 'eco.cockpit.workspaceStatus': {
         const requestedPath = require1(message.path, 'path');
         resolveContainedPath(workspaceRoot, requestedPath); // containment check only
-        const statuses = await bridge({ backend: 'marlin', workspace_id: '', operation: 'list_records', record_type: 'repo-status', filters: { workspace_root: workspaceRoot, max_items: 200 } }, opts);
+        const statuses = await bridge({ backend: 'workspace', workspace_id: workspaceRoot, operation: 'list_records', record_type: 'repo-status', filters: { max_items: 200 } }, opts);
         const match = (statuses.data || []).find((item) => item && item.path === requestedPath);
         return [actionResult(true, match ? JSON.stringify(match, null, 2) : 'No repo status found for this selection.', false)];
       }
 
       case 'eco.cockpit.marlinSearchPackages': {
-        const result = await marlin.search(require1(message.query, 'query'));
-        return [{ type: 'eco.cockpit.marlinPackageSearchResult', payload: result }];
+        const result = await bridge({
+          backend: 'marlin', workspace_id: workspaceRoot,
+          operation: 'invoke_provider_command', command_id: 'marlin.package.search',
+          input: { query: require1(message.query, 'query') }, confirm: false,
+        }, opts);
+        return [{ type: 'eco.cockpit.marlinPackageSearchResult', payload: result.data }];
       }
 
       case 'eco.cockpit.invokeProviderCommand': {
@@ -155,13 +154,20 @@ async function dispatch(type, message, { workspaceRoot, pythonExecutable, bridge
       }
 
       case 'eco.cockpit.marlinInstallPackage': {
+        if (message.confirm !== true) {
+          return [{
+            type: 'eco.cockpit.marlinInstallResult',
+            payload: { ok: false, error: 'Package install requires literal boolean confirmation.' },
+          }];
+        }
+        const result = await bridge({
+          backend: 'marlin', workspace_id: workspaceRoot,
+          operation: 'invoke_provider_command', command_id: 'marlin.package.install',
+          input: { package_name: require1(message.packageName, 'packageName') }, confirm: true,
+        }, opts);
         return [{
           type: 'eco.cockpit.marlinInstallResult',
-          payload: {
-            ok: false,
-            error: 'Package install requires interactive confirmation, not available in the standalone web ' +
-              `host yet. Run "marlin install ${message.packageName || '<name>'} --trust" yourself, or use the VS Code extension.`,
-          },
+          payload: { ok: result.status === 'succeeded', ...result.data },
         }];
       }
 

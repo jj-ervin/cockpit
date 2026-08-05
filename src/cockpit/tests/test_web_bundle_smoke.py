@@ -39,9 +39,8 @@ def _sample_snapshot() -> dict:
             },
         },
         "health": {"status": "ok", "eco_root_present": True},
-        "marlin": {
-            "installReadiness": None,
-            "error": None,
+        "development": {"installReadiness": None, "error": None},
+        "workspace": {
             "workspaceTree": {
                 "id": "root",
                 "root": "C:/fake/workspace",
@@ -54,6 +53,7 @@ def _sample_snapshot() -> dict:
             },
             "repoStatus": [],
         },
+        "marlin": {"health": {"status": "ok", "reachable": True}, "error": None},
         "records": {
             "runs": [
                 {

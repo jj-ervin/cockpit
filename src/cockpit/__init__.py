@@ -16,8 +16,9 @@ from cockpit.core.adapter import (
     WriteNotSupportedError,
 )
 from cockpit.adapters.eco import EcoAdapter
-from cockpit.adapters.marlin import MarlinAdapter
+from cockpit.adapters.development import CockpitDevelopmentAdapter
 from cockpit.adapters.niji import NijiAdapter
+from cockpit.adapters.workspace import WorkspaceAdapter
 
 __all__ = [
     # Adapter contract
@@ -33,6 +34,7 @@ __all__ = [
     "WriteNotSupportedError",
     # Adapters
     "EcoAdapter",
-    "MarlinAdapter",
+    "CockpitDevelopmentAdapter",
     "NijiAdapter",
+    "WorkspaceAdapter",
 ]

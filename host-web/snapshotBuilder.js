@@ -8,12 +8,13 @@ const { callBridge } = require('./bridgeClient');
  * unmodified web/cockpit.js bundle (normalizeSnapshot/emptySnapshot) renders
  * it identically regardless of which host built it.
  */
-async function buildSnapshot(workspaceRoot, { pythonExecutable } = {}) {
+async function buildSnapshot(workspaceRoot, { pythonExecutable, bridge = callBridge } = {}) {
   const opts = { pythonExecutable };
-  const eco = (operation, extra = {}) => callBridge({ backend: 'eco', workspace_id: workspaceRoot, operation, ...extra }, opts);
-  const marlin = (operation, extra = {}) => callBridge({ backend: 'marlin', workspace_id: '', operation, ...extra }, opts);
-  const niji = (operation, extra = {}) => callBridge({ backend: 'niji', workspace_id: '', operation, ...extra }, opts);
-  const system = (operation, extra = {}) => callBridge({ backend: 'system', operation, ...extra }, opts);
+  const eco = (operation, extra = {}) => bridge({ backend: 'eco', workspace_id: workspaceRoot, operation, ...extra }, opts);
+  const cockpit = (operation, extra = {}) => bridge({ backend: 'cockpit', workspace_id: '', operation, ...extra }, opts);
+  const workspace = (operation, extra = {}) => bridge({ backend: 'workspace', workspace_id: workspaceRoot, operation, ...extra }, opts);
+  const niji = (operation, extra = {}) => bridge({ backend: 'niji', workspace_id: '', operation, ...extra }, opts);
+  const system = (operation, extra = {}) => bridge({ backend: 'system', operation, ...extra }, opts);
 
   try {
     const [
@@ -29,7 +30,7 @@ async function buildSnapshot(workspaceRoot, { pythonExecutable } = {}) {
       marlinReadiness,
       marlinTree,
       marlinRepoStatus,
-      marlinHealth,
+      marlinPackages,
       nijiHealth,
       nijiState,
       nijiPalette,
@@ -44,10 +45,11 @@ async function buildSnapshot(workspaceRoot, { pythonExecutable } = {}) {
       eco('get_record', { record_type: 'governance', record_id: 'diagnostics' }),
       eco('get_record', { record_type: 'mode', record_id: 'current' }),
       eco('get_record', { record_type: 'agent-pipeline', record_id: 'current' }),
-      marlin('list_records', { record_type: 'install-readiness', filters: { workspace: workspaceRoot } }),
-      marlin('list_records', { record_type: 'workspace-tree', filters: { workspace_root: workspaceRoot, max_depth: 3, max_items: 500 } }),
-      marlin('list_records', { record_type: 'repo-status', filters: { workspace_root: workspaceRoot, max_items: 200 } }),
-      marlin('health'),
+      cockpit('list_records', { record_type: 'development-readiness', filters: { workspace: workspaceRoot } }),
+      workspace('list_records', { record_type: 'workspace-tree', filters: { max_depth: 3, max_items: 500 } }),
+      workspace('list_records', { record_type: 'repo-status', filters: { max_items: 200 } }),
+      bridge({ backend: 'marlin', workspace_id: workspaceRoot, operation: 'invoke_provider_command', command_id: 'marlin.package.list', input: {}, confirm: false }, opts)
+        .catch((error) => ({ status: 'failed', error: { message: error instanceof Error ? error.message : String(error) }, data: {} })),
       niji('health'),
       niji('get_state'),
       niji('get_record', { record_type: 'palette-preview', record_id: 'sample' }),
@@ -63,11 +65,17 @@ async function buildSnapshot(workspaceRoot, { pythonExecutable } = {}) {
         backendState: state.data,
       },
       health: health.data,
-      marlin: {
+      development: {
         installReadiness: (marlinReadiness.data && marlinReadiness.data[0]) || null,
+      },
+      workspace: {
         workspaceTree: (marlinTree.data && marlinTree.data[0]) || null,
         repoStatus: marlinRepoStatus.data || [],
-        health: marlinHealth.data,
+      },
+      marlin: {
+        health: marlinPackages.status === 'succeeded'
+          ? { reachable: true, status: 'ok', provider_id: 'marlin' }
+          : { reachable: false, status: 'degraded', provider_id: 'marlin', error: marlinPackages.error && marlinPackages.error.message },
       },
       records: {
         runs: runs.data,
@@ -83,7 +91,7 @@ async function buildSnapshot(workspaceRoot, { pythonExecutable } = {}) {
         palettePreview: nijiPalette.data,
       },
       diagnostics: {
-        integrations: { eco: health.data, marlin: marlinHealth.data, niji: nijiHealth.data },
+        integrations: { eco: health.data, marlin: marlinPackages.status === 'succeeded' ? { reachable: true, status: 'ok' } : { reachable: false, status: 'degraded', error: marlinPackages.error && marlinPackages.error.message }, niji: nijiHealth.data },
         environment: systemEnvironment.data,
         agentPipeline: agentPipeline.data,
       },
@@ -100,7 +108,9 @@ async function buildSnapshot(workspaceRoot, { pythonExecutable } = {}) {
         bridgeError: message,
       },
       health: { reachable: false, status: 'degraded' },
-      marlin: { installReadiness: null, workspaceTree: null, repoStatus: [], health: null, error: message },
+      development: { installReadiness: null, error: message },
+      workspace: { workspaceTree: null, repoStatus: [], error: message },
+      marlin: { health: null, error: message },
       records: { runs: [], escalations: [], artifacts: [], policies: [] },
       governance: null,
       mode: null,
