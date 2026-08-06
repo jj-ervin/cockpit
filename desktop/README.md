@@ -17,9 +17,13 @@ From the Cockpit repository root, build the bridge and installer together:
 .\scripts\build-marlin-payload.ps1
 ```
 
-The release payload is `dist\marlin\cockpit-core-1.0.0-windows-x64.zip`. It
-includes the Electron host, the Cockpit web bundle, the production Express
-dependency, and the x64 bridge.
+The release payload is
+`dist\marlin\cockpit-core-1.0.0-windows-{x64|arm64}.zip`. It includes the
+architecture-matched Electron host, Cockpit web bundle, production Express
+dependency, and frozen bridge. Build ARM64 with
+`..\scripts\build-marlin-payload.ps1 -Architecture arm64`; the script rejects
+an interpreter, bridge, or Electron executable whose PE machine type does not
+match the requested architecture.
 
 The installed app opens the current directory by default. Set
 `COCKPIT_WORKSPACE` to an ordinary repository path when launching it from a

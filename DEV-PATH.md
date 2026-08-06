@@ -1451,3 +1451,16 @@ runs the package steps, records `state.yaml`, registers the `cockpit` bin, and
 launches the managed executable. A real copied-MarlinSetup proof under
 `C:\sandbox` installed and launched Cockpit entirely from
 `marlin-home\apps\cockpit-core\1.0.0`.
+
+### Native Windows ARM64 and x64 payloads (INIT.23, 2026-08-05)
+
+Cockpit's Marlin-managed package now has explicit Windows x64 and ARM64
+artifacts. Build-time PE inspection fails closed unless Python, the PyInstaller
+bridge, and Electron all match the requested architecture. A native ARM64
+Python/PyInstaller environment was required; `platform.machine()` was rejected
+as proof because x64 Python under emulation reported the ARM64 OS.
+
+Copied MarlinSetup proofs installed and opened both variants from isolated
+Marlin homes. ARM64 installed runtimes report `0xAA64`; x64 reports `0x8664`.
+The x86 NSIS launcher is only the outer extraction shim and does not change
+Marlin or Cockpit's installed runtime architecture.

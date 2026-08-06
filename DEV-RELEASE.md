@@ -207,3 +207,14 @@ A stranger with no portfolio context:
 ---
 
 *Cross-reference: `docs/specifications/CKP.v1.0-scoping.md` (durable boundary, authoritative) | `DEV-PLAN.md` (current execution state) | `../marlin/DEV-RELEASE.md` (provider-side release contract)*
+
+## Windows Architecture Addendum — Marlin INIT.23 (2026-08-05)
+
+The earlier CKP.18.04 closure proved only the x64 artifact. Cockpit v1.0.0 now
+has separately checksum-pinned Windows x64 and ARM64 `cockpit-core` payloads,
+installed exclusively through architecture-matched MarlinSetup builds. Real
+copied-installer stranger tests passed for both variants on Windows ARM64:
+installed MarlinSetup, Cockpit, and bridge PE types were `0xAA64` for ARM64 and
+`0x8664` for x64. The outer NSIS launcher remains a thin x86 extraction stub.
+This addendum proves local release candidates; publication remains a separate
+release operation.

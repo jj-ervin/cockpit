@@ -2,6 +2,8 @@
 param(
     [string] $InstallerPath = "C:\dev\marlin\apps\setup\release\MarlinSetup-0.2.0-windows-x64.exe",
     [string] $SandboxRoot = "C:\sandbox",
+    [ValidateSet("x64", "arm64")]
+    [string] $Architecture = "x64",
     [switch] $KeepProof
 )
 
@@ -17,6 +19,7 @@ $workspaceRoot = Join-Path $proofRoot "ordinary-repository"
 $userDataRoot = Join-Path $proofRoot "cockpit-user-data"
 $setupResultPath = Join-Path $proofRoot "marlin-setup-result.json"
 $cockpitResultPath = Join-Path $proofRoot "cockpit-result.json"
+$assertPe = Join-Path $PSScriptRoot "assert-pe-architecture.ps1"
 
 function Wait-CheckedProcess([System.Diagnostics.Process] $Process, [int] $TimeoutSeconds, [string] $Label) {
     try {
@@ -35,6 +38,12 @@ function Assert-ProofPath([string] $Candidate) {
         -not $resolved.Equals($proofRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
         throw "Refusing cleanup outside the isolated proof root: $resolved"
     }
+}
+
+function Get-PeMachine([string] $Candidate) {
+    $bytes = [System.IO.File]::ReadAllBytes((Resolve-Path -LiteralPath $Candidate).Path)
+    $peOffset = [BitConverter]::ToInt32($bytes, 0x3c)
+    return "0x$(([BitConverter]::ToUInt16($bytes, $peOffset + 4)).ToString('X4'))"
 }
 
 New-Item -ItemType Directory -Path $proofRoot, $workspaceRoot, $userDataRoot -Force | Out-Null
@@ -57,10 +66,20 @@ try {
     Wait-CheckedProcess $installProcess 240 "MarlinSetup installer"
 
     $setupExe = Join-Path $setupRoot "MarlinSetup.exe"
-    $bundledArtifact = Join-Path $setupRoot "resources\bootstrap\cockpit-core-1.0.0-windows-x64.zip"
+    $bundledArtifact = Join-Path $setupRoot "resources\bootstrap\cockpit-core-1.0.0-windows-$Architecture.zip"
+    # The NSIS archive is solid and carries a large already-compressed payload.
+    # ARM64 hosts with real-time scanning can take several minutes before the
+    # final executable appears even after the launcher process has exited.
+    $payloadDeadline = [DateTime]::UtcNow.AddSeconds(600)
+    while ((-not (Test-Path -LiteralPath $setupExe -PathType Leaf) -or
+            -not (Test-Path -LiteralPath $bundledArtifact -PathType Leaf)) -and
+            [DateTime]::UtcNow -lt $payloadDeadline) {
+        Start-Sleep -Milliseconds 250
+    }
     foreach ($required in @($setupExe, $bundledArtifact)) {
         if (-not (Test-Path -LiteralPath $required -PathType Leaf)) { throw "MarlinSetup payload is missing $required." }
     }
+    & $assertPe -Path $setupExe -Architecture $Architecture | Out-Null
 
     $runningSetup = @(Get-Process -Name "MarlinSetup" -ErrorAction SilentlyContinue | Where-Object {
         try { $_.Path.StartsWith($setupRoot + '\', [System.StringComparison]::OrdinalIgnoreCase) } catch { $false }
@@ -97,6 +116,10 @@ try {
     foreach ($required in @($statePath, (Join-Path $expectedInstallRoot "Cockpit.exe"))) {
         if (-not (Test-Path -LiteralPath $required -PathType Leaf)) { throw "Marlin managed state is missing $required." }
     }
+    $cockpitExe = Join-Path $expectedInstallRoot "Cockpit.exe"
+    $bridgeExe = Join-Path $expectedInstallRoot "resources\bridge\cockpit-bridge.exe"
+    & $assertPe -Path $cockpitExe -Architecture $Architecture | Out-Null
+    & $assertPe -Path $bridgeExe -Architecture $Architecture | Out-Null
     if (-not ([string]$setupResult.install.installDir).Equals($expectedInstallRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
         throw "Cockpit was not installed in Marlin's managed app directory."
     }
@@ -107,6 +130,11 @@ try {
     [ordered]@{
         status = "PASS"
         installer_authority = "marlin"
+        architecture = $Architecture
+        nsis_stub_machine = Get-PeMachine $copiedInstaller
+        installed_setup_machine = Get-PeMachine $setupExe
+        cockpit_machine = Get-PeMachine $cockpitExe
+        bridge_machine = Get-PeMachine $bridgeExe
         setup_installer_sha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath $copiedInstaller).Hash.ToLowerInvariant()
         cockpit_payload_sha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath $bundledArtifact).Hash.ToLowerInvariant()
         proof_root = $proofRoot

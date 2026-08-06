@@ -12,23 +12,43 @@ metadata:
 
 platforms:
   windows:
-    artifact:
-      type: github-release
-      repo: jj-ervin/cockpit
-      asset: cockpit-core-{version}-windows-x64.zip
-      checksum:
-        algorithm: sha256
-        value: af79263b367db790f68ff9d340d282ba7a0309a8b561e8df4104cb39062ff6cc
-    install:
-      - step: command
-        run: "Expand-Archive -Path \"{artifact}\" -DestinationPath \"{install_dir}\" -Force"
-        shell: powershell
-      - step: register_bin
-        path: "{install_dir}\\Cockpit.exe"
-        as: cockpit
-    uninstall:
-      - step: deregister_bin
-        as: cockpit
-      - step: remove_dir
-        path: "{install_dir}"
-
+    x64:
+      artifact:
+        type: github-release
+        repo: jj-ervin/cockpit
+        asset: cockpit-core-{version}-windows-x64.zip
+        checksum:
+          algorithm: sha256
+          value: 4f876f853835e46099531cdfd7aa538c41cb66d1119b8373663e6b4900369a2c
+      install:
+        - step: command
+          run: "Expand-Archive -Path \"{artifact}\" -DestinationPath \"{install_dir}\" -Force"
+          shell: powershell
+        - step: register_bin
+          path: "{install_dir}\\Cockpit.exe"
+          as: cockpit
+      uninstall:
+        - step: deregister_bin
+          as: cockpit
+        - step: remove_dir
+          path: "{install_dir}"
+    arm64:
+      artifact:
+        type: github-release
+        repo: jj-ervin/cockpit
+        asset: cockpit-core-{version}-windows-arm64.zip
+        checksum:
+          algorithm: sha256
+          value: bea4c66151a21cf8d07db2e44cc507755e17e0faa3e078539be92fc8b1fad5fe
+      install:
+        - step: command
+          run: "Expand-Archive -Path \"{artifact}\" -DestinationPath \"{install_dir}\" -Force"
+          shell: powershell
+        - step: register_bin
+          path: "{install_dir}\\Cockpit.exe"
+          as: cockpit
+      uninstall:
+        - step: deregister_bin
+          as: cockpit
+        - step: remove_dir
+          path: "{install_dir}"

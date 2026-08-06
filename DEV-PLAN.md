@@ -1117,3 +1117,18 @@ ZIP plus `marlin.pkg.yaml`. MarlinSetup embeds that checksum-pinned artifact and
 delegates installation to Marlin's `installPackage`; Cockpit does not extract,
 register, or record itself. The real `C:\sandbox` proof shows Marlin's state,
 managed install path, registered bin, and launched packaged shell all agree.
+
+## Cockpit Payload Closure — Windows ARM64 + x64
+
+**Closed:** 2026-08-05 under Marlin-owned `INIT.23.00`. Cockpit now emits
+checksum-pinned `cockpit-core-1.0.0-windows-{x64|arm64}.zip` payloads. The build
+selects an architecture-specific Python environment and Electron target, then
+verifies PE machine types for the interpreter, frozen bridge, and Cockpit
+executable before creating the artifact.
+
+Real copied-MarlinSetup stranger tests passed for ARM64 and x64. ARM64 used
+native PE `0xAA64` throughout the installed runtime and payload; x64 used
+`0x8664`. Both launched the packaged 13-tab Cockpit shell from Marlin's managed
+app directory against an ordinary repository outside the portfolio, then
+uninstalled and cleaned up. The thin NSIS extraction stub is separately
+recorded as x86 (`0x014C`) and is not the runtime architecture.
