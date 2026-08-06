@@ -1,2 +1,8 @@
 #!/usr/bin/env bash
-echo "Post-create script running..."
+set -euo pipefail
+
+pip install -e ".[test]"
+python -m playwright install --with-deps chromium
+
+npm ci --prefix desktop
+npm ci --prefix host-web
