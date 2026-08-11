@@ -42,6 +42,16 @@
       approval: null,
       results: { validate: null, preview: null, apply: null, verify: null },
     },
+    hygiene: {
+      activeCommand: '',
+      error: '',
+      approval: null,
+      results: {
+        syncPreview: null, syncApply: null,
+        unignorePreview: null, unignoreApply: null,
+        visibilityList: null, visibilitySet: null,
+      },
+    },
     noticeTimer: null,
   };
 
@@ -171,6 +181,26 @@
     auditApprovalCheck: byId('audit-approval-check'),
     auditCancelApproval: byId('audit-cancel-approval'),
     auditConfirmApproval: byId('audit-confirm-approval'),
+    hygieneSyncStatus: byId('hygiene-sync-status'),
+    hygieneSyncPreview: byId('hygiene-sync-preview'),
+    hygieneSyncApply: byId('hygiene-sync-apply'),
+    hygieneSyncResult: byId('hygiene-sync-result'),
+    hygieneUnignoreStatus: byId('hygiene-unignore-status'),
+    hygieneUnignorePreview: byId('hygiene-unignore-preview'),
+    hygieneUnignoreApply: byId('hygiene-unignore-apply'),
+    hygieneUnignoreResult: byId('hygiene-unignore-result'),
+    hygieneVisibilityStatus: byId('hygiene-visibility-status'),
+    hygieneVisibilityList: byId('hygiene-visibility-list'),
+    hygieneVisibilityListResult: byId('hygiene-visibility-list-result'),
+    hygieneVisibilityRepo: byId('hygiene-visibility-repo'),
+    hygieneVisibilityValue: byId('hygiene-visibility-value'),
+    hygieneVisibilitySet: byId('hygiene-visibility-set'),
+    hygieneVisibilitySetResult: byId('hygiene-visibility-set-result'),
+    hygieneApprovalDialog: byId('hygiene-approval-dialog'),
+    hygieneApprovalScope: byId('hygiene-approval-scope'),
+    hygieneApprovalCheck: byId('hygiene-approval-check'),
+    hygieneCancelApproval: byId('hygiene-cancel-approval'),
+    hygieneConfirmApproval: byId('hygiene-confirm-approval'),
     lassoMode: byId('lasso-mode'),
     lassoPrompt: byId('lasso-prompt'),
     lassoUseCodex: byId('lasso-use-codex'),
@@ -313,6 +343,25 @@
   elements.auditCancelApproval.addEventListener('click', closeAuditApproval);
   elements.auditConfirmApproval.addEventListener('click', confirmAuditApproval);
 
+  elements.hygieneSyncPreview.addEventListener('click', function () { runHygieneCommand('syncPreview', {}); });
+  elements.hygieneSyncApply.addEventListener('click', function () { openHygieneApproval('syncApply', {}); });
+  elements.hygieneUnignorePreview.addEventListener('click', function () { runHygieneCommand('unignorePreview', {}); });
+  elements.hygieneUnignoreApply.addEventListener('click', function () { openHygieneApproval('unignoreApply', {}); });
+  elements.hygieneVisibilityList.addEventListener('click', function () { runHygieneCommand('visibilityList', {}); });
+  elements.hygieneVisibilitySet.addEventListener('click', function () {
+    openHygieneApproval('visibilitySet', {
+      repo: elements.hygieneVisibilityRepo.value.trim(),
+      visibility: elements.hygieneVisibilityValue.value,
+    });
+  });
+  elements.hygieneVisibilityRepo.addEventListener('input', renderHygieneWorkflow);
+  elements.hygieneVisibilityValue.addEventListener('change', renderHygieneWorkflow);
+  elements.hygieneApprovalCheck.addEventListener('change', function () {
+    elements.hygieneConfirmApproval.disabled = !elements.hygieneApprovalCheck.checked;
+  });
+  elements.hygieneCancelApproval.addEventListener('click', closeHygieneApproval);
+  elements.hygieneConfirmApproval.addEventListener('click', confirmHygieneApproval);
+
   elements.lassoMerge.addEventListener('click', function () {
     mergeLassoLanes();
   });
@@ -375,6 +424,7 @@
     }
     if (message.type === 'eco.cockpit.providerCommandResult') {
       handleAuditProviderResult(message.payload || {});
+      handleHygieneProviderResult(message.payload || {});
       return;
     }
     if (message.type === 'eco.cockpit.error') {
@@ -439,6 +489,7 @@
     renderNiji(state.snapshot.niji || {});
     syncAuditRepositories();
     renderAuditWorkflow();
+    renderHygieneWorkflow();
     renderProviderSummary(state.snapshot.marlin || {}, state.snapshot.niji || {});
 
     if (workspace.bridgeError) {
@@ -1092,6 +1143,147 @@
       return window.crypto.randomUUID();
     }
     return 'cockpit-approval-' + Date.now() + '-' + Math.random().toString(16).slice(2);
+  }
+
+  const HYGIENE_COMMANDS = {
+    syncPreview: 'hygiene.sync-dev-docs.preview',
+    syncApply: 'hygiene.sync-dev-docs.apply',
+    unignorePreview: 'hygiene.unignore-dev-docs.preview',
+    unignoreApply: 'hygiene.unignore-dev-docs.apply',
+    visibilityList: 'hygiene.repo-visibility.list',
+    visibilitySet: 'hygiene.repo-visibility.set',
+  };
+
+  const HYGIENE_MUTATING_STAGES = { syncApply: true, unignoreApply: true, visibilitySet: true };
+
+  function runHygieneCommand(stage, input, approval) {
+    const commandId = HYGIENE_COMMANDS[stage];
+    if (!commandId || state.hygiene.activeCommand) {
+      return;
+    }
+    state.hygiene.error = '';
+    state.hygiene.activeCommand = commandId;
+    renderHygieneWorkflow();
+    post({
+      type: 'eco.cockpit.invokeProviderCommand',
+      providerId: 'hygiene',
+      commandId: commandId,
+      input: input || {},
+      confirm: Boolean(HYGIENE_MUTATING_STAGES[stage]),
+      approval: approval || undefined,
+    });
+  }
+
+  function handleHygieneProviderResult(result) {
+    if (result.provider_id !== 'hygiene') {
+      return;
+    }
+    const stage = Object.keys(HYGIENE_COMMANDS).find(function (key) {
+      return HYGIENE_COMMANDS[key] === result.command_id;
+    });
+    if (!stage) {
+      return;
+    }
+    state.hygiene.results[stage] = result;
+    state.hygiene.activeCommand = '';
+    renderHygieneWorkflow();
+  }
+
+  function openHygieneApproval(stage, input) {
+    const commandId = HYGIENE_COMMANDS[stage];
+    if (!commandId || !HYGIENE_MUTATING_STAGES[stage]) {
+      return;
+    }
+    state.hygiene.approval = {
+      stage: stage,
+      commandId: commandId,
+      input: input,
+      token: approvalToken(),
+      scope: approvalScope('hygiene', commandId, input),
+    };
+    clear(elements.hygieneApprovalScope);
+    [
+      ['Provider', 'hygiene'],
+      ['Command', commandId],
+      ['Input', JSON.stringify(input)],
+    ].forEach(function (entry) {
+      const dt = document.createElement('dt');
+      const dd = document.createElement('dd');
+      dt.textContent = entry[0];
+      dd.textContent = entry[1];
+      elements.hygieneApprovalScope.appendChild(dt);
+      elements.hygieneApprovalScope.appendChild(dd);
+    });
+    elements.hygieneApprovalCheck.checked = false;
+    elements.hygieneConfirmApproval.disabled = true;
+    elements.hygieneApprovalDialog.hidden = false;
+    elements.hygieneApprovalCheck.focus();
+  }
+
+  function closeHygieneApproval() {
+    elements.hygieneApprovalDialog.hidden = true;
+    elements.hygieneApprovalCheck.checked = false;
+    elements.hygieneConfirmApproval.disabled = true;
+  }
+
+  function confirmHygieneApproval() {
+    const approval = state.hygiene.approval;
+    if (!elements.hygieneApprovalCheck.checked || !approval) {
+      state.hygiene.error = 'Approval was not confirmed.';
+      closeHygieneApproval();
+      renderHygieneWorkflow();
+      return;
+    }
+    closeHygieneApproval();
+    runHygieneCommand(approval.stage, approval.input, { token: approval.token, scope: approval.scope });
+  }
+
+  function renderHygieneOutput(result) {
+    if (!result) {
+      return '';
+    }
+    if (result.data && typeof result.data.output === 'string' && result.data.output.trim()) {
+      return result.data.output.trim();
+    }
+    if (result.error && result.error.message) {
+      return result.error.message;
+    }
+    return JSON.stringify(result.data || {}, null, 2);
+  }
+
+  function renderHygieneWorkflow() {
+    const results = state.hygiene.results;
+    const busy = Boolean(state.hygiene.activeCommand);
+
+    function statusFor(previewKey, applyKey) {
+      if (state.hygiene.activeCommand === HYGIENE_COMMANDS[previewKey] || state.hygiene.activeCommand === HYGIENE_COMMANDS[applyKey]) {
+        return 'Running…';
+      }
+      const latest = (applyKey && results[applyKey]) || results[previewKey];
+      return latest ? latest.status : 'Not run';
+    }
+
+    elements.hygieneSyncStatus.textContent = statusFor('syncPreview', 'syncApply');
+    elements.hygieneSyncResult.textContent = renderHygieneOutput(results.syncApply || results.syncPreview);
+    elements.hygieneSyncPreview.disabled = busy;
+    elements.hygieneSyncApply.disabled = busy || !results.syncPreview || results.syncPreview.status !== 'succeeded';
+
+    elements.hygieneUnignoreStatus.textContent = statusFor('unignorePreview', 'unignoreApply');
+    elements.hygieneUnignoreResult.textContent = renderHygieneOutput(results.unignoreApply || results.unignorePreview);
+    elements.hygieneUnignorePreview.disabled = busy;
+    elements.hygieneUnignoreApply.disabled = busy || !results.unignorePreview || results.unignorePreview.status !== 'succeeded';
+
+    elements.hygieneVisibilityStatus.textContent = statusFor('visibilityList', 'visibilitySet');
+    elements.hygieneVisibilityListResult.textContent = renderHygieneOutput(results.visibilityList);
+    elements.hygieneVisibilitySetResult.textContent = renderHygieneOutput(results.visibilitySet);
+    elements.hygieneVisibilityList.disabled = busy;
+    const repoFilled = Boolean(elements.hygieneVisibilityRepo.value.trim() && elements.hygieneVisibilityValue.value);
+    elements.hygieneVisibilitySet.disabled = busy || !repoFilled;
+
+    if (state.hygiene.error) {
+      showNotice(state.hygiene.error, true, false);
+      state.hygiene.error = '';
+    }
   }
 
   function renderAuditWorkflow() {
