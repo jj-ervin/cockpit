@@ -1,8 +1,4 @@
 # Internal dev docs — local only, not for distribution
-AGENTS.md
-CHATGPT.md
-CLAUDE.md
-REVIEW-GRAMMAR.md
 
 # Python
 __pycache__/
