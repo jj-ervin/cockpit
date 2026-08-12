@@ -1481,3 +1481,27 @@ the older hygiene tab yet.
 
 Validation: `node --check web/cockpit.js` passed. The full web bundle smoke
 passed 17/17 using repo-local pytest basetemp.
+
+### Marlin Doctor Approval Dialog Fix (Marlin cross-repo, INIT.30.03a, 2026-08-12)
+
+Review found the registry view above had a real gap: register/unregister
+constructed and sent a valid `confirm: true` + `approval` in the same
+click that triggered the mutation, with no human-facing review step —
+the wire shape was correct (nothing server-side could tell an
+auto-generated approval from a human-reviewed one), but the UI never
+put a human in the loop, unlike the Marlin Audit panel this tab was
+built to follow.
+
+Fixed entirely in this repo. `#doctor-approval-dialog` mirrors
+`#audit-approval-dialog`'s structure exactly (scope list, required
+checkbox, cancel/confirm). `runDoctorCommand()` now requires an
+approval to be passed in for mutating stages instead of generating one
+itself; the register form and the "Remove" button open the dialog
+instead of posting directly. Confirming re-checks the target repository
+against the approval's recorded target and refuses a stale approval if
+it changed while the dialog was open. The Doctor browser smoke test
+was rewritten to drive the real two-step interaction instead of
+asserting the previous single-click auto-approval.
+
+Validation: Cockpit web bundle smoke passed 17/17 (rewritten Doctor
+test included); `host-web` suite unaffected, 33/33.

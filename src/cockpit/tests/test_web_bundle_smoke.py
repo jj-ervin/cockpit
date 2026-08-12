@@ -422,7 +422,7 @@ def test_marlin_audit_ui_binds_approval_executes_verifies_and_exports(cockpit_pa
     assert cockpit_page.cockpit_errors == []
 
 
-def test_marlin_doctor_ui_lists_registers_and_removes_operations(cockpit_page):
+def test_marlin_doctor_ui_lists_binds_approval_registers_and_removes_operations(cockpit_page):
     _send_state(cockpit_page, _sample_snapshot())
     cockpit_page.click(".tab[data-tab='marlin-doctor']")
     cockpit_page.select_option("#doctor-repository", "C:/fake/workspace/demo")
@@ -455,6 +455,15 @@ def test_marlin_doctor_ui_lists_registers_and_removes_operations(cockpit_page):
     cockpit_page.fill("#doctor-operation-title", "Run tests")
     cockpit_page.fill("#doctor-command-json", '["npm","test"]')
     cockpit_page.click("#doctor-add-operation")
+    assert cockpit_page.locator("#doctor-approval-dialog").is_visible()
+    register_scope_text = cockpit_page.locator("#doctor-approval-scope").inner_text()
+    assert "marlin.doctor.operations.register" in register_scope_text
+    assert "C:/fake/workspace/demo" in register_scope_text
+    assert "tests.run" in register_scope_text
+
+    cockpit_page.check("#doctor-approval-check")
+    cockpit_page.click("#doctor-confirm-approval")
+    assert not cockpit_page.locator("#doctor-approval-dialog").is_visible()
     register = cockpit_page.evaluate("window.__posted[window.__posted.length - 1]")
     assert register["commandId"] == "marlin.doctor.operations.register"
     assert register["confirm"] is True
@@ -491,6 +500,14 @@ def test_marlin_doctor_ui_lists_registers_and_removes_operations(cockpit_page):
     assert "tests.run" in cockpit_page.locator("#doctor-operation-table").inner_text()
 
     cockpit_page.click("#doctor-operation-table button:has-text('Remove')")
+    assert cockpit_page.locator("#doctor-approval-dialog").is_visible()
+    remove_scope_text = cockpit_page.locator("#doctor-approval-scope").inner_text()
+    assert "marlin.doctor.operations.unregister" in remove_scope_text
+    assert "tests.run" in remove_scope_text
+
+    cockpit_page.check("#doctor-approval-check")
+    cockpit_page.click("#doctor-confirm-approval")
+    assert not cockpit_page.locator("#doctor-approval-dialog").is_visible()
     remove = cockpit_page.evaluate("window.__posted[window.__posted.length - 1]")
     assert remove["commandId"] == "marlin.doctor.operations.unregister"
     assert remove["confirm"] is True

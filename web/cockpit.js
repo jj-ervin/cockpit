@@ -48,6 +48,7 @@
       error: '',
       lastResult: null,
       operations: [],
+      approval: null,
     },
     hygiene: {
       activeCommand: '',
@@ -202,6 +203,11 @@
     doctorOperationMutates: byId('doctor-operation-mutates'),
     doctorOperationPreview: byId('doctor-operation-preview'),
     doctorLastResult: byId('doctor-last-result'),
+    doctorApprovalDialog: byId('doctor-approval-dialog'),
+    doctorApprovalScope: byId('doctor-approval-scope'),
+    doctorApprovalCheck: byId('doctor-approval-check'),
+    doctorCancelApproval: byId('doctor-cancel-approval'),
+    doctorConfirmApproval: byId('doctor-confirm-approval'),
     hygieneSyncStatus: byId('hygiene-sync-status'),
     hygieneSyncPreview: byId('hygiene-sync-preview'),
     hygieneSyncApply: byId('hygiene-sync-apply'),
@@ -368,6 +374,7 @@
     state.doctor.target = elements.doctorRepository.value;
     state.doctor.operations = [];
     state.doctor.lastResult = null;
+    closeDoctorApproval();
     renderDoctorWorkflow();
   });
   elements.doctorRefresh.addEventListener('click', function () { runDoctorCommand('list', {}); });
@@ -375,6 +382,11 @@
     event.preventDefault();
     registerDoctorOperationFromForm();
   });
+  elements.doctorApprovalCheck.addEventListener('change', function () {
+    elements.doctorConfirmApproval.disabled = !elements.doctorApprovalCheck.checked;
+  });
+  elements.doctorCancelApproval.addEventListener('click', closeDoctorApproval);
+  elements.doctorConfirmApproval.addEventListener('click', confirmDoctorApproval);
 
   elements.hygieneSyncPreview.addEventListener('click', function () { runHygieneCommand('syncPreview', {}); });
   elements.hygieneSyncApply.addEventListener('click', function () { openHygieneApproval('syncApply', {}); });
@@ -1227,13 +1239,20 @@
     elements.doctorRepository.value = state.doctor.target;
   }
 
-  function runDoctorCommand(stage, input) {
+  const DOCTOR_MUTATING_STAGES = { register: true, unregister: true };
+
+  function runDoctorCommand(stage, input, approval) {
     const commandId = DOCTOR_COMMANDS[stage];
     if (!commandId || !state.doctor.target || state.doctor.activeCommand) {
       return;
     }
     const payload = Object.assign({ target: state.doctor.target }, input || {});
-    const mutates = stage === 'register' || stage === 'unregister';
+    const mutates = Boolean(DOCTOR_MUTATING_STAGES[stage]);
+    if (mutates && !approval) {
+      // Mutating stages must go through openDoctorApproval -> confirmDoctorApproval
+      // first; this function only sends the request once a human has approved it.
+      return;
+    }
     state.doctor.error = '';
     state.doctor.activeCommand = commandId;
     renderDoctorWorkflow();
@@ -1243,8 +1262,60 @@
       commandId: commandId,
       input: payload,
       confirm: mutates,
-      approval: mutates ? { token: approvalToken(), scope: approvalScope('marlin', commandId, payload) } : undefined,
+      approval: mutates ? { token: approval.token, scope: approval.scope } : undefined,
     });
+  }
+
+  function openDoctorApproval(stage, input) {
+    const commandId = DOCTOR_COMMANDS[stage];
+    if (!commandId || !DOCTOR_MUTATING_STAGES[stage] || !state.doctor.target) {
+      return;
+    }
+    const payload = Object.assign({ target: state.doctor.target }, input || {});
+    state.doctor.approval = {
+      stage: stage,
+      commandId: commandId,
+      input: payload,
+      token: approvalToken(),
+      scope: approvalScope('marlin', commandId, payload),
+    };
+    clear(elements.doctorApprovalScope);
+    const operationId = (payload.operation && payload.operation.id) || payload.operation_id || '-';
+    [
+      ['Provider', 'marlin'],
+      ['Command', commandId],
+      ['Target', payload.target],
+      ['Operation', operationId],
+    ].forEach(function (entry) {
+      const dt = document.createElement('dt');
+      const dd = document.createElement('dd');
+      dt.textContent = entry[0];
+      dd.textContent = entry[1];
+      elements.doctorApprovalScope.appendChild(dt);
+      elements.doctorApprovalScope.appendChild(dd);
+    });
+    elements.doctorApprovalCheck.checked = false;
+    elements.doctorConfirmApproval.disabled = true;
+    elements.doctorApprovalDialog.hidden = false;
+    elements.doctorApprovalCheck.focus();
+  }
+
+  function closeDoctorApproval() {
+    elements.doctorApprovalDialog.hidden = true;
+    elements.doctorApprovalCheck.checked = false;
+    elements.doctorConfirmApproval.disabled = true;
+  }
+
+  function confirmDoctorApproval() {
+    const approval = state.doctor.approval;
+    if (!elements.doctorApprovalCheck.checked || !approval || approval.input.target !== state.doctor.target) {
+      state.doctor.error = 'Approval expired because the target repository changed.';
+      closeDoctorApproval();
+      renderDoctorWorkflow();
+      return;
+    }
+    closeDoctorApproval();
+    runDoctorCommand(approval.stage, approval.input, { token: approval.token, scope: approval.scope });
   }
 
   function registerDoctorOperationFromForm() {
@@ -1274,7 +1345,7 @@
     if (cwd) {
       operation.cwd = cwd;
     }
-    runDoctorCommand('register', { operation: operation, replace: true });
+    openDoctorApproval('register', { operation: operation, replace: true });
   }
 
   function handleDoctorProviderResult(result) {
@@ -1345,7 +1416,7 @@
       remove.type = 'button';
       remove.textContent = 'Remove';
       remove.addEventListener('click', function () {
-        runDoctorCommand('unregister', { operation_id: operation.id });
+        openDoctorApproval('unregister', { operation_id: operation.id });
       });
       actions.appendChild(remove);
       row.appendChild(id);

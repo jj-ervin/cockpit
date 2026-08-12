@@ -558,6 +558,19 @@
         </div>
       </div>
     </section>
+    <section class="approval-overlay" id="doctor-approval-dialog" role="dialog" aria-modal="true" aria-labelledby="doctor-approval-title" hidden>
+      <div class="approval-dialog">
+        <p class="eyebrow">Human approval required</p>
+        <h2 id="doctor-approval-title">Apply this Doctor registry change?</h2>
+        <p>This command writes to the target's Doctor operations registry. The approval is bound to the exact provider, command, target, and operation shown below.</p>
+        <dl class="metadata-list" id="doctor-approval-scope"></dl>
+        <label class="approval-check"><input id="doctor-approval-check" type="checkbox"> I approve this exact Marlin Doctor registry change.</label>
+        <div class="button-row">
+          <button id="doctor-cancel-approval" type="button">Cancel</button>
+          <button id="doctor-confirm-approval" type="button" disabled>Approve and execute</button>
+        </div>
+      </div>
+    </section>
     <footer id="footer">Loading Cockpit state...</footer>
   </main>
   <!-- cockpit-host-bootstrap -->

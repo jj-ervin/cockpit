@@ -2,7 +2,7 @@
 
 **AUTHORITY LEVEL: AL:1**
 **Status:** SCAFFOLD / ACTIVE PRODUCT DIRECTION
-**Updated:** 2026-07-26
+**Updated:** 2026-08-12
 **Authority:** CK.00, CK.01, CK.02 in `C:\dev\eco`
 
 ---
@@ -1143,3 +1143,19 @@ existing workspace repository picker and `eco.cockpit.invokeProviderCommand`
 path. Register/unregister are confirmation-gated provider mutations; operation
 execution, health scoring, agent flow, and hygiene migration remain future
 Marlin Doctor slices.
+
+## Marlin Doctor Cross-Repo Note — Approval Dialog Fix (INIT.30.03a)
+
+**Closed:** 2026-08-12 under Marlin-owned `INIT.30.03a`.
+
+A review of the registry-view slice above found that register/unregister
+sent a valid `confirm: true` + `approval` on the same click that triggered
+the mutation — no dialog, no checkbox, no human review step, unlike the
+Marlin Audit panel this tab was meant to follow. Fixed entirely in this
+repo: `#doctor-approval-dialog` now mirrors `#audit-approval-dialog`
+exactly, and `runDoctorCommand()` requires an externally-supplied
+approval for register/unregister rather than generating one itself.
+Confirming also checks the target repository hasn't changed since the
+dialog opened, invalidating a stale approval instead of silently
+reusing it. The Doctor browser smoke test now drives the real two-step
+flow. No marlin-repo files changed for this fix.
