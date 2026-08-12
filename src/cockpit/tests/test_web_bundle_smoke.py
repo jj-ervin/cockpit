@@ -553,6 +553,12 @@ def test_marlin_doctor_ui_lists_binds_approval_registers_and_removes_operations(
 def test_marlin_doctor_agent_roster_ui_detects_registers_and_removes_templates(cockpit_page):
     _send_state(cockpit_page, _sample_snapshot())
     cockpit_page.click(".tab[data-tab='marlin-doctor']")
+    roster_digest_1 = "sha256:" + "a" * 64
+    roster_digest_2 = "sha256:" + "b" * 64
+
+    # detect is disabled until a roster digest is known -- there is nothing
+    # yet to bind an approval to.
+    assert cockpit_page.locator("#agent-roster-detect").is_disabled()
 
     # list: read-only, no approval dialog.
     cockpit_page.click("#agent-roster-list")
@@ -572,8 +578,12 @@ def test_marlin_doctor_agent_roster_ui_detects_registers_and_removes_templates(c
         "timestamp": "2026-08-12T00:00:00Z",
         "data": {
             "roster_path": "C:/fake/marlin-home/doctor-agents.json",
+            "roster_digest": roster_digest_1,
             "templates": [
-                {"id": "codex", "name": "Codex CLI", "capabilities": ["diagnose", "patch"], "builtin": True},
+                {
+                    "id": "codex", "name": "Codex CLI", "capabilities": ["diagnose", "patch"],
+                    "builtin": True, "detect": {"command": ["codex", "--version"]},
+                },
             ],
             "count": 1,
         },
@@ -583,21 +593,29 @@ def test_marlin_doctor_agent_roster_ui_detects_registers_and_removes_templates(c
     assert "codex" in cockpit_page.locator("#agent-roster-table").inner_text()
     # Built-in row has no Remove button.
     assert cockpit_page.locator("#agent-roster-table button:has-text('Remove')").count() == 0
+    assert not cockpit_page.locator("#agent-roster-detect").is_disabled()
 
     # detect: mutating (spawns a real bounded process per template), must
-    # bind approval the same as register/unregister -- not a silent read.
+    # bind approval the same as register/unregister -- not a silent read --
+    # and the approval must be bound to the exact roster digest just loaded,
+    # with the real detect argv visible, not a vague "all templates" label.
     cockpit_page.click("#agent-roster-detect")
     assert cockpit_page.locator("#agent-approval-dialog").is_visible()
     detect_scope_text = cockpit_page.locator("#agent-approval-scope").inner_text()
     assert "marlin.doctor.agents.detect" in detect_scope_text
+    assert roster_digest_1 in detect_scope_text
+    assert "codex --version" in detect_scope_text
     cockpit_page.check("#agent-approval-check")
     cockpit_page.click("#agent-confirm-approval")
     assert not cockpit_page.locator("#agent-approval-dialog").is_visible()
     detect_request = cockpit_page.evaluate("window.__posted[window.__posted.length - 1]")
     assert detect_request["commandId"] == "marlin.doctor.agents.detect"
     assert detect_request["confirm"] is True
+    assert detect_request["input"] == {"roster_digest": roster_digest_1}
     assert detect_request["approval"]["token"]
-    assert detect_request["approval"]["scope"] == '{"command_id":"marlin.doctor.agents.detect","input":{},"provider_id":"marlin"}'
+    assert detect_request["approval"]["scope"] == (
+        '{"command_id":"marlin.doctor.agents.detect","input":{"roster_digest":"' + roster_digest_1 + '"},"provider_id":"marlin"}'
+    )
 
     _send_provider_result(cockpit_page, {
         "schema_version": "cockpit-operation-result-v1",
@@ -607,6 +625,7 @@ def test_marlin_doctor_agent_roster_ui_detects_registers_and_removes_templates(c
         "status": "succeeded",
         "timestamp": "2026-08-12T00:00:00Z",
         "data": {
+            "roster_digest": roster_digest_1,
             "results": [{"id": "codex", "name": "Codex CLI", "detected": False, "version_output": "", "exit_code": None}],
             "detected_count": 0,
             "count": 1,
@@ -647,10 +666,14 @@ def test_marlin_doctor_agent_roster_ui_detects_registers_and_removes_templates(c
         "timestamp": "2026-08-12T00:00:00Z",
         "data": {
             "roster_path": "C:/fake/marlin-home/doctor-agents.json",
+            "roster_digest": roster_digest_2,
             "template_id": "lmstudio",
             "templates": [
                 {"id": "codex", "name": "Codex CLI", "capabilities": ["diagnose", "patch"], "builtin": True},
-                {"id": "lmstudio", "name": "LM Studio (local)", "capabilities": ["diagnose", "explain"], "builtin": False},
+                {
+                    "id": "lmstudio", "name": "LM Studio (local)", "capabilities": ["diagnose", "explain"],
+                    "builtin": False, "detect": {"command": ["lms", "--version"]},
+                },
             ],
             "count": 2,
         },
@@ -659,6 +682,36 @@ def test_marlin_doctor_agent_roster_ui_detects_registers_and_removes_templates(c
     assert cockpit_page.locator("#agent-roster-count").inner_text() == "2 templates"
     # Custom row has a Remove button; built-in row still does not.
     assert cockpit_page.locator("#agent-roster-table button:has-text('Remove')").count() == 1
+
+    # Registering changed the roster -- a subsequent detect must bind to the
+    # *new* digest, not the stale one captured before the mutation. This is
+    # the actual TOCTOU protection: prove the client doesn't silently reuse
+    # an old digest after the roster it describes no longer exists.
+    cockpit_page.click("#agent-roster-detect")
+    assert cockpit_page.locator("#agent-approval-scope").inner_text().count(roster_digest_2) >= 1
+    assert "lms --version" in cockpit_page.locator("#agent-approval-scope").inner_text()
+    cockpit_page.check("#agent-approval-check")
+    cockpit_page.click("#agent-confirm-approval")
+    second_detect_request = cockpit_page.evaluate("window.__posted[window.__posted.length - 1]")
+    assert second_detect_request["input"] == {"roster_digest": roster_digest_2}
+    _send_provider_result(cockpit_page, {
+        "schema_version": "cockpit-operation-result-v1",
+        "operation_id": "agents-detect-2",
+        "provider_id": "marlin",
+        "command_id": "marlin.doctor.agents.detect",
+        "status": "succeeded",
+        "timestamp": "2026-08-12T00:00:00Z",
+        "data": {
+            "roster_digest": roster_digest_2,
+            "results": [
+                {"id": "codex", "name": "Codex CLI", "detected": False, "version_output": "", "exit_code": None},
+                {"id": "lmstudio", "name": "LM Studio (local)", "detected": False, "version_output": "", "exit_code": None},
+            ],
+            "detected_count": 0,
+            "count": 2,
+        },
+        "evidence": [],
+    })
 
     # remove the custom template.
     cockpit_page.click("#agent-roster-table button:has-text('Remove')")

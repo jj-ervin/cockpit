@@ -1542,3 +1542,26 @@ duplicate Marlin's id list client-side.
 
 Validation: `node --check web/cockpit.js` passed; web bundle smoke passed
 18/18 (was 17); `host-web` passed 33/33, unaffected.
+
+### Marlin Agent Roster Adversarial Review Fixes (Marlin cross-repo, INIT.30.05a, 2026-08-12)
+
+Codex's adversarial review of `INIT.30.05` found two blocking gaps: `detect`
+approval was not bound to the mutable roster (a TOCTOU gap — the roster
+could change between approval and spawn without invalidating it), and the
+approval dialog showed a vague "all known templates" placeholder instead of
+the real detect argv being approved. Both are Cockpit-visible even though
+the underlying fix (digest re-check before spawn) lives in Marlin.
+
+Fixed entirely in this repo to match: `state.agents.rosterDigest` is now
+captured from every `list`/`detect`/`register`/`unregister` result; the
+"Detect all" button stays disabled until a digest is known, and clicking it
+binds the current digest into the approval instead of an empty scope. The
+approval dialog for `detect` now lists the roster digest plus every
+template's real detect command, not a placeholder. A rewritten smoke test
+drives two detect passes across a registration, proving the digest sent the
+second time is the new one, not a stale cached one.
+
+Validation: `node --check web/cockpit.js` passed; web bundle smoke passed
+18/18, unaffected in count but materially rewritten; `host-web` passed
+33/33, unaffected. No agent execution semantics changed — detection only,
+same as `.05`.

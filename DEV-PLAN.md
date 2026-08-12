@@ -1196,3 +1196,21 @@ are built-in so Cockpit doesn't duplicate that id list.
 
 Validation: web bundle smoke passed 18/18 (was 17); host-web passed
 33/33, unaffected; `node --check web/cockpit.js` passed.
+
+## Marlin Doctor Cross-Repo Note — Agent Roster Adversarial Review Fixes (INIT.30.05a)
+
+**Closed:** 2026-08-12 under Marlin-owned `INIT.30.05a`.
+
+Two of Codex's five adversarial-review findings against `INIT.30.05`
+touched this repo's UI: the "Detect all" approval carried an empty scope
+instead of a roster digest (part of the TOCTOU gap fixed in Marlin), and
+the approval dialog described what it was approving as "all known
+templates" instead of showing real detect commands. Fixed here:
+`state.agents.rosterDigest` is tracked from every agent provider result,
+the Detect button is disabled until a digest exists, and the approval
+dialog now lists the digest and every template's actual `detect.command`
+argv. The Doctor smoke test now runs detect twice around a registration
+and asserts the second approval carries the updated digest, not the first.
+
+Validation: web bundle smoke passed 18/18 (rewritten, not a new count);
+host-web passed 33/33, unaffected; `node --check web/cockpit.js` passed.

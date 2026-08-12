@@ -57,6 +57,7 @@
       lastResult: null,
       templates: [],
       detections: {},
+      rosterDigest: '',
       approval: null,
     },
     hygiene: {
@@ -420,7 +421,9 @@
   elements.doctorConfirmApproval.addEventListener('click', confirmDoctorApproval);
 
   elements.agentRosterList.addEventListener('click', function () { runAgentCommand('list', {}); });
-  elements.agentRosterDetect.addEventListener('click', function () { openAgentApproval('detect', {}); });
+  elements.agentRosterDetect.addEventListener('click', function () {
+    openAgentApproval('detect', { roster_digest: state.agents.rosterDigest });
+  });
   elements.agentRosterAddForm.addEventListener('submit', function (event) {
     event.preventDefault();
     registerAgentTemplateFromForm();
@@ -1569,12 +1572,26 @@
       scope: approvalScope('marlin', commandId, payload),
     };
     clear(elements.agentApprovalScope);
-    const templateId = (payload.template && payload.template.id) || payload.template_id || 'all known templates';
-    [
-      ['Provider', 'marlin'],
-      ['Command', commandId],
-      ['Template', templateId],
-    ].forEach(function (entry) {
+    const entries = [['Provider', 'marlin'], ['Command', commandId]];
+    if (stage === 'detect') {
+      // Detect runs a real, approval-editable process per template -- not
+      // a read. Show exactly which commands are about to run, not a vague
+      // "all known templates" placeholder, so approval means something.
+      entries.push(['Roster digest', payload.roster_digest || '-']);
+      state.agents.templates.forEach(function (template) {
+        const command = Array.isArray(template.detect && template.detect.command)
+          ? template.detect.command.join(' ')
+          : '-';
+        entries.push([template.id, command]);
+      });
+    } else {
+      const templateId = (payload.template && payload.template.id) || payload.template_id || '-';
+      entries.push(['Template', templateId]);
+      if (payload.template && Array.isArray(payload.template.detect && payload.template.detect.command)) {
+        entries.push(['Detect command', payload.template.detect.command.join(' ')]);
+      }
+    }
+    entries.forEach(function (entry) {
       const dt = document.createElement('dt');
       const dd = document.createElement('dd');
       dt.textContent = entry[0];
@@ -1664,6 +1681,9 @@
         result.data.results.forEach(function (item) { next[item.id] = item; });
         state.agents.detections = next;
       }
+      if (typeof result.data.roster_digest === 'string') {
+        state.agents.rosterDigest = result.data.roster_digest;
+      }
     }
     if (result.status !== 'succeeded') {
       state.agents.error = (result.error && result.error.message) || 'Agent roster provider command failed.';
@@ -1674,7 +1694,9 @@
   function renderAgentRosterWorkflow() {
     const busy = Boolean(state.agents.activeCommand);
     elements.agentRosterList.disabled = busy;
-    elements.agentRosterDetect.disabled = busy;
+    // Detect binds its approval to the roster digest returned by list/
+    // register/unregister; without one yet there is nothing to bind to.
+    elements.agentRosterDetect.disabled = busy || !state.agents.rosterDigest;
     elements.agentRosterAddForm.querySelectorAll('input, textarea, button').forEach(function (control) {
       control.disabled = busy;
     });
