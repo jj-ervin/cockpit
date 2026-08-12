@@ -47,7 +47,6 @@
       <button class="tab" type="button" data-tab="governance">Governance</button>
       <button class="tab" type="button" data-tab="marlin-audit">Marlin Audit</button>
       <button class="tab" type="button" data-tab="marlin-doctor">Marlin Doctor</button>
-      <button class="tab" type="button" data-tab="hygiene-tab">Portfolio Hygiene</button>
       <button class="tab" type="button" data-tab="diagnostics-tab">Diagnostics</button>
       <button class="tab" type="button" data-tab="wizard">Setup Wizard</button>
       <button class="tab" type="button" data-tab="workspace-tab">Workspace</button>
@@ -196,6 +195,9 @@
                 <option value="json">json</option>
               </select>
             </label>
+            <label class="full">Inputs JSON
+              <textarea id="doctor-operation-inputs-json" rows="3" spellcheck="false" placeholder='[{"id":"repo","label":"Repository","type":"string","required":true}]'></textarea>
+            </label>
             <label class="approval-check"><input id="doctor-operation-mutates" type="checkbox"> Mutates files</label>
             <label class="approval-check"><input id="doctor-operation-preview" type="checkbox"> Supports preview</label>
             <div class="button-row full">
@@ -257,63 +259,6 @@
             </div>
           </form>
           <pre class="wizard-result" id="agent-roster-last-result"></pre>
-        </section>
-      </div>
-    </section>
-
-    <section class="tab-panel" id="hygiene-tab">
-      <section class="panel">
-        <div class="panel-header wrap">
-          <div>
-            <p class="eyebrow">Provider workflow</p>
-            <h2>c:\dev portfolio hygiene</h2>
-          </div>
-        </div>
-        <p class="panel-note">Cockpit renders this workflow and owns approval. The "hygiene" provider runs c:\dev's maintenance scripts (sync-dev-docs.ps1, unignore-dev-docs.ps1, set-repo-visibility.ps1) and returns their output.</p>
-      </section>
-
-      <div class="panel-grid">
-        <section class="panel">
-          <div class="panel-header"><h2>Sync dev-docs</h2><span id="hygiene-sync-status">Not run</span></div>
-          <p class="panel-note">Extracts DEV-DOCS for public repos into the private dev-docs repo.</p>
-          <div class="button-row">
-            <button id="hygiene-sync-preview" type="button">Preview</button>
-            <button id="hygiene-sync-apply" type="button" disabled>Apply &amp; push</button>
-          </div>
-          <pre class="wizard-result" id="hygiene-sync-result"></pre>
-        </section>
-
-        <section class="panel">
-          <div class="panel-header"><h2>Unignore dev-docs</h2><span id="hygiene-unignore-status">Not run</span></div>
-          <p class="panel-note">Stops gitignoring DEV-DOCS in already-private repos.</p>
-          <div class="button-row">
-            <button id="hygiene-unignore-preview" type="button">Preview</button>
-            <button id="hygiene-unignore-apply" type="button" disabled>Apply &amp; push</button>
-          </div>
-          <pre class="wizard-result" id="hygiene-unignore-result"></pre>
-        </section>
-
-        <section class="panel">
-          <div class="panel-header"><h2>Repo visibility</h2><span id="hygiene-visibility-status">Not run</span></div>
-          <div class="button-row">
-            <button id="hygiene-visibility-list" type="button">List</button>
-          </div>
-          <pre class="wizard-result" id="hygiene-visibility-list-result"></pre>
-          <form class="form-grid" id="hygiene-visibility-form">
-            <label>Repo
-              <input id="hygiene-visibility-repo" type="text" autocomplete="off" placeholder="e.g. marlin-registry">
-            </label>
-            <label>Visibility
-              <select id="hygiene-visibility-value">
-                <option value="public">public</option>
-                <option value="private">private</option>
-              </select>
-            </label>
-            <div class="button-row full">
-              <button id="hygiene-visibility-set" type="button" disabled>Set visibility</button>
-            </div>
-          </form>
-          <pre class="wizard-result" id="hygiene-visibility-set-result"></pre>
         </section>
       </div>
     </section>
@@ -599,19 +544,6 @@
         <div class="button-row">
           <button id="audit-cancel-approval" type="button">Cancel</button>
           <button id="audit-confirm-approval" type="button" disabled>Approve and execute</button>
-        </div>
-      </div>
-    </section>
-    <section class="approval-overlay" id="hygiene-approval-dialog" role="dialog" aria-modal="true" aria-labelledby="hygiene-approval-title" hidden>
-      <div class="approval-dialog">
-        <p class="eyebrow">Human approval required</p>
-        <h2 id="hygiene-approval-title">Run this hygiene command?</h2>
-        <p>This command commits and pushes to git repositories. The approval is bound to the exact provider, command, and input shown below.</p>
-        <dl class="metadata-list" id="hygiene-approval-scope"></dl>
-        <label class="approval-check"><input id="hygiene-approval-check" type="checkbox"> I approve this exact command and input.</label>
-        <div class="button-row">
-          <button id="hygiene-cancel-approval" type="button">Cancel</button>
-          <button id="hygiene-confirm-approval" type="button" disabled>Approve and execute</button>
         </div>
       </div>
     </section>

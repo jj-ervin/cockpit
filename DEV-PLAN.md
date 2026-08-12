@@ -1214,3 +1214,18 @@ and asserts the second approval carries the updated digest, not the first.
 
 Validation: web bundle smoke passed 18/18 (rewritten, not a new count);
 host-web passed 33/33, unaffected; `node --check web/cockpit.js` passed.
+
+## Marlin Doctor Cross-Repo Note — Hygiene Migration (INIT.30.06)
+
+**Closed:** 2026-08-12 under Marlin-owned `INIT.30.06`.
+
+Cockpit's duplicate Portfolio Hygiene tab, standalone-provider dispatch, and
+separate approval dialog are removed. The Marlin Doctor table now renders
+validated string/choice inputs declared by target-scoped operations, preserves
+their values between preview and apply, and includes the exact input object in
+the existing digest-bound approval scope. The add-operation form accepts input
+definitions as JSON so parameterized scripts remain runtime-addable rather
+than becoming a hardcoded portfolio special case.
+
+The browser regression drives required-input disablement, string/choice entry,
+preview approval, rerender, apply approval, and exact provider payload binding.

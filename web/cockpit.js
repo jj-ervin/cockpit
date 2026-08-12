@@ -48,6 +48,7 @@
       error: '',
       lastResult: null,
       operations: [],
+      operationInputs: {},
       registryDigest: '',
       approval: null,
     },
@@ -59,16 +60,6 @@
       detections: {},
       rosterDigest: '',
       approval: null,
-    },
-    hygiene: {
-      activeCommand: '',
-      error: '',
-      approval: null,
-      results: {
-        syncPreview: null, syncApply: null,
-        unignorePreview: null, unignoreApply: null,
-        visibilityList: null, visibilitySet: null,
-      },
     },
     noticeTimer: null,
   };
@@ -211,6 +202,7 @@
     doctorPreviewCommandJson: byId('doctor-preview-command-json'),
     doctorOperationCwd: byId('doctor-operation-cwd'),
     doctorOperationOutput: byId('doctor-operation-output'),
+    doctorOperationInputsJson: byId('doctor-operation-inputs-json'),
     doctorOperationMutates: byId('doctor-operation-mutates'),
     doctorOperationPreview: byId('doctor-operation-preview'),
     doctorLastResult: byId('doctor-last-result'),
@@ -239,26 +231,6 @@
     agentApprovalCheck: byId('agent-approval-check'),
     agentCancelApproval: byId('agent-cancel-approval'),
     agentConfirmApproval: byId('agent-confirm-approval'),
-    hygieneSyncStatus: byId('hygiene-sync-status'),
-    hygieneSyncPreview: byId('hygiene-sync-preview'),
-    hygieneSyncApply: byId('hygiene-sync-apply'),
-    hygieneSyncResult: byId('hygiene-sync-result'),
-    hygieneUnignoreStatus: byId('hygiene-unignore-status'),
-    hygieneUnignorePreview: byId('hygiene-unignore-preview'),
-    hygieneUnignoreApply: byId('hygiene-unignore-apply'),
-    hygieneUnignoreResult: byId('hygiene-unignore-result'),
-    hygieneVisibilityStatus: byId('hygiene-visibility-status'),
-    hygieneVisibilityList: byId('hygiene-visibility-list'),
-    hygieneVisibilityListResult: byId('hygiene-visibility-list-result'),
-    hygieneVisibilityRepo: byId('hygiene-visibility-repo'),
-    hygieneVisibilityValue: byId('hygiene-visibility-value'),
-    hygieneVisibilitySet: byId('hygiene-visibility-set'),
-    hygieneVisibilitySetResult: byId('hygiene-visibility-set-result'),
-    hygieneApprovalDialog: byId('hygiene-approval-dialog'),
-    hygieneApprovalScope: byId('hygiene-approval-scope'),
-    hygieneApprovalCheck: byId('hygiene-approval-check'),
-    hygieneCancelApproval: byId('hygiene-cancel-approval'),
-    hygieneConfirmApproval: byId('hygiene-confirm-approval'),
     lassoMode: byId('lasso-mode'),
     lassoPrompt: byId('lasso-prompt'),
     lassoUseCodex: byId('lasso-use-codex'),
@@ -404,6 +376,7 @@
   elements.doctorRepository.addEventListener('change', function () {
     state.doctor.target = elements.doctorRepository.value;
     state.doctor.operations = [];
+    state.doctor.operationInputs = {};
     state.doctor.registryDigest = '';
     state.doctor.lastResult = null;
     closeDoctorApproval();
@@ -434,24 +407,6 @@
   elements.agentCancelApproval.addEventListener('click', closeAgentApproval);
   elements.agentConfirmApproval.addEventListener('click', confirmAgentApproval);
 
-  elements.hygieneSyncPreview.addEventListener('click', function () { runHygieneCommand('syncPreview', {}); });
-  elements.hygieneSyncApply.addEventListener('click', function () { openHygieneApproval('syncApply', {}); });
-  elements.hygieneUnignorePreview.addEventListener('click', function () { runHygieneCommand('unignorePreview', {}); });
-  elements.hygieneUnignoreApply.addEventListener('click', function () { openHygieneApproval('unignoreApply', {}); });
-  elements.hygieneVisibilityList.addEventListener('click', function () { runHygieneCommand('visibilityList', {}); });
-  elements.hygieneVisibilitySet.addEventListener('click', function () {
-    openHygieneApproval('visibilitySet', {
-      repo: elements.hygieneVisibilityRepo.value.trim(),
-      visibility: elements.hygieneVisibilityValue.value,
-    });
-  });
-  elements.hygieneVisibilityRepo.addEventListener('input', renderHygieneWorkflow);
-  elements.hygieneVisibilityValue.addEventListener('change', renderHygieneWorkflow);
-  elements.hygieneApprovalCheck.addEventListener('change', function () {
-    elements.hygieneConfirmApproval.disabled = !elements.hygieneApprovalCheck.checked;
-  });
-  elements.hygieneCancelApproval.addEventListener('click', closeHygieneApproval);
-  elements.hygieneConfirmApproval.addEventListener('click', confirmHygieneApproval);
 
   elements.lassoMerge.addEventListener('click', function () {
     mergeLassoLanes();
@@ -522,7 +477,6 @@
       handleAuditProviderResult(message.payload || {});
       handleDoctorProviderResult(message.payload || {});
       handleAgentProviderResult(message.payload || {});
-      handleHygieneProviderResult(message.payload || {});
       return;
     }
     if (message.type === 'eco.cockpit.error') {
@@ -590,7 +544,6 @@
     renderAuditWorkflow();
     renderDoctorWorkflow();
     renderAgentRosterWorkflow();
-    renderHygieneWorkflow();
     renderProviderSummary(state.snapshot.marlin || {}, state.snapshot.niji || {});
 
     if (workspace.bridgeError) {
@@ -1340,6 +1293,7 @@
       ['Operation', operationId],
       ['Mode', stage === 'preview' || stage === 'apply' ? stage : 'registry change'],
       ['Registry digest', payload.registry_digest || '-'],
+      ['Operation input', payload.operation_input ? JSON.stringify(payload.operation_input) : '-'],
     ].forEach(function (entry) {
       const dt = document.createElement('dt');
       const dd = document.createElement('dd');
@@ -1375,10 +1329,14 @@
   function registerDoctorOperationFromForm() {
     let command;
     let previewCommand;
+    let inputs;
     try {
       command = JSON.parse(elements.doctorCommandJson.value || '[]');
       if (elements.doctorOperationPreview.checked) {
         previewCommand = JSON.parse(elements.doctorPreviewCommandJson.value || '[]');
+      }
+      if (elements.doctorOperationInputsJson.value.trim()) {
+        inputs = JSON.parse(elements.doctorOperationInputsJson.value);
       }
     } catch (error) {
       showNotice(error instanceof Error ? error.message : String(error), true);
@@ -1394,6 +1352,10 @@
       showNotice('Preview support requires an explicit preview command JSON array.', true);
       return;
     }
+    if (inputs !== undefined && !Array.isArray(inputs)) {
+      showNotice('Doctor operation inputs JSON must be an array.', true);
+      return;
+    }
     const operation = {
       id: id,
       title: title,
@@ -1405,6 +1367,9 @@
     };
     if (previewCommand) {
       operation.preview_command = previewCommand;
+    }
+    if (inputs) {
+      operation.inputs = inputs;
     }
     const cwd = elements.doctorOperationCwd.value.trim();
     if (cwd) {
@@ -1477,8 +1442,10 @@
       const mode = document.createElement('td');
       const command = document.createElement('td');
       const actions = document.createElement('td');
+      actions.className = 'doctor-operation-actions';
       const remove = document.createElement('button');
       const execute = document.createElement('button');
+      const operationInput = Object.assign({}, state.doctor.operationInputs[operation.id] || {});
       id.textContent = operation.id || '-';
       mode.textContent = (operation.enabled === false ? 'disabled' : 'enabled') + ' / ' + (operation.mutates ? 'mutates' : 'read');
       command.textContent = Array.isArray(operation.command) ? operation.command.join(' ') : '-';
@@ -1489,28 +1456,77 @@
       });
       execute.type = 'button';
       execute.textContent = operation.mutates ? 'Apply' : 'Run';
-      execute.disabled = operation.enabled === false || !state.doctor.registryDigest;
+      const inputControls = [];
+      (operation.inputs || []).forEach(function (inputSpec) {
+        const label = document.createElement('label');
+        label.className = 'doctor-operation-input';
+        label.textContent = inputSpec.label || inputSpec.id;
+        let control;
+        if (inputSpec.type === 'choice') {
+          control = document.createElement('select');
+          (inputSpec.choices || []).forEach(function (choice) {
+            const option = document.createElement('option');
+            option.value = choice;
+            option.textContent = choice;
+            control.appendChild(option);
+          });
+        } else {
+          control = document.createElement('input');
+          control.type = 'text';
+          control.autocomplete = 'off';
+        }
+        control.dataset.doctorInput = inputSpec.id;
+        if (operationInput[inputSpec.id] !== undefined) control.value = operationInput[inputSpec.id];
+        control.addEventListener('input', updateExecutionButtons);
+        control.addEventListener('change', updateExecutionButtons);
+        label.appendChild(control);
+        actions.appendChild(label);
+        inputControls.push({ spec: inputSpec, control: control });
+      });
+      function collectOperationInput() {
+        inputControls.forEach(function (entry) {
+          operationInput[entry.spec.id] = entry.control.value;
+        });
+        state.doctor.operationInputs[operation.id] = Object.assign({}, operationInput);
+        return operationInput;
+      }
+      function inputsComplete() {
+        return inputControls.every(function (entry) {
+          return entry.spec.required !== true || Boolean(entry.control.value.trim());
+        });
+      }
+      function updateExecutionButtons() {
+        const disabled = operation.enabled === false || !state.doctor.registryDigest || !inputsComplete();
+        execute.disabled = disabled;
+        if (previewButton) previewButton.disabled = disabled;
+      }
+      let previewButton = null;
       execute.addEventListener('click', function () {
-        openDoctorApproval('apply', {
+        const payload = {
           operation_id: operation.id,
           registry_digest: state.doctor.registryDigest,
-        });
+        };
+        if (inputControls.length) payload.operation_input = collectOperationInput();
+        openDoctorApproval('apply', payload);
       });
       if (operation.supports_preview && Array.isArray(operation.preview_command)) {
         const preview = document.createElement('button');
+        previewButton = preview;
         preview.type = 'button';
         preview.textContent = 'Preview';
-        preview.disabled = operation.enabled === false || !state.doctor.registryDigest;
         preview.addEventListener('click', function () {
-          openDoctorApproval('preview', {
+          const payload = {
             operation_id: operation.id,
             registry_digest: state.doctor.registryDigest,
-          });
+          };
+          if (inputControls.length) payload.operation_input = collectOperationInput();
+          openDoctorApproval('preview', payload);
         });
         actions.appendChild(preview);
       }
       actions.appendChild(execute);
       actions.appendChild(remove);
+      updateExecutionButtons();
       row.appendChild(id);
       row.appendChild(mode);
       row.appendChild(command);
@@ -1760,147 +1776,6 @@
       row.appendChild(actions);
       elements.agentRosterTable.appendChild(row);
     });
-  }
-
-  const HYGIENE_COMMANDS = {
-    syncPreview: 'hygiene.sync-dev-docs.preview',
-    syncApply: 'hygiene.sync-dev-docs.apply',
-    unignorePreview: 'hygiene.unignore-dev-docs.preview',
-    unignoreApply: 'hygiene.unignore-dev-docs.apply',
-    visibilityList: 'hygiene.repo-visibility.list',
-    visibilitySet: 'hygiene.repo-visibility.set',
-  };
-
-  const HYGIENE_MUTATING_STAGES = { syncApply: true, unignoreApply: true, visibilitySet: true };
-
-  function runHygieneCommand(stage, input, approval) {
-    const commandId = HYGIENE_COMMANDS[stage];
-    if (!commandId || state.hygiene.activeCommand) {
-      return;
-    }
-    state.hygiene.error = '';
-    state.hygiene.activeCommand = commandId;
-    renderHygieneWorkflow();
-    post({
-      type: 'eco.cockpit.invokeProviderCommand',
-      providerId: 'hygiene',
-      commandId: commandId,
-      input: input || {},
-      confirm: Boolean(HYGIENE_MUTATING_STAGES[stage]),
-      approval: approval || undefined,
-    });
-  }
-
-  function handleHygieneProviderResult(result) {
-    if (result.provider_id !== 'hygiene') {
-      return;
-    }
-    const stage = Object.keys(HYGIENE_COMMANDS).find(function (key) {
-      return HYGIENE_COMMANDS[key] === result.command_id;
-    });
-    if (!stage) {
-      return;
-    }
-    state.hygiene.results[stage] = result;
-    state.hygiene.activeCommand = '';
-    renderHygieneWorkflow();
-  }
-
-  function openHygieneApproval(stage, input) {
-    const commandId = HYGIENE_COMMANDS[stage];
-    if (!commandId || !HYGIENE_MUTATING_STAGES[stage]) {
-      return;
-    }
-    state.hygiene.approval = {
-      stage: stage,
-      commandId: commandId,
-      input: input,
-      token: approvalToken(),
-      scope: approvalScope('hygiene', commandId, input),
-    };
-    clear(elements.hygieneApprovalScope);
-    [
-      ['Provider', 'hygiene'],
-      ['Command', commandId],
-      ['Input', JSON.stringify(input)],
-    ].forEach(function (entry) {
-      const dt = document.createElement('dt');
-      const dd = document.createElement('dd');
-      dt.textContent = entry[0];
-      dd.textContent = entry[1];
-      elements.hygieneApprovalScope.appendChild(dt);
-      elements.hygieneApprovalScope.appendChild(dd);
-    });
-    elements.hygieneApprovalCheck.checked = false;
-    elements.hygieneConfirmApproval.disabled = true;
-    elements.hygieneApprovalDialog.hidden = false;
-    elements.hygieneApprovalCheck.focus();
-  }
-
-  function closeHygieneApproval() {
-    elements.hygieneApprovalDialog.hidden = true;
-    elements.hygieneApprovalCheck.checked = false;
-    elements.hygieneConfirmApproval.disabled = true;
-  }
-
-  function confirmHygieneApproval() {
-    const approval = state.hygiene.approval;
-    if (!elements.hygieneApprovalCheck.checked || !approval) {
-      state.hygiene.error = 'Approval was not confirmed.';
-      closeHygieneApproval();
-      renderHygieneWorkflow();
-      return;
-    }
-    closeHygieneApproval();
-    runHygieneCommand(approval.stage, approval.input, { token: approval.token, scope: approval.scope });
-  }
-
-  function renderHygieneOutput(result) {
-    if (!result) {
-      return '';
-    }
-    if (result.data && typeof result.data.output === 'string' && result.data.output.trim()) {
-      return result.data.output.trim();
-    }
-    if (result.error && result.error.message) {
-      return result.error.message;
-    }
-    return JSON.stringify(result.data || {}, null, 2);
-  }
-
-  function renderHygieneWorkflow() {
-    const results = state.hygiene.results;
-    const busy = Boolean(state.hygiene.activeCommand);
-
-    function statusFor(previewKey, applyKey) {
-      if (state.hygiene.activeCommand === HYGIENE_COMMANDS[previewKey] || state.hygiene.activeCommand === HYGIENE_COMMANDS[applyKey]) {
-        return 'Running…';
-      }
-      const latest = (applyKey && results[applyKey]) || results[previewKey];
-      return latest ? latest.status : 'Not run';
-    }
-
-    elements.hygieneSyncStatus.textContent = statusFor('syncPreview', 'syncApply');
-    elements.hygieneSyncResult.textContent = renderHygieneOutput(results.syncApply || results.syncPreview);
-    elements.hygieneSyncPreview.disabled = busy;
-    elements.hygieneSyncApply.disabled = busy || !results.syncPreview || results.syncPreview.status !== 'succeeded';
-
-    elements.hygieneUnignoreStatus.textContent = statusFor('unignorePreview', 'unignoreApply');
-    elements.hygieneUnignoreResult.textContent = renderHygieneOutput(results.unignoreApply || results.unignorePreview);
-    elements.hygieneUnignorePreview.disabled = busy;
-    elements.hygieneUnignoreApply.disabled = busy || !results.unignorePreview || results.unignorePreview.status !== 'succeeded';
-
-    elements.hygieneVisibilityStatus.textContent = statusFor('visibilityList', 'visibilitySet');
-    elements.hygieneVisibilityListResult.textContent = renderHygieneOutput(results.visibilityList);
-    elements.hygieneVisibilitySetResult.textContent = renderHygieneOutput(results.visibilitySet);
-    elements.hygieneVisibilityList.disabled = busy;
-    const repoFilled = Boolean(elements.hygieneVisibilityRepo.value.trim() && elements.hygieneVisibilityValue.value);
-    elements.hygieneVisibilitySet.disabled = busy || !repoFilled;
-
-    if (state.hygiene.error) {
-      showNotice(state.hygiene.error, true, false);
-      state.hygiene.error = '';
-    }
   }
 
   function renderAuditWorkflow() {

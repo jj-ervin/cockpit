@@ -331,6 +331,28 @@ tr:hover {
   background: var(--surface-2);
 }
 
+.doctor-operation-actions {
+  min-width: 190px;
+}
+
+.doctor-operation-input {
+  display: grid;
+  font-size: 12px;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+
+.doctor-operation-input input,
+.doctor-operation-input select {
+  min-width: 0;
+  width: 100%;
+}
+
+.doctor-operation-actions button {
+  margin-right: 6px;
+  margin-top: 4px;
+}
+
 .detail-pane {
   border: 1px solid var(--line);
   border-radius: 6px;

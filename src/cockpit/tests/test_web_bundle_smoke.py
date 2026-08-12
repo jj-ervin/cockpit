@@ -168,6 +168,7 @@ def test_bundle_loads_without_console_errors_and_sends_ready(cockpit_page):
 
 def test_state_snapshot_hydrates_dashboard_summary(cockpit_page):
     _send_state(cockpit_page, _sample_snapshot())
+    assert cockpit_page.locator(".tab[data-tab='hygiene-tab']").count() == 0
 
     assert cockpit_page.locator("#status").inner_text() == "Detected"
     assert cockpit_page.locator("#total-runs").inner_text() == "2"
@@ -498,6 +499,10 @@ def test_marlin_doctor_ui_lists_binds_approval_registers_and_removes_operations(
                 "preview_command": ["npm", "test", "--", "--dry-run"],
                 "mutates": False,
                 "supports_preview": True,
+                "inputs": [
+                    {"id": "repo", "label": "Repository", "type": "string", "required": True},
+                    {"id": "visibility", "label": "Visibility", "type": "choice", "required": True, "choices": ["public", "private"]},
+                ],
                 "enabled": True,
             }],
             "count": 1,
@@ -506,6 +511,9 @@ def test_marlin_doctor_ui_lists_binds_approval_registers_and_removes_operations(
     })
     assert cockpit_page.locator("#doctor-operation-count").inner_text() == "1 operations"
     assert "tests.run" in cockpit_page.locator("#doctor-operation-table").inner_text()
+    assert cockpit_page.locator("#doctor-operation-table button:has-text('Preview')").is_disabled()
+    cockpit_page.fill("#doctor-operation-table [data-doctor-input='repo']", "marlin")
+    cockpit_page.select_option("#doctor-operation-table [data-doctor-input='visibility']", "private")
 
     cockpit_page.click("#doctor-operation-table button:has-text('Preview')")
     assert cockpit_page.locator("#doctor-approval-dialog").is_visible()
@@ -516,8 +524,8 @@ def test_marlin_doctor_ui_lists_binds_approval_registers_and_removes_operations(
     preview = cockpit_page.evaluate("window.__posted[window.__posted.length - 1]")
     assert preview["commandId"] == "marlin.doctor.operations.preview"
     assert preview["confirm"] is True
-    assert preview["input"] == {"target": "C:/fake/workspace/demo", "operation_id": "tests.run", "registry_digest": registry_digest}
-    assert preview["approval"]["scope"] == '{"command_id":"marlin.doctor.operations.preview","input":{"operation_id":"tests.run","registry_digest":"' + registry_digest + '","target":"C:/fake/workspace/demo"},"provider_id":"marlin"}'
+    assert preview["input"] == {"target": "C:/fake/workspace/demo", "operation_id": "tests.run", "registry_digest": registry_digest, "operation_input": {"repo": "marlin", "visibility": "private"}}
+    assert preview["approval"]["scope"] == '{"command_id":"marlin.doctor.operations.preview","input":{"operation_id":"tests.run","operation_input":{"repo":"marlin","visibility":"private"},"registry_digest":"' + registry_digest + '","target":"C:/fake/workspace/demo"},"provider_id":"marlin"}'
     _send_provider_result(cockpit_page, _provider_result("marlin.doctor.operations.preview", "doctor-preview-1"))
 
     cockpit_page.click("#doctor-operation-table button:has-text('Run')")
@@ -528,8 +536,8 @@ def test_marlin_doctor_ui_lists_binds_approval_registers_and_removes_operations(
     apply = cockpit_page.evaluate("window.__posted[window.__posted.length - 1]")
     assert apply["commandId"] == "marlin.doctor.operations.apply"
     assert apply["confirm"] is True
-    assert apply["input"] == {"target": "C:/fake/workspace/demo", "operation_id": "tests.run", "registry_digest": registry_digest}
-    assert apply["approval"]["scope"] == '{"command_id":"marlin.doctor.operations.apply","input":{"operation_id":"tests.run","registry_digest":"' + registry_digest + '","target":"C:/fake/workspace/demo"},"provider_id":"marlin"}'
+    assert apply["input"] == {"target": "C:/fake/workspace/demo", "operation_id": "tests.run", "registry_digest": registry_digest, "operation_input": {"repo": "marlin", "visibility": "private"}}
+    assert apply["approval"]["scope"] == '{"command_id":"marlin.doctor.operations.apply","input":{"operation_id":"tests.run","operation_input":{"repo":"marlin","visibility":"private"},"registry_digest":"' + registry_digest + '","target":"C:/fake/workspace/demo"},"provider_id":"marlin"}'
     _send_provider_result(cockpit_page, _provider_result("marlin.doctor.operations.apply", "doctor-apply-1"))
 
     cockpit_page.click("#doctor-operation-table button:has-text('Remove')")
