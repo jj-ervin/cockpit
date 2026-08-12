@@ -1159,3 +1159,19 @@ Confirming also checks the target repository hasn't changed since the
 dialog opened, invalidating a stale approval instead of silently
 reusing it. The Doctor browser smoke test now drives the real two-step
 flow. No marlin-repo files changed for this fix.
+
+## Marlin Doctor Cross-Repo Note — Operation Execution
+
+**Closed:** 2026-08-12 under Marlin-owned Doctor execution work.
+
+Cockpit's Doctor table now exposes Preview and Run/Apply controls backed by
+Marlin's provider. Every target-defined command uses the corrected human
+approval dialog, including operations labelled read-only or preview, because a
+target repository can edit its own registry. Approval includes the loaded
+registry digest; Marlin rejects the run if that registry changes before spawn.
+The result panel renders Marlin's bounded stdout/stderr, outcome metadata, and
+signed evidence bundle. Cockpit still presents and approves; it does not spawn
+the operation or decide whether it is safe.
+
+Validation: web bundle smoke passed 17/17; host-web passed 33/33;
+`node --check web/cockpit.js` passed.

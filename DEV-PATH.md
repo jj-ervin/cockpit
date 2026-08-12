@@ -1505,3 +1505,21 @@ asserting the previous single-click auto-approval.
 
 Validation: Cockpit web bundle smoke passed 17/17 (rewritten Doctor
 test included); `host-web` suite unaffected, 33/33.
+
+### Marlin Doctor Operation Execution (Marlin cross-repo, 2026-08-12)
+
+Extended the existing Doctor registry view with Preview and Run/Apply actions.
+Both actions reuse the human approval dialog and send the exact target,
+operation ID, mode-specific provider command, and loaded registry digest
+through `eco.cockpit.invokeProviderCommand`. A target change still invalidates
+the dialog, and Marlin independently rejects a stale registry digest before
+executing changed argv.
+
+The operations table only enables execution after a digest-bearing registry
+result is loaded. Preview appears only when the entry contains both
+`supports_preview` and an explicit structured `preview_command`; Cockpit never
+invents dry-run flags. Provider results remain visible in the existing result
+panel, including bounded process output and signed evidence metadata.
+
+Validation: `node --check web/cockpit.js` passed; web bundle smoke passed
+17/17 with preview/apply approval scope assertions; host-web passed 33/33.

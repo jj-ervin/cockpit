@@ -154,7 +154,7 @@
             <select id="doctor-repository"></select>
           </label>
         </div>
-        <p class="panel-note">Cockpit renders this target-scoped operations catalog. Marlin owns registry writes; registered commands are not executed here.</p>
+        <p class="panel-note">Cockpit renders this target-scoped operations catalog. Marlin owns registry writes, command execution, and evidence.</p>
         <div class="button-row audit-actions">
           <button id="doctor-refresh" type="button">Load operations</button>
         </div>
@@ -182,6 +182,9 @@
             </label>
             <label class="full">Command JSON
               <textarea id="doctor-command-json" rows="4" spellcheck="false">["npm","test"]</textarea>
+            </label>
+            <label class="full">Preview command JSON
+              <textarea id="doctor-preview-command-json" rows="3" spellcheck="false" placeholder='["npm","run","normalize","--","--dry-run"]'></textarea>
             </label>
             <label>CWD
               <input id="doctor-operation-cwd" type="text" autocomplete="off" placeholder="optional target-relative path">
@@ -561,10 +564,10 @@
     <section class="approval-overlay" id="doctor-approval-dialog" role="dialog" aria-modal="true" aria-labelledby="doctor-approval-title" hidden>
       <div class="approval-dialog">
         <p class="eyebrow">Human approval required</p>
-        <h2 id="doctor-approval-title">Apply this Doctor registry change?</h2>
-        <p>This command writes to the target's Doctor operations registry. The approval is bound to the exact provider, command, target, and operation shown below.</p>
+        <h2 id="doctor-approval-title">Approve this Doctor action?</h2>
+        <p>Doctor actions can change the registry or execute a target-defined command. Approval is bound to the exact provider, command, target, operation, and mode shown below.</p>
         <dl class="metadata-list" id="doctor-approval-scope"></dl>
-        <label class="approval-check"><input id="doctor-approval-check" type="checkbox"> I approve this exact Marlin Doctor registry change.</label>
+        <label class="approval-check"><input id="doctor-approval-check" type="checkbox"> I approve this exact Marlin Doctor action.</label>
         <div class="button-row">
           <button id="doctor-cancel-approval" type="button">Cancel</button>
           <button id="doctor-confirm-approval" type="button" disabled>Approve and execute</button>

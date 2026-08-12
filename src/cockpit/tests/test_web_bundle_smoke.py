@@ -423,6 +423,7 @@ def test_marlin_audit_ui_binds_approval_executes_verifies_and_exports(cockpit_pa
 
 
 def test_marlin_doctor_ui_lists_binds_approval_registers_and_removes_operations(cockpit_page):
+    registry_digest = "sha256:" + "b" * 64
     _send_state(cockpit_page, _sample_snapshot())
     cockpit_page.click(".tab[data-tab='marlin-doctor']")
     cockpit_page.select_option("#doctor-repository", "C:/fake/workspace/demo")
@@ -444,6 +445,7 @@ def test_marlin_doctor_ui_lists_binds_approval_registers_and_removes_operations(
         "data": {
             "target_path": "C:/fake/workspace/demo",
             "registry_path": "C:/fake/workspace/demo/.marlin/doctor.operations.json",
+            "registry_digest": None,
             "operations": [],
             "count": 0,
         },
@@ -454,6 +456,8 @@ def test_marlin_doctor_ui_lists_binds_approval_registers_and_removes_operations(
     cockpit_page.fill("#doctor-operation-id", "tests.run")
     cockpit_page.fill("#doctor-operation-title", "Run tests")
     cockpit_page.fill("#doctor-command-json", '["npm","test"]')
+    cockpit_page.check("#doctor-operation-preview")
+    cockpit_page.fill("#doctor-preview-command-json", '["npm","test","--","--dry-run"]')
     cockpit_page.click("#doctor-add-operation")
     assert cockpit_page.locator("#doctor-approval-dialog").is_visible()
     register_scope_text = cockpit_page.locator("#doctor-approval-scope").inner_text()
@@ -471,8 +475,9 @@ def test_marlin_doctor_ui_lists_binds_approval_registers_and_removes_operations(
     assert register["input"]["replace"] is True
     assert register["input"]["operation"]["id"] == "tests.run"
     assert register["input"]["operation"]["command"] == ["npm", "test"]
+    assert register["input"]["operation"]["preview_command"] == ["npm", "test", "--", "--dry-run"]
     assert register["approval"]["token"]
-    assert register["approval"]["scope"] == '{"command_id":"marlin.doctor.operations.register","input":{"operation":{"command":["npm","test"],"id":"tests.run","mutates":false,"output":"auto","requires_confirmation":false,"supports_preview":false,"title":"Run tests"},"replace":true,"target":"C:/fake/workspace/demo"},"provider_id":"marlin"}'
+    assert register["approval"]["scope"] == '{"command_id":"marlin.doctor.operations.register","input":{"operation":{"command":["npm","test"],"id":"tests.run","mutates":false,"output":"auto","preview_command":["npm","test","--","--dry-run"],"requires_confirmation":false,"supports_preview":true,"title":"Run tests"},"replace":true,"target":"C:/fake/workspace/demo"},"provider_id":"marlin"}'
 
     _send_provider_result(cockpit_page, {
         "schema_version": "cockpit-operation-result-v1",
@@ -484,12 +489,15 @@ def test_marlin_doctor_ui_lists_binds_approval_registers_and_removes_operations(
         "data": {
             "target_path": "C:/fake/workspace/demo",
             "registry_path": "C:/fake/workspace/demo/.marlin/doctor.operations.json",
+            "registry_digest": registry_digest,
             "operation_id": "tests.run",
             "operations": [{
                 "id": "tests.run",
                 "title": "Run tests",
                 "command": ["npm", "test"],
+                "preview_command": ["npm", "test", "--", "--dry-run"],
                 "mutates": False,
+                "supports_preview": True,
                 "enabled": True,
             }],
             "count": 1,
@@ -498,6 +506,31 @@ def test_marlin_doctor_ui_lists_binds_approval_registers_and_removes_operations(
     })
     assert cockpit_page.locator("#doctor-operation-count").inner_text() == "1 operations"
     assert "tests.run" in cockpit_page.locator("#doctor-operation-table").inner_text()
+
+    cockpit_page.click("#doctor-operation-table button:has-text('Preview')")
+    assert cockpit_page.locator("#doctor-approval-dialog").is_visible()
+    assert "preview" in cockpit_page.locator("#doctor-approval-scope").inner_text()
+    assert registry_digest in cockpit_page.locator("#doctor-approval-scope").inner_text()
+    cockpit_page.check("#doctor-approval-check")
+    cockpit_page.click("#doctor-confirm-approval")
+    preview = cockpit_page.evaluate("window.__posted[window.__posted.length - 1]")
+    assert preview["commandId"] == "marlin.doctor.operations.preview"
+    assert preview["confirm"] is True
+    assert preview["input"] == {"target": "C:/fake/workspace/demo", "operation_id": "tests.run", "registry_digest": registry_digest}
+    assert preview["approval"]["scope"] == '{"command_id":"marlin.doctor.operations.preview","input":{"operation_id":"tests.run","registry_digest":"' + registry_digest + '","target":"C:/fake/workspace/demo"},"provider_id":"marlin"}'
+    _send_provider_result(cockpit_page, _provider_result("marlin.doctor.operations.preview", "doctor-preview-1"))
+
+    cockpit_page.click("#doctor-operation-table button:has-text('Run')")
+    assert cockpit_page.locator("#doctor-approval-dialog").is_visible()
+    assert "apply" in cockpit_page.locator("#doctor-approval-scope").inner_text()
+    cockpit_page.check("#doctor-approval-check")
+    cockpit_page.click("#doctor-confirm-approval")
+    apply = cockpit_page.evaluate("window.__posted[window.__posted.length - 1]")
+    assert apply["commandId"] == "marlin.doctor.operations.apply"
+    assert apply["confirm"] is True
+    assert apply["input"] == {"target": "C:/fake/workspace/demo", "operation_id": "tests.run", "registry_digest": registry_digest}
+    assert apply["approval"]["scope"] == '{"command_id":"marlin.doctor.operations.apply","input":{"operation_id":"tests.run","registry_digest":"' + registry_digest + '","target":"C:/fake/workspace/demo"},"provider_id":"marlin"}'
+    _send_provider_result(cockpit_page, _provider_result("marlin.doctor.operations.apply", "doctor-apply-1"))
 
     cockpit_page.click("#doctor-operation-table button:has-text('Remove')")
     assert cockpit_page.locator("#doctor-approval-dialog").is_visible()

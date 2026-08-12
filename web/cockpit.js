@@ -48,6 +48,7 @@
       error: '',
       lastResult: null,
       operations: [],
+      registryDigest: '',
       approval: null,
     },
     hygiene: {
@@ -198,6 +199,7 @@
     doctorOperationId: byId('doctor-operation-id'),
     doctorOperationTitle: byId('doctor-operation-title'),
     doctorCommandJson: byId('doctor-command-json'),
+    doctorPreviewCommandJson: byId('doctor-preview-command-json'),
     doctorOperationCwd: byId('doctor-operation-cwd'),
     doctorOperationOutput: byId('doctor-operation-output'),
     doctorOperationMutates: byId('doctor-operation-mutates'),
@@ -373,6 +375,7 @@
   elements.doctorRepository.addEventListener('change', function () {
     state.doctor.target = elements.doctorRepository.value;
     state.doctor.operations = [];
+    state.doctor.registryDigest = '';
     state.doctor.lastResult = null;
     closeDoctorApproval();
     renderDoctorWorkflow();
@@ -1202,6 +1205,8 @@
     list: 'marlin.doctor.operations.list',
     register: 'marlin.doctor.operations.register',
     unregister: 'marlin.doctor.operations.unregister',
+    preview: 'marlin.doctor.operations.preview',
+    apply: 'marlin.doctor.operations.apply',
   };
 
   function syncDoctorRepositories() {
@@ -1239,7 +1244,9 @@
     elements.doctorRepository.value = state.doctor.target;
   }
 
-  const DOCTOR_MUTATING_STAGES = { register: true, unregister: true };
+  // Every target-defined command requires approval, even when the registry
+  // labels it read-only or preview. A repository can edit its own registry.
+  const DOCTOR_MUTATING_STAGES = { register: true, unregister: true, preview: true, apply: true };
 
   function runDoctorCommand(stage, input, approval) {
     const commandId = DOCTOR_COMMANDS[stage];
@@ -1286,6 +1293,8 @@
       ['Command', commandId],
       ['Target', payload.target],
       ['Operation', operationId],
+      ['Mode', stage === 'preview' || stage === 'apply' ? stage : 'registry change'],
+      ['Registry digest', payload.registry_digest || '-'],
     ].forEach(function (entry) {
       const dt = document.createElement('dt');
       const dd = document.createElement('dd');
@@ -1320,8 +1329,12 @@
 
   function registerDoctorOperationFromForm() {
     let command;
+    let previewCommand;
     try {
       command = JSON.parse(elements.doctorCommandJson.value || '[]');
+      if (elements.doctorOperationPreview.checked) {
+        previewCommand = JSON.parse(elements.doctorPreviewCommandJson.value || '[]');
+      }
     } catch (error) {
       showNotice(error instanceof Error ? error.message : String(error), true);
       return;
@@ -1330,6 +1343,10 @@
     const title = elements.doctorOperationTitle.value.trim();
     if (!id || !title || !Array.isArray(command)) {
       showNotice('Doctor operation id, title, and command JSON array are required.', true);
+      return;
+    }
+    if (elements.doctorOperationPreview.checked && (!Array.isArray(previewCommand) || !previewCommand.length)) {
+      showNotice('Preview support requires an explicit preview command JSON array.', true);
       return;
     }
     const operation = {
@@ -1341,6 +1358,9 @@
       supports_preview: elements.doctorOperationPreview.checked,
       output: elements.doctorOperationOutput.value || 'auto',
     };
+    if (previewCommand) {
+      operation.preview_command = previewCommand;
+    }
     const cwd = elements.doctorOperationCwd.value.trim();
     if (cwd) {
       operation.cwd = cwd;
@@ -1362,6 +1382,9 @@
     state.doctor.activeCommand = '';
     if (result.status === 'succeeded' && result.data && Array.isArray(result.data.operations)) {
       state.doctor.operations = result.data.operations;
+    }
+    if (result.data && typeof result.data.registry_digest === 'string') {
+      state.doctor.registryDigest = result.data.registry_digest;
     }
     if (result.status !== 'succeeded') {
       state.doctor.error = (result.error && result.error.message) || 'Doctor provider command failed.';
@@ -1410,6 +1433,7 @@
       const command = document.createElement('td');
       const actions = document.createElement('td');
       const remove = document.createElement('button');
+      const execute = document.createElement('button');
       id.textContent = operation.id || '-';
       mode.textContent = (operation.enabled === false ? 'disabled' : 'enabled') + ' / ' + (operation.mutates ? 'mutates' : 'read');
       command.textContent = Array.isArray(operation.command) ? operation.command.join(' ') : '-';
@@ -1418,6 +1442,29 @@
       remove.addEventListener('click', function () {
         openDoctorApproval('unregister', { operation_id: operation.id });
       });
+      execute.type = 'button';
+      execute.textContent = operation.mutates ? 'Apply' : 'Run';
+      execute.disabled = operation.enabled === false || !state.doctor.registryDigest;
+      execute.addEventListener('click', function () {
+        openDoctorApproval('apply', {
+          operation_id: operation.id,
+          registry_digest: state.doctor.registryDigest,
+        });
+      });
+      if (operation.supports_preview && Array.isArray(operation.preview_command)) {
+        const preview = document.createElement('button');
+        preview.type = 'button';
+        preview.textContent = 'Preview';
+        preview.disabled = operation.enabled === false || !state.doctor.registryDigest;
+        preview.addEventListener('click', function () {
+          openDoctorApproval('preview', {
+            operation_id: operation.id,
+            registry_digest: state.doctor.registryDigest,
+          });
+        });
+        actions.appendChild(preview);
+      }
+      actions.appendChild(execute);
       actions.appendChild(remove);
       row.appendChild(id);
       row.appendChild(mode);
