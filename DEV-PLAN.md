@@ -1132,3 +1132,14 @@ native PE `0xAA64` throughout the installed runtime and payload; x64 used
 app directory against an ordinary repository outside the portfolio, then
 uninstalled and cleaned up. The thin NSIS extraction stub is separately
 recorded as x86 (`0x014C`) and is not the runtime architecture.
+
+## Marlin Doctor Cross-Repo Note — Registry View
+
+**Closed:** 2026-08-12 under Marlin-owned Doctor registry-view work.
+
+Cockpit now renders a Marlin Doctor tab over Marlin's target-scoped operations
+registry provider commands: list, register, and unregister. The UI uses the
+existing workspace repository picker and `eco.cockpit.invokeProviderCommand`
+path. Register/unregister are confirmation-gated provider mutations; operation
+execution, health scoring, agent flow, and hygiene migration remain future
+Marlin Doctor slices.

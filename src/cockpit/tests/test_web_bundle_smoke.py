@@ -420,3 +420,81 @@ def test_marlin_audit_ui_binds_approval_executes_verifies_and_exports(cockpit_pa
         cockpit_page.click("#audit-export-evidence")
     assert download_info.value.suggested_filename == "bundle-verify-1.json"
     assert cockpit_page.cockpit_errors == []
+
+
+def test_marlin_doctor_ui_lists_registers_and_removes_operations(cockpit_page):
+    _send_state(cockpit_page, _sample_snapshot())
+    cockpit_page.click(".tab[data-tab='marlin-doctor']")
+    cockpit_page.select_option("#doctor-repository", "C:/fake/workspace/demo")
+
+    cockpit_page.click("#doctor-refresh")
+    request = cockpit_page.evaluate("window.__posted[window.__posted.length - 1]")
+    assert request["providerId"] == "marlin"
+    assert request["commandId"] == "marlin.doctor.operations.list"
+    assert request["input"] == {"target": "C:/fake/workspace/demo"}
+    assert request["confirm"] is False
+
+    _send_provider_result(cockpit_page, {
+        "schema_version": "cockpit-operation-result-v1",
+        "operation_id": "doctor-list-1",
+        "provider_id": "marlin",
+        "command_id": "marlin.doctor.operations.list",
+        "status": "succeeded",
+        "timestamp": "2026-08-12T00:00:00Z",
+        "data": {
+            "target_path": "C:/fake/workspace/demo",
+            "registry_path": "C:/fake/workspace/demo/.marlin/doctor.operations.json",
+            "operations": [],
+            "count": 0,
+        },
+        "evidence": [],
+    })
+    assert cockpit_page.locator("#doctor-operation-count").inner_text() == "0 operations"
+
+    cockpit_page.fill("#doctor-operation-id", "tests.run")
+    cockpit_page.fill("#doctor-operation-title", "Run tests")
+    cockpit_page.fill("#doctor-command-json", '["npm","test"]')
+    cockpit_page.click("#doctor-add-operation")
+    register = cockpit_page.evaluate("window.__posted[window.__posted.length - 1]")
+    assert register["commandId"] == "marlin.doctor.operations.register"
+    assert register["confirm"] is True
+    assert register["input"]["target"] == "C:/fake/workspace/demo"
+    assert register["input"]["replace"] is True
+    assert register["input"]["operation"]["id"] == "tests.run"
+    assert register["input"]["operation"]["command"] == ["npm", "test"]
+    assert register["approval"]["token"]
+    assert register["approval"]["scope"] == '{"command_id":"marlin.doctor.operations.register","input":{"operation":{"command":["npm","test"],"id":"tests.run","mutates":false,"output":"auto","requires_confirmation":false,"supports_preview":false,"title":"Run tests"},"replace":true,"target":"C:/fake/workspace/demo"},"provider_id":"marlin"}'
+
+    _send_provider_result(cockpit_page, {
+        "schema_version": "cockpit-operation-result-v1",
+        "operation_id": "doctor-register-1",
+        "provider_id": "marlin",
+        "command_id": "marlin.doctor.operations.register",
+        "status": "succeeded",
+        "timestamp": "2026-08-12T00:00:00Z",
+        "data": {
+            "target_path": "C:/fake/workspace/demo",
+            "registry_path": "C:/fake/workspace/demo/.marlin/doctor.operations.json",
+            "operation_id": "tests.run",
+            "operations": [{
+                "id": "tests.run",
+                "title": "Run tests",
+                "command": ["npm", "test"],
+                "mutates": False,
+                "enabled": True,
+            }],
+            "count": 1,
+        },
+        "evidence": [],
+    })
+    assert cockpit_page.locator("#doctor-operation-count").inner_text() == "1 operations"
+    assert "tests.run" in cockpit_page.locator("#doctor-operation-table").inner_text()
+
+    cockpit_page.click("#doctor-operation-table button:has-text('Remove')")
+    remove = cockpit_page.evaluate("window.__posted[window.__posted.length - 1]")
+    assert remove["commandId"] == "marlin.doctor.operations.unregister"
+    assert remove["confirm"] is True
+    assert remove["input"] == {"target": "C:/fake/workspace/demo", "operation_id": "tests.run"}
+    assert remove["approval"]["token"]
+    assert remove["approval"]["scope"] == '{"command_id":"marlin.doctor.operations.unregister","input":{"operation_id":"tests.run","target":"C:/fake/workspace/demo"},"provider_id":"marlin"}'
+    assert cockpit_page.cockpit_errors == []

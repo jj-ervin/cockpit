@@ -46,6 +46,7 @@
       <span class="nav-label">Providers</span>
       <button class="tab" type="button" data-tab="governance">Governance</button>
       <button class="tab" type="button" data-tab="marlin-audit">Marlin Audit</button>
+      <button class="tab" type="button" data-tab="marlin-doctor">Marlin Doctor</button>
       <button class="tab" type="button" data-tab="hygiene-tab">Portfolio Hygiene</button>
       <button class="tab" type="button" data-tab="diagnostics-tab">Diagnostics</button>
       <button class="tab" type="button" data-tab="wizard">Setup Wizard</button>
@@ -138,6 +139,67 @@
         <section class="panel">
           <div class="panel-header"><h2>Verification and evidence</h2><span id="audit-verify-operation">-</span></div>
           <div class="list" id="audit-verify-result"></div>
+        </section>
+      </div>
+    </section>
+
+    <section class="tab-panel" id="marlin-doctor">
+      <section class="panel">
+        <div class="panel-header wrap">
+          <div>
+            <p class="eyebrow">Provider workflow</p>
+            <h2>Doctor operations registry</h2>
+          </div>
+          <label class="inline-control">Repository
+            <select id="doctor-repository"></select>
+          </label>
+        </div>
+        <p class="panel-note">Cockpit renders this target-scoped operations catalog. Marlin owns registry writes; registered commands are not executed here.</p>
+        <div class="button-row audit-actions">
+          <button id="doctor-refresh" type="button">Load operations</button>
+        </div>
+      </section>
+
+      <div class="panel-grid">
+        <section class="panel">
+          <div class="panel-header"><h2>Registered operations</h2><span id="doctor-operation-count">0 operations</span></div>
+          <div class="table-shell">
+            <table>
+              <thead><tr><th>ID</th><th>Mode</th><th>Command</th><th></th></tr></thead>
+              <tbody id="doctor-operation-table"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-header"><h2>Add operation</h2><span id="doctor-registry-status">Not loaded</span></div>
+          <form class="form-grid" id="doctor-add-form">
+            <label>ID
+              <input id="doctor-operation-id" type="text" autocomplete="off" placeholder="tests.run">
+            </label>
+            <label>Title
+              <input id="doctor-operation-title" type="text" autocomplete="off" placeholder="Run tests">
+            </label>
+            <label class="full">Command JSON
+              <textarea id="doctor-command-json" rows="4" spellcheck="false">["npm","test"]</textarea>
+            </label>
+            <label>CWD
+              <input id="doctor-operation-cwd" type="text" autocomplete="off" placeholder="optional target-relative path">
+            </label>
+            <label>Output
+              <select id="doctor-operation-output">
+                <option value="auto">auto</option>
+                <option value="text">text</option>
+                <option value="json">json</option>
+              </select>
+            </label>
+            <label class="approval-check"><input id="doctor-operation-mutates" type="checkbox"> Mutates files</label>
+            <label class="approval-check"><input id="doctor-operation-preview" type="checkbox"> Supports preview</label>
+            <div class="button-row full">
+              <button id="doctor-add-operation" type="submit">Register operation</button>
+            </div>
+          </form>
+          <pre class="wizard-result" id="doctor-last-result"></pre>
         </section>
       </div>
     </section>

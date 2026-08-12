@@ -42,6 +42,13 @@
       approval: null,
       results: { validate: null, preview: null, apply: null, verify: null },
     },
+    doctor: {
+      target: '',
+      activeCommand: '',
+      error: '',
+      lastResult: null,
+      operations: [],
+    },
     hygiene: {
       activeCommand: '',
       error: '',
@@ -181,6 +188,20 @@
     auditApprovalCheck: byId('audit-approval-check'),
     auditCancelApproval: byId('audit-cancel-approval'),
     auditConfirmApproval: byId('audit-confirm-approval'),
+    doctorRepository: byId('doctor-repository'),
+    doctorRefresh: byId('doctor-refresh'),
+    doctorOperationCount: byId('doctor-operation-count'),
+    doctorOperationTable: byId('doctor-operation-table'),
+    doctorRegistryStatus: byId('doctor-registry-status'),
+    doctorAddForm: byId('doctor-add-form'),
+    doctorOperationId: byId('doctor-operation-id'),
+    doctorOperationTitle: byId('doctor-operation-title'),
+    doctorCommandJson: byId('doctor-command-json'),
+    doctorOperationCwd: byId('doctor-operation-cwd'),
+    doctorOperationOutput: byId('doctor-operation-output'),
+    doctorOperationMutates: byId('doctor-operation-mutates'),
+    doctorOperationPreview: byId('doctor-operation-preview'),
+    doctorLastResult: byId('doctor-last-result'),
     hygieneSyncStatus: byId('hygiene-sync-status'),
     hygieneSyncPreview: byId('hygiene-sync-preview'),
     hygieneSyncApply: byId('hygiene-sync-apply'),
@@ -343,6 +364,18 @@
   elements.auditCancelApproval.addEventListener('click', closeAuditApproval);
   elements.auditConfirmApproval.addEventListener('click', confirmAuditApproval);
 
+  elements.doctorRepository.addEventListener('change', function () {
+    state.doctor.target = elements.doctorRepository.value;
+    state.doctor.operations = [];
+    state.doctor.lastResult = null;
+    renderDoctorWorkflow();
+  });
+  elements.doctorRefresh.addEventListener('click', function () { runDoctorCommand('list', {}); });
+  elements.doctorAddForm.addEventListener('submit', function (event) {
+    event.preventDefault();
+    registerDoctorOperationFromForm();
+  });
+
   elements.hygieneSyncPreview.addEventListener('click', function () { runHygieneCommand('syncPreview', {}); });
   elements.hygieneSyncApply.addEventListener('click', function () { openHygieneApproval('syncApply', {}); });
   elements.hygieneUnignorePreview.addEventListener('click', function () { runHygieneCommand('unignorePreview', {}); });
@@ -391,6 +424,11 @@
         state.audit.activeCommand = '';
         renderAuditWorkflow();
       }
+      if (state.doctor.activeCommand && payload.ok === false) {
+        state.doctor.error = payload.message || 'Provider command failed.';
+        state.doctor.activeCommand = '';
+        renderDoctorWorkflow();
+      }
       showNotice(payload.message || 'Action completed.', payload.ok === false, payload.persist === true);
       if (payload.refresh !== false) {
         post({ type: 'eco.cockpit.refresh' });
@@ -424,6 +462,7 @@
     }
     if (message.type === 'eco.cockpit.providerCommandResult') {
       handleAuditProviderResult(message.payload || {});
+      handleDoctorProviderResult(message.payload || {});
       handleHygieneProviderResult(message.payload || {});
       return;
     }
@@ -488,7 +527,9 @@
     renderWorkspaceRepos(state.snapshot.workspace || {});
     renderNiji(state.snapshot.niji || {});
     syncAuditRepositories();
+    syncDoctorRepositories();
     renderAuditWorkflow();
+    renderDoctorWorkflow();
     renderHygieneWorkflow();
     renderProviderSummary(state.snapshot.marlin || {}, state.snapshot.niji || {});
 
@@ -1143,6 +1184,176 @@
       return window.crypto.randomUUID();
     }
     return 'cockpit-approval-' + Date.now() + '-' + Math.random().toString(16).slice(2);
+  }
+
+  const DOCTOR_COMMANDS = {
+    list: 'marlin.doctor.operations.list',
+    register: 'marlin.doctor.operations.register',
+    unregister: 'marlin.doctor.operations.unregister',
+  };
+
+  function syncDoctorRepositories() {
+    const workspace = state.snapshot.workspace || {};
+    const repos = Array.isArray(workspace.repoStatus) ? workspace.repoStatus : [];
+    const workspaceRoot = String((state.snapshot.state || {}).workspaceRoot || '');
+    const choices = repos.filter(function (repo) {
+      return repo && typeof repo.absolute_path === 'string' && repo.absolute_path;
+    }).map(function (repo) {
+      return { label: String(repo.name || repo.path || repo.absolute_path), value: repo.absolute_path };
+    });
+    if (workspaceRoot && !choices.some(function (choice) { return choice.value === workspaceRoot; })) {
+      choices.unshift({ label: 'Connected workspace', value: workspaceRoot });
+    }
+
+    const previous = state.doctor.target;
+    clear(elements.doctorRepository);
+    if (!choices.length) {
+      const option = document.createElement('option');
+      option.value = '';
+      option.textContent = 'No repository discovered';
+      elements.doctorRepository.appendChild(option);
+      state.doctor.target = '';
+      return;
+    }
+    choices.forEach(function (choice) {
+      const option = document.createElement('option');
+      option.value = choice.value;
+      option.textContent = choice.label + ' — ' + choice.value;
+      elements.doctorRepository.appendChild(option);
+    });
+    state.doctor.target = choices.some(function (choice) { return choice.value === previous; })
+      ? previous
+      : choices[0].value;
+    elements.doctorRepository.value = state.doctor.target;
+  }
+
+  function runDoctorCommand(stage, input) {
+    const commandId = DOCTOR_COMMANDS[stage];
+    if (!commandId || !state.doctor.target || state.doctor.activeCommand) {
+      return;
+    }
+    const payload = Object.assign({ target: state.doctor.target }, input || {});
+    const mutates = stage === 'register' || stage === 'unregister';
+    state.doctor.error = '';
+    state.doctor.activeCommand = commandId;
+    renderDoctorWorkflow();
+    post({
+      type: 'eco.cockpit.invokeProviderCommand',
+      providerId: 'marlin',
+      commandId: commandId,
+      input: payload,
+      confirm: mutates,
+      approval: mutates ? { token: approvalToken(), scope: approvalScope('marlin', commandId, payload) } : undefined,
+    });
+  }
+
+  function registerDoctorOperationFromForm() {
+    let command;
+    try {
+      command = JSON.parse(elements.doctorCommandJson.value || '[]');
+    } catch (error) {
+      showNotice(error instanceof Error ? error.message : String(error), true);
+      return;
+    }
+    const id = elements.doctorOperationId.value.trim();
+    const title = elements.doctorOperationTitle.value.trim();
+    if (!id || !title || !Array.isArray(command)) {
+      showNotice('Doctor operation id, title, and command JSON array are required.', true);
+      return;
+    }
+    const operation = {
+      id: id,
+      title: title,
+      command: command,
+      mutates: elements.doctorOperationMutates.checked,
+      requires_confirmation: elements.doctorOperationMutates.checked,
+      supports_preview: elements.doctorOperationPreview.checked,
+      output: elements.doctorOperationOutput.value || 'auto',
+    };
+    const cwd = elements.doctorOperationCwd.value.trim();
+    if (cwd) {
+      operation.cwd = cwd;
+    }
+    runDoctorCommand('register', { operation: operation, replace: true });
+  }
+
+  function handleDoctorProviderResult(result) {
+    if (result.provider_id !== 'marlin') {
+      return;
+    }
+    const stage = Object.keys(DOCTOR_COMMANDS).find(function (key) {
+      return DOCTOR_COMMANDS[key] === result.command_id;
+    });
+    if (!stage) {
+      return;
+    }
+    state.doctor.lastResult = result;
+    state.doctor.activeCommand = '';
+    if (result.status === 'succeeded' && result.data && Array.isArray(result.data.operations)) {
+      state.doctor.operations = result.data.operations;
+    }
+    if (result.status !== 'succeeded') {
+      state.doctor.error = (result.error && result.error.message) || 'Doctor provider command failed.';
+    }
+    renderDoctorWorkflow();
+  }
+
+  function renderDoctorWorkflow() {
+    const busy = Boolean(state.doctor.activeCommand);
+    elements.doctorRepository.disabled = busy;
+    elements.doctorRefresh.disabled = busy || !state.doctor.target;
+    elements.doctorAddForm.querySelectorAll('input, select, textarea, button').forEach(function (control) {
+      control.disabled = busy || !state.doctor.target;
+    });
+    elements.doctorRegistryStatus.textContent = busy
+      ? 'Running'
+      : state.doctor.lastResult
+        ? state.doctor.lastResult.status
+        : 'Not loaded';
+    elements.doctorOperationCount.textContent = String(state.doctor.operations.length) + ' operations';
+    renderDoctorOperationsTable();
+    elements.doctorLastResult.textContent = state.doctor.lastResult
+      ? JSON.stringify({
+          command_id: state.doctor.lastResult.command_id,
+          status: state.doctor.lastResult.status,
+          data: state.doctor.lastResult.data,
+          error: state.doctor.lastResult.error,
+        }, null, 2)
+      : '';
+    if (state.doctor.error) {
+      showNotice(state.doctor.error, true);
+      state.doctor.error = '';
+    }
+  }
+
+  function renderDoctorOperationsTable() {
+    clear(elements.doctorOperationTable);
+    if (!state.doctor.operations.length) {
+      elements.doctorOperationTable.appendChild(emptyTableRow(4, 'No Doctor operations registered.'));
+      return;
+    }
+    state.doctor.operations.forEach(function (operation) {
+      const row = document.createElement('tr');
+      const id = document.createElement('td');
+      const mode = document.createElement('td');
+      const command = document.createElement('td');
+      const actions = document.createElement('td');
+      const remove = document.createElement('button');
+      id.textContent = operation.id || '-';
+      mode.textContent = (operation.enabled === false ? 'disabled' : 'enabled') + ' / ' + (operation.mutates ? 'mutates' : 'read');
+      command.textContent = Array.isArray(operation.command) ? operation.command.join(' ') : '-';
+      remove.type = 'button';
+      remove.textContent = 'Remove';
+      remove.addEventListener('click', function () {
+        runDoctorCommand('unregister', { operation_id: operation.id });
+      });
+      actions.appendChild(remove);
+      row.appendChild(id);
+      row.appendChild(mode);
+      row.appendChild(command);
+      row.appendChild(actions);
+      elements.doctorOperationTable.appendChild(row);
+    });
   }
 
   const HYGIENE_COMMANDS = {

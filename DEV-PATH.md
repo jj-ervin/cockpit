@@ -1464,3 +1464,20 @@ Copied MarlinSetup proofs installed and opened both variants from isolated
 Marlin homes. ARM64 installed runtimes report `0xAA64`; x64 reports `0x8664`.
 The x86 NSIS launcher is only the outer extraction shim and does not change
 Marlin or Cockpit's installed runtime architecture.
+
+### Marlin Doctor Registry View (Marlin cross-repo, 2026-08-12)
+
+Cockpit now hosts the first Marlin Doctor registry view from Marlin's
+Doctor registry-view PASS. The web bundle adds a Marlin Doctor tab that reuses
+the existing external-provider command channel and workspace repository
+inventory: select a target, load its Doctor operations, register an operation,
+and remove an operation.
+
+Authority remains with Marlin. The provider commands are
+`marlin.doctor.operations.list`, `.register`, and `.unregister`; registry
+mutations are confirmation-gated by the existing provider manifest/bridge path.
+Cockpit does not execute user-registered Doctor commands and does not replace
+the older hygiene tab yet.
+
+Validation: `node --check web/cockpit.js` passed. The full web bundle smoke
+passed 17/17 using repo-local pytest basetemp.
