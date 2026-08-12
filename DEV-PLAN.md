@@ -1229,3 +1229,18 @@ than becoming a hardcoded portfolio special case.
 
 The browser regression drives required-input disablement, string/choice entry,
 preview approval, rerender, apply approval, and exact provider payload binding.
+
+## Marlin Doctor Cross-Repo Note — Target Health (INIT.30.07)
+
+**Closed:** 2026-08-12 under Marlin-owned `INIT.30.07`.
+
+Cockpit's Doctor tab now requests and renders Marlin's read-only
+`marlin.doctor.assessment.v1`: project kind, Git state, governance detection,
+last-known test status, machine-readable flags, policy-pack path, operation
+counts/digest, DEV-DOC signal, supplied agent count, and assessment time.
+The request is non-mutating and carries no approval because Marlin's health
+handler reads manifests and existing evidence only; it does not run tests,
+audits, registered operations, or agent probes.
+
+Validation: browser smoke 18/18, host-web 33/33, and
+`node --check web/cockpit.js` clean.

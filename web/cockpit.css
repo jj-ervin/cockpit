@@ -29,6 +29,7 @@ body {
 .shell {
   display: grid;
   gap: 14px;
+  grid-template-columns: minmax(0, 1fr);
   padding: 18px;
   min-height: 100vh;
 }
@@ -162,6 +163,13 @@ article,
   padding: 12px;
 }
 
+.panel,
+.tab-panel,
+.table-shell,
+.split > * {
+  min-width: 0;
+}
+
 article {
   display: grid;
   gap: 6px;
@@ -179,6 +187,8 @@ code {
 }
 
 .tabs {
+  max-width: 100%;
+  min-width: 0;
   overflow-x: auto;
 }
 
@@ -600,6 +610,27 @@ tr:hover {
 .metadata-list dd {
   margin: 0;
   overflow-wrap: anywhere;
+}
+
+.doctor-health-grid {
+  margin-top: 12px;
+}
+
+.doctor-health-flags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 12px;
+  min-height: 24px;
+}
+
+.health-flag {
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: var(--muted);
+  font-size: 12px;
+  padding: 3px 6px;
 }
 
 .workspace-repos {

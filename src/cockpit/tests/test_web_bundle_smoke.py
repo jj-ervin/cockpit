@@ -429,6 +429,48 @@ def test_marlin_doctor_ui_lists_binds_approval_registers_and_removes_operations(
     cockpit_page.click(".tab[data-tab='marlin-doctor']")
     cockpit_page.select_option("#doctor-repository", "C:/fake/workspace/demo")
 
+    cockpit_page.click("#doctor-health-refresh")
+    health_request = cockpit_page.evaluate("window.__posted[window.__posted.length - 1]")
+    assert health_request["providerId"] == "marlin"
+    assert health_request["commandId"] == "marlin.doctor.health"
+    assert health_request["input"] == {"target": "C:/fake/workspace/demo", "agent_detections": []}
+    assert health_request["confirm"] is False
+    _send_provider_result(cockpit_page, {
+        "schema_version": "cockpit-operation-result-v1",
+        "operation_id": "doctor-health-1",
+        "provider_id": "marlin",
+        "command_id": "marlin.doctor.health",
+        "status": "succeeded",
+        "timestamp": "2026-08-12T00:00:00Z",
+        "data": {"assessment": {
+            "schema_version": "marlin.doctor.assessment.v1",
+            "assessed_at": "2026-08-12T00:00:00Z",
+            "discovery": {
+                "target_path": "C:/fake/workspace/demo",
+                "is_git_repo": True,
+                "dirty": True,
+                "default_branch": "main",
+                "project_kind": "node",
+                "package_manager": "npm",
+                "gc_governed": True,
+                "policy_pack_path": "C:/fake/workspace/governance-commons/gc-audit/GC-AUDIT-REGISTRY.yaml",
+            },
+            "tests": {"last_known_status": "pass"},
+            "operations": {"registered_count": 1, "enabled_count": 1, "registry_digest": registry_digest},
+            "docs": {"dev_path_exists": True, "dev_plan_exists": True, "stale": False},
+            "agents": {"detected_count": 0},
+            "summary": {"conformance": "unknown", "health": "attention", "flags": ["dirty"]},
+        }},
+        "evidence": [],
+    })
+    assert cockpit_page.locator("#doctor-health-status").inner_text() == "Attention needed"
+    assert cockpit_page.locator("#doctor-health-project").inner_text() == "node"
+    assert cockpit_page.locator("#doctor-health-git").inner_text() == "Dirty"
+    assert cockpit_page.locator("#doctor-health-governance").inner_text() == "GC governed"
+    assert cockpit_page.locator("#doctor-health-tests").inner_text() == "pass"
+    assert "dirty" in cockpit_page.locator("#doctor-health-flags").inner_text()
+    assert registry_digest in cockpit_page.locator("#doctor-health-details").inner_text()
+
     cockpit_page.click("#doctor-refresh")
     request = cockpit_page.evaluate("window.__posted[window.__posted.length - 1]")
     assert request["providerId"] == "marlin"

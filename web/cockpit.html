@@ -155,8 +155,21 @@
         </div>
         <p class="panel-note">Cockpit renders this target-scoped operations catalog. Marlin owns registry writes, command execution, and evidence.</p>
         <div class="button-row audit-actions">
+          <button id="doctor-health-refresh" type="button">Assess health</button>
           <button id="doctor-refresh" type="button">Load operations</button>
         </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-header"><h2>Target health</h2><span id="doctor-health-status">Not assessed</span></div>
+        <div class="status-grid doctor-health-grid">
+          <article><span>Project</span><strong id="doctor-health-project">-</strong></article>
+          <article><span>Git</span><strong id="doctor-health-git">-</strong></article>
+          <article><span>Governance</span><strong id="doctor-health-governance">-</strong></article>
+          <article><span>Tests</span><strong id="doctor-health-tests">-</strong></article>
+        </div>
+        <div class="doctor-health-flags" id="doctor-health-flags"></div>
+        <dl class="metadata-list" id="doctor-health-details"></dl>
       </section>
 
       <div class="panel-grid">

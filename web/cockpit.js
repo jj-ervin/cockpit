@@ -47,6 +47,7 @@
       activeCommand: '',
       error: '',
       lastResult: null,
+      assessment: null,
       operations: [],
       operationInputs: {},
       registryDigest: '',
@@ -191,6 +192,14 @@
     auditCancelApproval: byId('audit-cancel-approval'),
     auditConfirmApproval: byId('audit-confirm-approval'),
     doctorRepository: byId('doctor-repository'),
+    doctorHealthRefresh: byId('doctor-health-refresh'),
+    doctorHealthStatus: byId('doctor-health-status'),
+    doctorHealthProject: byId('doctor-health-project'),
+    doctorHealthGit: byId('doctor-health-git'),
+    doctorHealthGovernance: byId('doctor-health-governance'),
+    doctorHealthTests: byId('doctor-health-tests'),
+    doctorHealthFlags: byId('doctor-health-flags'),
+    doctorHealthDetails: byId('doctor-health-details'),
     doctorRefresh: byId('doctor-refresh'),
     doctorOperationCount: byId('doctor-operation-count'),
     doctorOperationTable: byId('doctor-operation-table'),
@@ -379,10 +388,16 @@
     state.doctor.operationInputs = {};
     state.doctor.registryDigest = '';
     state.doctor.lastResult = null;
+    state.doctor.assessment = null;
     closeDoctorApproval();
     renderDoctorWorkflow();
   });
   elements.doctorRefresh.addEventListener('click', function () { runDoctorCommand('list', {}); });
+  elements.doctorHealthRefresh.addEventListener('click', function () {
+    runDoctorCommand('health', {
+      agent_detections: Object.keys(state.agents.detections).map(function (id) { return state.agents.detections[id]; }),
+    });
+  });
   elements.doctorAddForm.addEventListener('submit', function (event) {
     event.preventDefault();
     registerDoctorOperationFromForm();
@@ -1200,6 +1215,8 @@
   }
 
   const DOCTOR_COMMANDS = {
+    discover: 'marlin.doctor.discover',
+    health: 'marlin.doctor.health',
     list: 'marlin.doctor.operations.list',
     register: 'marlin.doctor.operations.register',
     unregister: 'marlin.doctor.operations.unregister',
@@ -1393,6 +1410,9 @@
     if (result.status === 'succeeded' && result.data && Array.isArray(result.data.operations)) {
       state.doctor.operations = result.data.operations;
     }
+    if (result.status === 'succeeded' && result.data && result.data.assessment) {
+      state.doctor.assessment = result.data.assessment;
+    }
     if (result.data && typeof result.data.registry_digest === 'string') {
       state.doctor.registryDigest = result.data.registry_digest;
     }
@@ -1405,6 +1425,7 @@
   function renderDoctorWorkflow() {
     const busy = Boolean(state.doctor.activeCommand);
     elements.doctorRepository.disabled = busy;
+    elements.doctorHealthRefresh.disabled = busy || !state.doctor.target;
     elements.doctorRefresh.disabled = busy || !state.doctor.target;
     elements.doctorAddForm.querySelectorAll('input, select, textarea, button').forEach(function (control) {
       control.disabled = busy || !state.doctor.target;
@@ -1415,6 +1436,7 @@
         ? state.doctor.lastResult.status
         : 'Not loaded';
     elements.doctorOperationCount.textContent = String(state.doctor.operations.length) + ' operations';
+    renderDoctorHealth();
     renderDoctorOperationsTable();
     elements.doctorLastResult.textContent = state.doctor.lastResult
       ? JSON.stringify({
@@ -1428,6 +1450,52 @@
       showNotice(state.doctor.error, true);
       state.doctor.error = '';
     }
+  }
+
+  function renderDoctorHealth() {
+    const assessment = state.doctor.assessment;
+    elements.doctorHealthFlags.replaceChildren();
+    elements.doctorHealthDetails.replaceChildren();
+    if (!assessment) {
+      elements.doctorHealthStatus.textContent = 'Not assessed';
+      elements.doctorHealthProject.textContent = '-';
+      elements.doctorHealthGit.textContent = '-';
+      elements.doctorHealthGovernance.textContent = '-';
+      elements.doctorHealthTests.textContent = '-';
+      return;
+    }
+
+    const discovery = assessment.discovery || {};
+    const tests = assessment.tests || {};
+    const operations = assessment.operations || {};
+    const docs = assessment.docs || {};
+    const agents = assessment.agents || {};
+    const flags = assessment.summary && Array.isArray(assessment.summary.flags) ? assessment.summary.flags : [];
+    elements.doctorHealthStatus.textContent = assessment.summary && assessment.summary.health === 'clear' ? 'Clear' : 'Attention needed';
+    elements.doctorHealthProject.textContent = discovery.project_kind || 'unknown';
+    elements.doctorHealthGit.textContent = discovery.is_git_repo
+      ? (discovery.dirty === true ? 'Dirty' : discovery.dirty === false ? 'Clean' : 'Unknown')
+      : 'Not a Git repo';
+    elements.doctorHealthGovernance.textContent = discovery.gc_governed ? 'GC governed' : 'Not detected';
+    elements.doctorHealthTests.textContent = tests.last_known_status || 'unknown';
+    (flags.length ? flags : ['no-flags']).forEach(function (flag) {
+      const chip = document.createElement('span');
+      chip.className = 'health-flag';
+      chip.textContent = flag;
+      elements.doctorHealthFlags.appendChild(chip);
+    });
+    [
+      ['Package manager', discovery.package_manager || '-'],
+      ['Branch', discovery.default_branch || '-'],
+      ['Policy pack', discovery.policy_pack_path || '-'],
+      ['Operations', String(operations.enabled_count || 0) + ' enabled / ' + String(operations.registered_count || 0) + ' registered'],
+      ['Registry digest', operations.registry_digest || '-'],
+      ['DEV docs', docs.dev_path_exists && docs.dev_plan_exists ? (docs.stale === true ? 'stale signal' : 'present') : 'incomplete'],
+      ['Detected agents', agents.detected_count === null || agents.detected_count === undefined ? 'not supplied' : agents.detected_count],
+      ['Assessed', assessment.assessed_at || '-'],
+    ].forEach(function (entry) {
+      elements.doctorHealthDetails.appendChild(metadataRow(entry[0], entry[1]));
+    });
   }
 
   function renderDoctorOperationsTable() {
