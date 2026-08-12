@@ -1175,3 +1175,24 @@ the operation or decide whether it is safe.
 
 Validation: web bundle smoke passed 17/17; host-web passed 33/33;
 `node --check web/cockpit.js` passed.
+
+## Marlin Doctor Cross-Repo Note — Agent Roster (INIT.30.05)
+
+**Closed:** 2026-08-12 under Marlin-owned agent launcher roster work.
+
+Cockpit's Marlin Doctor tab gained an Agent Roster panel: a table of
+built-in and custom agent CLI templates, a "Detect all" action, and a
+register/remove form for custom templates. Detection only -- no agent's
+real work runs from Cockpit, only Marlin's bounded version-style probe
+against each template's `detect` command.
+
+Reuses the approval dialog from `INIT.30.03a` rather than building a
+second one. `detect` requires the same human approval as
+`register`/`unregister` even though it only reads a probe result,
+because the roster (including custom `detect` commands) is
+registry-editable -- the same rule already applied to Doctor operations.
+Built-in templates never show a Remove control; Marlin marks which rows
+are built-in so Cockpit doesn't duplicate that id list.
+
+Validation: web bundle smoke passed 18/18 (was 17); host-web passed
+33/33, unaffected; `node --check web/cockpit.js` passed.

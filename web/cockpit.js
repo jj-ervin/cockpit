@@ -51,6 +51,14 @@
       registryDigest: '',
       approval: null,
     },
+    agents: {
+      activeCommand: '',
+      error: '',
+      lastResult: null,
+      templates: [],
+      detections: {},
+      approval: null,
+    },
     hygiene: {
       activeCommand: '',
       error: '',
@@ -210,6 +218,26 @@
     doctorApprovalCheck: byId('doctor-approval-check'),
     doctorCancelApproval: byId('doctor-cancel-approval'),
     doctorConfirmApproval: byId('doctor-confirm-approval'),
+    agentRosterList: byId('agent-roster-list'),
+    agentRosterDetect: byId('agent-roster-detect'),
+    agentRosterCount: byId('agent-roster-count'),
+    agentRosterTable: byId('agent-roster-table'),
+    agentRosterStatus: byId('agent-roster-status'),
+    agentRosterAddForm: byId('agent-roster-add-form'),
+    agentTemplateId: byId('agent-template-id'),
+    agentTemplateName: byId('agent-template-name'),
+    agentDetectCommandJson: byId('agent-detect-command-json'),
+    agentRunCommandJson: byId('agent-run-command-json'),
+    agentTemplateCapabilities: byId('agent-template-capabilities'),
+    agentTemplateMutates: byId('agent-template-mutates'),
+    agentTemplatePromptFile: byId('agent-template-prompt-file'),
+    agentTemplateTargetPath: byId('agent-template-target-path'),
+    agentRosterLastResult: byId('agent-roster-last-result'),
+    agentApprovalDialog: byId('agent-approval-dialog'),
+    agentApprovalScope: byId('agent-approval-scope'),
+    agentApprovalCheck: byId('agent-approval-check'),
+    agentCancelApproval: byId('agent-cancel-approval'),
+    agentConfirmApproval: byId('agent-confirm-approval'),
     hygieneSyncStatus: byId('hygiene-sync-status'),
     hygieneSyncPreview: byId('hygiene-sync-preview'),
     hygieneSyncApply: byId('hygiene-sync-apply'),
@@ -391,6 +419,18 @@
   elements.doctorCancelApproval.addEventListener('click', closeDoctorApproval);
   elements.doctorConfirmApproval.addEventListener('click', confirmDoctorApproval);
 
+  elements.agentRosterList.addEventListener('click', function () { runAgentCommand('list', {}); });
+  elements.agentRosterDetect.addEventListener('click', function () { openAgentApproval('detect', {}); });
+  elements.agentRosterAddForm.addEventListener('submit', function (event) {
+    event.preventDefault();
+    registerAgentTemplateFromForm();
+  });
+  elements.agentApprovalCheck.addEventListener('change', function () {
+    elements.agentConfirmApproval.disabled = !elements.agentApprovalCheck.checked;
+  });
+  elements.agentCancelApproval.addEventListener('click', closeAgentApproval);
+  elements.agentConfirmApproval.addEventListener('click', confirmAgentApproval);
+
   elements.hygieneSyncPreview.addEventListener('click', function () { runHygieneCommand('syncPreview', {}); });
   elements.hygieneSyncApply.addEventListener('click', function () { openHygieneApproval('syncApply', {}); });
   elements.hygieneUnignorePreview.addEventListener('click', function () { runHygieneCommand('unignorePreview', {}); });
@@ -478,6 +518,7 @@
     if (message.type === 'eco.cockpit.providerCommandResult') {
       handleAuditProviderResult(message.payload || {});
       handleDoctorProviderResult(message.payload || {});
+      handleAgentProviderResult(message.payload || {});
       handleHygieneProviderResult(message.payload || {});
       return;
     }
@@ -545,6 +586,7 @@
     syncDoctorRepositories();
     renderAuditWorkflow();
     renderDoctorWorkflow();
+    renderAgentRosterWorkflow();
     renderHygieneWorkflow();
     renderProviderSummary(state.snapshot.marlin || {}, state.snapshot.niji || {});
 
@@ -1471,6 +1513,230 @@
       row.appendChild(command);
       row.appendChild(actions);
       elements.doctorOperationTable.appendChild(row);
+    });
+  }
+
+  const AGENT_COMMANDS = {
+    list: 'marlin.doctor.agents.list',
+    detect: 'marlin.doctor.agents.detect',
+    register: 'marlin.doctor.agents.register',
+    unregister: 'marlin.doctor.agents.unregister',
+  };
+
+  // Every agent roster command requires approval, including list-adjacent
+  // detect -- detect spawns a real process per template (bounded, version-
+  // only, but a process nonetheless), and the roster (including custom
+  // detect commands) is registry-editable, matching Doctor's own
+  // established rule that registry-editable data is never authority to
+  // bypass human consent. Only `list` (pure metadata read, no process
+  // spawned) is exempt.
+  const AGENT_MUTATING_STAGES = { detect: true, register: true, unregister: true };
+
+  function runAgentCommand(stage, input, approval) {
+    const commandId = AGENT_COMMANDS[stage];
+    if (!commandId || state.agents.activeCommand) {
+      return;
+    }
+    const payload = input || {};
+    const mutates = Boolean(AGENT_MUTATING_STAGES[stage]);
+    if (mutates && !approval) {
+      return;
+    }
+    state.agents.error = '';
+    state.agents.activeCommand = commandId;
+    renderAgentRosterWorkflow();
+    post({
+      type: 'eco.cockpit.invokeProviderCommand',
+      providerId: 'marlin',
+      commandId: commandId,
+      input: payload,
+      confirm: mutates,
+      approval: mutates ? { token: approval.token, scope: approval.scope } : undefined,
+    });
+  }
+
+  function openAgentApproval(stage, input) {
+    const commandId = AGENT_COMMANDS[stage];
+    if (!commandId || !AGENT_MUTATING_STAGES[stage]) {
+      return;
+    }
+    const payload = input || {};
+    state.agents.approval = {
+      stage: stage,
+      commandId: commandId,
+      input: payload,
+      token: approvalToken(),
+      scope: approvalScope('marlin', commandId, payload),
+    };
+    clear(elements.agentApprovalScope);
+    const templateId = (payload.template && payload.template.id) || payload.template_id || 'all known templates';
+    [
+      ['Provider', 'marlin'],
+      ['Command', commandId],
+      ['Template', templateId],
+    ].forEach(function (entry) {
+      const dt = document.createElement('dt');
+      const dd = document.createElement('dd');
+      dt.textContent = entry[0];
+      dd.textContent = entry[1];
+      elements.agentApprovalScope.appendChild(dt);
+      elements.agentApprovalScope.appendChild(dd);
+    });
+    elements.agentApprovalCheck.checked = false;
+    elements.agentConfirmApproval.disabled = true;
+    elements.agentApprovalDialog.hidden = false;
+    elements.agentApprovalCheck.focus();
+  }
+
+  function closeAgentApproval() {
+    elements.agentApprovalDialog.hidden = true;
+    elements.agentApprovalCheck.checked = false;
+    elements.agentConfirmApproval.disabled = true;
+  }
+
+  function confirmAgentApproval() {
+    const approval = state.agents.approval;
+    if (!elements.agentApprovalCheck.checked || !approval) {
+      state.agents.error = 'Approval was not confirmed.';
+      closeAgentApproval();
+      renderAgentRosterWorkflow();
+      return;
+    }
+    closeAgentApproval();
+    runAgentCommand(approval.stage, approval.input, { token: approval.token, scope: approval.scope });
+  }
+
+  function registerAgentTemplateFromForm() {
+    let detectCommand;
+    let runCommand;
+    try {
+      detectCommand = JSON.parse(elements.agentDetectCommandJson.value || '[]');
+      runCommand = JSON.parse(elements.agentRunCommandJson.value || '[]');
+    } catch (error) {
+      showNotice(error instanceof Error ? error.message : String(error), true);
+      return;
+    }
+    const id = elements.agentTemplateId.value.trim();
+    const name = elements.agentTemplateName.value.trim();
+    if (!id || !name || !Array.isArray(detectCommand) || !Array.isArray(runCommand)) {
+      showNotice('Agent template id, name, detect command, and run command are required.', true);
+      return;
+    }
+    const capabilities = elements.agentTemplateCapabilities.value
+      .split(',')
+      .map(function (c) { return c.trim(); })
+      .filter(Boolean);
+    const template = {
+      id: id,
+      name: name,
+      kind: 'cli-agent',
+      detect: { command: detectCommand },
+      run: { command: runCommand },
+      capabilities: capabilities,
+      mutates_files: elements.agentTemplateMutates.checked,
+      requires_confirmation: elements.agentTemplateMutates.checked,
+      context: {
+        accepts_prompt_file: elements.agentTemplatePromptFile.checked,
+        accepts_target_path: elements.agentTemplateTargetPath.checked,
+      },
+    };
+    openAgentApproval('register', { template: template, replace: true });
+  }
+
+  function handleAgentProviderResult(result) {
+    if (result.provider_id !== 'marlin') {
+      return;
+    }
+    const stage = Object.keys(AGENT_COMMANDS).find(function (key) {
+      return AGENT_COMMANDS[key] === result.command_id;
+    });
+    if (!stage) {
+      return;
+    }
+    state.agents.lastResult = result;
+    state.agents.activeCommand = '';
+    if (result.status === 'succeeded' && result.data) {
+      if (Array.isArray(result.data.templates)) {
+        state.agents.templates = result.data.templates;
+      }
+      if (Array.isArray(result.data.results)) {
+        const next = {};
+        result.data.results.forEach(function (item) { next[item.id] = item; });
+        state.agents.detections = next;
+      }
+    }
+    if (result.status !== 'succeeded') {
+      state.agents.error = (result.error && result.error.message) || 'Agent roster provider command failed.';
+    }
+    renderAgentRosterWorkflow();
+  }
+
+  function renderAgentRosterWorkflow() {
+    const busy = Boolean(state.agents.activeCommand);
+    elements.agentRosterList.disabled = busy;
+    elements.agentRosterDetect.disabled = busy;
+    elements.agentRosterAddForm.querySelectorAll('input, textarea, button').forEach(function (control) {
+      control.disabled = busy;
+    });
+    elements.agentRosterStatus.textContent = busy
+      ? 'Running'
+      : state.agents.lastResult
+        ? state.agents.lastResult.status
+        : 'Not loaded';
+    elements.agentRosterCount.textContent = String(state.agents.templates.length) + ' templates';
+    renderAgentRosterTable();
+    elements.agentRosterLastResult.textContent = state.agents.lastResult
+      ? JSON.stringify({
+          command_id: state.agents.lastResult.command_id,
+          status: state.agents.lastResult.status,
+          data: state.agents.lastResult.data,
+          error: state.agents.lastResult.error,
+        }, null, 2)
+      : '';
+    if (state.agents.error) {
+      showNotice(state.agents.error, true);
+      state.agents.error = '';
+    }
+  }
+
+  function renderAgentRosterTable() {
+    clear(elements.agentRosterTable);
+    if (!state.agents.templates.length) {
+      elements.agentRosterTable.appendChild(emptyTableRow(5, 'No agent templates loaded -- click "List templates".'));
+      return;
+    }
+    state.agents.templates.forEach(function (template) {
+      const row = document.createElement('tr');
+      const id = document.createElement('td');
+      const name = document.createElement('td');
+      const capabilities = document.createElement('td');
+      const status = document.createElement('td');
+      const actions = document.createElement('td');
+      id.textContent = template.id || '-';
+      name.textContent = template.name || '-';
+      capabilities.textContent = Array.isArray(template.capabilities) ? template.capabilities.join(', ') : '-';
+      const detection = state.agents.detections[template.id];
+      status.textContent = !detection
+        ? 'not checked'
+        : detection.detected
+          ? 'detected' + (detection.version_output ? ' (' + detection.version_output + ')' : '')
+          : 'not detected';
+      const isBuiltin = template.builtin === true;
+      if (!isBuiltin) {
+        const remove = document.createElement('button');
+        remove.type = 'button';
+        remove.textContent = 'Remove';
+        remove.addEventListener('click', function () {
+          openAgentApproval('unregister', { template_id: template.id });
+        });
+        actions.appendChild(remove);
+      }
+      row.appendChild(id);
+      row.appendChild(name);
+      row.appendChild(capabilities);
+      row.appendChild(status);
+      row.appendChild(actions);
+      elements.agentRosterTable.appendChild(row);
     });
   }
 

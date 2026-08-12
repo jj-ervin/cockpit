@@ -205,6 +205,60 @@
           <pre class="wizard-result" id="doctor-last-result"></pre>
         </section>
       </div>
+
+      <section class="panel">
+        <div class="panel-header wrap">
+          <div>
+            <p class="eyebrow">Agent launcher roster</p>
+            <h2>Detected agent CLIs</h2>
+          </div>
+        </div>
+        <p class="panel-note">Detection only -- shows which known/custom agent CLIs are on this machine. No agent's real work is ever run here; only a bounded version-style probe. Not Agent Matrix.</p>
+        <div class="button-row audit-actions">
+          <button id="agent-roster-list" type="button">List templates</button>
+          <button id="agent-roster-detect" type="button">Detect all</button>
+        </div>
+      </section>
+
+      <div class="panel-grid">
+        <section class="panel">
+          <div class="panel-header"><h2>Agent templates</h2><span id="agent-roster-count">0 templates</span></div>
+          <div class="table-shell">
+            <table>
+              <thead><tr><th>ID</th><th>Name</th><th>Capabilities</th><th>Status</th><th></th></tr></thead>
+              <tbody id="agent-roster-table"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-header"><h2>Add custom template</h2><span id="agent-roster-status">Not loaded</span></div>
+          <form class="form-grid" id="agent-roster-add-form">
+            <label>ID
+              <input id="agent-template-id" type="text" autocomplete="off" placeholder="lmstudio">
+            </label>
+            <label>Name
+              <input id="agent-template-name" type="text" autocomplete="off" placeholder="LM Studio (local)">
+            </label>
+            <label class="full">Detect command JSON
+              <textarea id="agent-detect-command-json" rows="2" spellcheck="false" placeholder='["lms","--version"]'></textarea>
+            </label>
+            <label class="full">Run command JSON (recorded only, never executed here)
+              <textarea id="agent-run-command-json" rows="2" spellcheck="false" placeholder='["lms","chat"]'></textarea>
+            </label>
+            <label class="full">Capabilities (comma-separated)
+              <input id="agent-template-capabilities" type="text" autocomplete="off" placeholder="diagnose, explain">
+            </label>
+            <label class="approval-check"><input id="agent-template-mutates" type="checkbox"> Mutates files</label>
+            <label class="approval-check"><input id="agent-template-prompt-file" type="checkbox"> Accepts prompt file</label>
+            <label class="approval-check"><input id="agent-template-target-path" type="checkbox"> Accepts target path</label>
+            <div class="button-row full">
+              <button id="agent-roster-add" type="submit">Register template</button>
+            </div>
+          </form>
+          <pre class="wizard-result" id="agent-roster-last-result"></pre>
+        </section>
+      </div>
     </section>
 
     <section class="tab-panel" id="hygiene-tab">
@@ -571,6 +625,19 @@
         <div class="button-row">
           <button id="doctor-cancel-approval" type="button">Cancel</button>
           <button id="doctor-confirm-approval" type="button" disabled>Approve and execute</button>
+        </div>
+      </div>
+    </section>
+    <section class="approval-overlay" id="agent-approval-dialog" role="dialog" aria-modal="true" aria-labelledby="agent-approval-title" hidden>
+      <div class="approval-dialog">
+        <p class="eyebrow">Human approval required</p>
+        <h2 id="agent-approval-title">Approve this agent roster action?</h2>
+        <p>Detecting runs a bounded probe process; registering or removing edits the machine-wide agent roster. Approval is bound to the exact provider, command, and input shown below.</p>
+        <dl class="metadata-list" id="agent-approval-scope"></dl>
+        <label class="approval-check"><input id="agent-approval-check" type="checkbox"> I approve this exact agent roster action.</label>
+        <div class="button-row">
+          <button id="agent-cancel-approval" type="button">Cancel</button>
+          <button id="agent-confirm-approval" type="button" disabled>Approve and execute</button>
         </div>
       </div>
     </section>

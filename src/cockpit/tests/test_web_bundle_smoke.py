@@ -548,3 +548,130 @@ def test_marlin_doctor_ui_lists_binds_approval_registers_and_removes_operations(
     assert remove["approval"]["token"]
     assert remove["approval"]["scope"] == '{"command_id":"marlin.doctor.operations.unregister","input":{"operation_id":"tests.run","target":"C:/fake/workspace/demo"},"provider_id":"marlin"}'
     assert cockpit_page.cockpit_errors == []
+
+
+def test_marlin_doctor_agent_roster_ui_detects_registers_and_removes_templates(cockpit_page):
+    _send_state(cockpit_page, _sample_snapshot())
+    cockpit_page.click(".tab[data-tab='marlin-doctor']")
+
+    # list: read-only, no approval dialog.
+    cockpit_page.click("#agent-roster-list")
+    list_request = cockpit_page.evaluate("window.__posted[window.__posted.length - 1]")
+    assert list_request["providerId"] == "marlin"
+    assert list_request["commandId"] == "marlin.doctor.agents.list"
+    assert list_request["input"] == {}
+    assert list_request["confirm"] is False
+    assert not cockpit_page.locator("#agent-approval-dialog").is_visible()
+
+    _send_provider_result(cockpit_page, {
+        "schema_version": "cockpit-operation-result-v1",
+        "operation_id": "agents-list-1",
+        "provider_id": "marlin",
+        "command_id": "marlin.doctor.agents.list",
+        "status": "succeeded",
+        "timestamp": "2026-08-12T00:00:00Z",
+        "data": {
+            "roster_path": "C:/fake/marlin-home/doctor-agents.json",
+            "templates": [
+                {"id": "codex", "name": "Codex CLI", "capabilities": ["diagnose", "patch"], "builtin": True},
+            ],
+            "count": 1,
+        },
+        "evidence": [],
+    })
+    assert cockpit_page.locator("#agent-roster-count").inner_text() == "1 templates"
+    assert "codex" in cockpit_page.locator("#agent-roster-table").inner_text()
+    # Built-in row has no Remove button.
+    assert cockpit_page.locator("#agent-roster-table button:has-text('Remove')").count() == 0
+
+    # detect: mutating (spawns a real bounded process per template), must
+    # bind approval the same as register/unregister -- not a silent read.
+    cockpit_page.click("#agent-roster-detect")
+    assert cockpit_page.locator("#agent-approval-dialog").is_visible()
+    detect_scope_text = cockpit_page.locator("#agent-approval-scope").inner_text()
+    assert "marlin.doctor.agents.detect" in detect_scope_text
+    cockpit_page.check("#agent-approval-check")
+    cockpit_page.click("#agent-confirm-approval")
+    assert not cockpit_page.locator("#agent-approval-dialog").is_visible()
+    detect_request = cockpit_page.evaluate("window.__posted[window.__posted.length - 1]")
+    assert detect_request["commandId"] == "marlin.doctor.agents.detect"
+    assert detect_request["confirm"] is True
+    assert detect_request["approval"]["token"]
+    assert detect_request["approval"]["scope"] == '{"command_id":"marlin.doctor.agents.detect","input":{},"provider_id":"marlin"}'
+
+    _send_provider_result(cockpit_page, {
+        "schema_version": "cockpit-operation-result-v1",
+        "operation_id": "agents-detect-1",
+        "provider_id": "marlin",
+        "command_id": "marlin.doctor.agents.detect",
+        "status": "succeeded",
+        "timestamp": "2026-08-12T00:00:00Z",
+        "data": {
+            "results": [{"id": "codex", "name": "Codex CLI", "detected": False, "version_output": "", "exit_code": None}],
+            "detected_count": 0,
+            "count": 1,
+        },
+        "evidence": [],
+    })
+    assert "not detected" in cockpit_page.locator("#agent-roster-table").inner_text()
+
+    # register a custom template through the approval dialog.
+    cockpit_page.fill("#agent-template-id", "lmstudio")
+    cockpit_page.fill("#agent-template-name", "LM Studio (local)")
+    cockpit_page.fill("#agent-detect-command-json", '["lms","--version"]')
+    cockpit_page.fill("#agent-run-command-json", '["lms","chat"]')
+    cockpit_page.fill("#agent-template-capabilities", "diagnose, explain")
+    cockpit_page.click("#agent-roster-add")
+    assert cockpit_page.locator("#agent-approval-dialog").is_visible()
+    register_scope_text = cockpit_page.locator("#agent-approval-scope").inner_text()
+    assert "marlin.doctor.agents.register" in register_scope_text
+    assert "lmstudio" in register_scope_text
+
+    cockpit_page.check("#agent-approval-check")
+    cockpit_page.click("#agent-confirm-approval")
+    register_request = cockpit_page.evaluate("window.__posted[window.__posted.length - 1]")
+    assert register_request["commandId"] == "marlin.doctor.agents.register"
+    assert register_request["confirm"] is True
+    assert register_request["input"]["template"]["id"] == "lmstudio"
+    assert register_request["input"]["template"]["detect"]["command"] == ["lms", "--version"]
+    assert register_request["input"]["template"]["run"]["command"] == ["lms", "chat"]
+    assert register_request["input"]["template"]["capabilities"] == ["diagnose", "explain"]
+    assert register_request["input"]["replace"] is True
+
+    _send_provider_result(cockpit_page, {
+        "schema_version": "cockpit-operation-result-v1",
+        "operation_id": "agents-register-1",
+        "provider_id": "marlin",
+        "command_id": "marlin.doctor.agents.register",
+        "status": "succeeded",
+        "timestamp": "2026-08-12T00:00:00Z",
+        "data": {
+            "roster_path": "C:/fake/marlin-home/doctor-agents.json",
+            "template_id": "lmstudio",
+            "templates": [
+                {"id": "codex", "name": "Codex CLI", "capabilities": ["diagnose", "patch"], "builtin": True},
+                {"id": "lmstudio", "name": "LM Studio (local)", "capabilities": ["diagnose", "explain"], "builtin": False},
+            ],
+            "count": 2,
+        },
+        "evidence": [],
+    })
+    assert cockpit_page.locator("#agent-roster-count").inner_text() == "2 templates"
+    # Custom row has a Remove button; built-in row still does not.
+    assert cockpit_page.locator("#agent-roster-table button:has-text('Remove')").count() == 1
+
+    # remove the custom template.
+    cockpit_page.click("#agent-roster-table button:has-text('Remove')")
+    assert cockpit_page.locator("#agent-approval-dialog").is_visible()
+    remove_scope_text = cockpit_page.locator("#agent-approval-scope").inner_text()
+    assert "marlin.doctor.agents.unregister" in remove_scope_text
+    assert "lmstudio" in remove_scope_text
+
+    cockpit_page.check("#agent-approval-check")
+    cockpit_page.click("#agent-confirm-approval")
+    remove_request = cockpit_page.evaluate("window.__posted[window.__posted.length - 1]")
+    assert remove_request["commandId"] == "marlin.doctor.agents.unregister"
+    assert remove_request["confirm"] is True
+    assert remove_request["input"] == {"template_id": "lmstudio"}
+    assert remove_request["approval"]["scope"] == '{"command_id":"marlin.doctor.agents.unregister","input":{"template_id":"lmstudio"},"provider_id":"marlin"}'
+    assert cockpit_page.cockpit_errors == []

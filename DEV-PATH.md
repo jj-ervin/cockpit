@@ -1523,3 +1523,22 @@ panel, including bounded process output and signed evidence metadata.
 
 Validation: `node --check web/cockpit.js` passed; web bundle smoke passed
 17/17 with preview/apply approval scope assertions; host-web passed 33/33.
+
+### Marlin Agent Roster Panel (Marlin cross-repo, INIT.30.05, 2026-08-12)
+
+Added an Agent Roster panel to the Marlin Doctor tab, over Marlin's new
+`marlin.doctor.agents.{list,detect,register,unregister}` provider
+commands. Detection-only: the panel shows built-in and custom agent CLI
+templates with detected/not-detected status; no agent's real work is
+ever run from Cockpit, only Marlin's bounded version-style probe.
+
+Reuses `INIT.30.03a`'s approval dialog rather than building a second one
+-- `detect` requires the same human review as `register`/`unregister`,
+even though it doesn't write anything, because it spawns a process built
+from registry-editable data (the same rule Doctor operations already
+follow). Built-in template rows never show a Remove control; the server
+marks which rows are built-in (`template.builtin`) so Cockpit doesn't
+duplicate Marlin's id list client-side.
+
+Validation: `node --check web/cockpit.js` passed; web bundle smoke passed
+18/18 (was 17); `host-web` passed 33/33, unaffected.
