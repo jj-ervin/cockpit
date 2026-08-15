@@ -23,6 +23,7 @@ debug.log
 # Local pytest finish artifacts
 .pytest-tmp-finish/
 .pytest-tmp-finish-all/
+.test-tmp-*/
 
 # Node (host-web)
 node_modules/
