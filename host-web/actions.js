@@ -2,10 +2,23 @@
 
 const path = require('path');
 
-const { callBridge } = require('./bridgeClient');
+const { callBridge, DEFAULT_TIMEOUT_MS } = require('./bridgeClient');
 const { buildSnapshot } = require('./snapshotBuilder');
 const osOpen = require('./osOpen');
 const { resolveContainedPath } = require('./pathContainment');
+
+// marlin.doctor.agents.run.execute can spawn a real agent subprocess for up
+// to marlin-dxp's DEFAULT_AGENT_RUN_TIMEOUT_MS (10 minutes) plus its own
+// kill-grace period before the provider process returns. bridgeClient's flat
+// DEFAULT_TIMEOUT_MS (30s) would abort the round trip long before that,
+// severing the connection to a run that is still legitimately in progress.
+const LONG_RUNNING_PROVIDER_COMMAND_TIMEOUT_MS = {
+  'marlin.doctor.agents.run.execute': 11 * 60 * 1000,
+};
+
+function timeoutMsForProviderCommand(commandId) {
+  return LONG_RUNNING_PROVIDER_COMMAND_TIMEOUT_MS[commandId] || DEFAULT_TIMEOUT_MS;
+}
 
 /**
  * Dispatches one eco.cockpit.* message to its handler, returning an ARRAY of
@@ -142,15 +155,16 @@ async function dispatch(type, message, { workspaceRoot, pythonExecutable, bridge
       }
 
       case 'eco.cockpit.invokeProviderCommand': {
+        const commandId = require1(message.commandId, 'commandId');
         const result = await bridge({
           backend: require1(message.providerId, 'providerId'),
           workspace_id: workspaceRoot,
           operation: 'invoke_provider_command',
-          command_id: require1(message.commandId, 'commandId'),
+          command_id: commandId,
           input: (message.input && typeof message.input === 'object') ? message.input : {},
           confirm: message.confirm === true,
           approval: message.approval,
-        }, opts);
+        }, { ...opts, timeoutMs: timeoutMsForProviderCommand(commandId) });
         return [{ type: 'eco.cockpit.providerCommandResult', payload: result }];
       }
 
@@ -244,4 +258,4 @@ function canonicalStringify(value) {
   return JSON.stringify(value);
 }
 
-module.exports = { dispatch, actionResult, boundApproval };
+module.exports = { dispatch, actionResult, boundApproval, timeoutMsForProviderCommand };

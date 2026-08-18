@@ -361,6 +361,66 @@ def test_invoke_provider_command_round_trips_through_real_stdio_spawn(fake_provi
     assert result["data"]["echo"] == {"hello": "world"}
 
 
+def test_provider_command_timeout_seconds_maps_agent_run_execute_to_a_longer_budget() -> None:
+    # marlin.doctor.agents.run.execute can spawn a real agent subprocess for
+    # up to 10 minutes plus a 5s kill grace before the provider process
+    # itself returns; the flat 30s default would kill the provider mid-run
+    # on every real call.
+    assert host_bridge_module._provider_command_timeout_seconds(
+        "marlin.doctor.agents.run.execute"
+    ) == 11 * 60
+    assert host_bridge_module._provider_command_timeout_seconds(
+        "marlin.audit.validate"
+    ) == host_bridge_module._PROVIDER_TIMEOUT_SECONDS
+
+
+def test_execute_provider_command_uses_default_timeout_for_ordinary_commands(
+    fake_provider: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    captured: dict[str, Any] = {}
+    real_run = subprocess.run
+
+    def spy_run(*args: Any, **kwargs: Any) -> Any:
+        captured["timeout"] = kwargs.get("timeout")
+        return real_run(*args, **kwargs)
+
+    monkeypatch.setattr(host_bridge_module.subprocess, "run", spy_run)
+    execute({
+        "backend": "fake",
+        "workspace_id": "ws-1",
+        "operation": "invoke_provider_command",
+        "command_id": "fake.read",
+        "input": {},
+    })
+    assert captured["timeout"] == host_bridge_module._PROVIDER_TIMEOUT_SECONDS
+
+
+def test_execute_provider_command_uses_the_mapped_timeout_for_long_running_commands(
+    fake_provider: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Reroutes the long-running-command timeout table onto the fake
+    # provider's own command id, proving _execute_provider_command() looks
+    # up a per-command timeout rather than always using the flat default,
+    # without needing the real marlin provider installed.
+    monkeypatch.setitem(host_bridge_module._PROVIDER_COMMAND_TIMEOUT_SECONDS, "fake.read", 11 * 60)
+    captured: dict[str, Any] = {}
+    real_run = subprocess.run
+
+    def spy_run(*args: Any, **kwargs: Any) -> Any:
+        captured["timeout"] = kwargs.get("timeout")
+        return real_run(*args, **kwargs)
+
+    monkeypatch.setattr(host_bridge_module.subprocess, "run", spy_run)
+    execute({
+        "backend": "fake",
+        "workspace_id": "ws-1",
+        "operation": "invoke_provider_command",
+        "command_id": "fake.read",
+        "input": {},
+    })
+    assert captured["timeout"] == 11 * 60
+
+
 def test_invoke_provider_command_requires_workspace_id(fake_provider: Path) -> None:
     with pytest.raises(ValueError, match="workspace_id"):
         execute({

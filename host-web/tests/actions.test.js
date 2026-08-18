@@ -3,7 +3,8 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const { dispatch } = require('../actions');
+const { dispatch, timeoutMsForProviderCommand } = require('../actions');
+const { DEFAULT_TIMEOUT_MS } = require('../bridgeClient');
 
 const WORKSPACE = 'C:\\fake\\workspace';
 
@@ -182,6 +183,33 @@ test('invokeProviderCommand coerces a non-boolean confirm to false, not truthy',
   ]).then(() => {
     assert.deepEqual(capturedValues, [false, false, false]);
   });
+});
+
+test('timeoutMsForProviderCommand gives agents.run.execute a much longer budget than the bridge default', () => {
+  assert.equal(timeoutMsForProviderCommand('marlin.doctor.agents.run.execute'), 11 * 60 * 1000);
+  assert.equal(timeoutMsForProviderCommand('marlin.audit.validate'), DEFAULT_TIMEOUT_MS);
+});
+
+test('invokeProviderCommand passes a long timeoutMs to the bridge for marlin.doctor.agents.run.execute', async () => {
+  let capturedOpts;
+  const deps = makeDeps({ callBridge: async (req, opts) => { capturedOpts = opts; return { status: 'succeeded' }; } });
+  await dispatch(
+    'eco.cockpit.invokeProviderCommand',
+    { providerId: 'marlin', commandId: 'marlin.doctor.agents.run.execute', input: { run_id: 'r1', plan_digest: 'sha256:x' } },
+    { workspaceRoot: WORKSPACE, deps },
+  );
+  assert.equal(capturedOpts.timeoutMs, 11 * 60 * 1000);
+});
+
+test('invokeProviderCommand keeps the bridge default timeout for ordinary commands', async () => {
+  let capturedOpts;
+  const deps = makeDeps({ callBridge: async (req, opts) => { capturedOpts = opts; return { status: 'succeeded' }; } });
+  await dispatch(
+    'eco.cockpit.invokeProviderCommand',
+    { providerId: 'marlin', commandId: 'marlin.audit.validate', input: {} },
+    { workspaceRoot: WORKSPACE, deps },
+  );
+  assert.equal(capturedOpts.timeoutMs, DEFAULT_TIMEOUT_MS);
 });
 
 test('invokeProviderCommand missing commandId returns a failed actionResult, not a thrown error', async () => {

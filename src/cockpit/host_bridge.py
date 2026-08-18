@@ -45,6 +45,20 @@ _OPERATIONS = frozenset(
 
 _PROVIDER_TIMEOUT_SECONDS = 30
 
+#: marlin.doctor.agents.run.execute can spawn a real agent subprocess for
+#: up to marlin-dxp's DEFAULT_AGENT_RUN_TIMEOUT_MS (10 minutes) plus its own
+#: KILL_GRACE_MS (5s) before the provider process itself returns. The flat
+#: 30s default above would kill the provider process mid-run on every real
+#: execute call, well before the agent's own timeout ever fires. Commands
+#: not listed here keep the flat default.
+_PROVIDER_COMMAND_TIMEOUT_SECONDS: dict[str, int] = {
+    "marlin.doctor.agents.run.execute": 11 * 60,
+}
+
+
+def _provider_command_timeout_seconds(command_id: str) -> int:
+    return _PROVIDER_COMMAND_TIMEOUT_SECONDS.get(command_id, _PROVIDER_TIMEOUT_SECONDS)
+
 #: Lazily populated on first invoke_provider_command call, not at import
 #: time — discovery touches disk (Marlin's home directory) and every other
 #: bridge operation must keep working with no Marlin installation present.
@@ -241,7 +255,7 @@ def _execute_provider_command(request: dict[str, Any]) -> dict[str, Any]:
             input=json.dumps(operation_request),
             capture_output=True,
             text=True,
-            timeout=_PROVIDER_TIMEOUT_SECONDS,
+            timeout=_provider_command_timeout_seconds(command_id),
             check=False,
         )
     except (OSError, subprocess.TimeoutExpired) as exc:
