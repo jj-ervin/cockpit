@@ -543,6 +543,15 @@ the Python package must stay host-agnostic. Bundle UI: an "Operator Mode"
 tile on the dashboard status bar, and a "HELM Mode" selector/history section
 on the Governance tab.
 
+**2026-08-19 correction:** "blocked on `devxtoolkit-v2-x` being Phase 0" is
+stale. `devxtoolkit-v2-x` underwent a scope-correction migration and
+gained the output-styling pillar the same day — it's `status: active`,
+`ModuleVersion 2.1.0`, 12 real exported commands, 46/46 Pester passing,
+not yet published. Quick-Bar remains unscheduled; only the stated blocking
+reason is corrected here. See `cockpit/DEV-PATH.md`'s Phase 15 Decision 2
+correction note and `dxp-org/devxtoolkit-v2-x/DEV-PLAN.md`/`DEV-PATH.md`
+for the full account.
+
 **Correction made mid-session, before any cross-repo code was written:** an
 earlier draft proposed porting `eco-vs`'s `helm.ts` implementation into
 `eco-vscode` (mirroring `CKP.08`'s Cockpit-UI extraction), reasoning from an

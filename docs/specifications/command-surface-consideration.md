@@ -78,6 +78,22 @@ the command-surface conversation so they don't get silently re-opened:
    stand-in for scope DevXToolkit should own). **Any command-surface manifest
    built now should leave a `devx` namespace stubbed, not populated.**
 
+   **2026-08-19 correction:** `devxtoolkit-v2-x` is no longer a Phase-0
+   scaffold. A scope-correction migration gave it the command-registry/
+   alias-grammar/introspection pillars `devxtoolkit-v1-x`'s v1.5/v1.6 had
+   built despite v2's own architecture brief reserving them, plus
+   `Write-DevStatus` (output styling) the same day. It is `status: active`,
+   `ModuleVersion 2.1.0`, 12 real exported commands (`Get-DevCommand`/
+   `Show-DevGrammar` for introspection into all of them), 46/46 Pester
+   passing — not yet published to GitHub/PowerShell Gallery. There is now
+   something a `devx` namespace could route to. This does not by itself
+   authorize populating the namespace — that's still a scheduling decision
+   for whoever builds the command-surface manifest — but the "nothing to
+   route to yet" reasoning above no longer holds. See
+   `dxp-org/devxtoolkit-v2-x/DEV-PLAN.md`/`DEV-PATH.md`'s "Phase 2"/
+   "Phase 3" entries and `cockpit/DEV-PATH.md`'s Phase 15 Decision 2
+   correction note for the full account.
+
 2. **LASSO has no callable surface; Cockpit's "Lasso" tab is client-only.**
    `cockpit/DEV-PATH.md:702-719` (Decision 1): the real multi-agent product is
    `c:\dev\lasso`, a separate pre-build/vision-phase repo with no engine yet.

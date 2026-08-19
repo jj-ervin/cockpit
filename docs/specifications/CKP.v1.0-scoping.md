@@ -128,6 +128,22 @@ route to yet.
 commands to launch would mean inventing scope DevXToolkit v2.x should own.
 Revisit when `devxtoolkit-v2-x` has real command definitions.
 
+**2026-08-19 correction:** the premise above is now stale.
+`devxtoolkit-v2-x` is no longer an empty Phase-0 scaffold — a scope-
+correction migration moved `devxtoolkit-v1-x`'s command-registry/alias-
+grammar/introspection pillars into it (they were built into v1.5/v1.6
+despite this repo's own architecture brief having reserved that scope for
+v2), and the same day it gained `Write-DevStatus`, the output-styling
+pillar. `devxtoolkit-v2-x` is `status: active`, `ModuleVersion 2.1.0`, 12
+real exported commands, 46/46 Pester passing — there is now something to
+route to. This does not retroactively schedule Quick-Bar as a PASS; that
+remains a prioritization call for the portfolio owner, and the module is
+still unpublished (no GitHub tag/release or PowerShell Gallery
+publication yet). It only corrects the "nothing to route to" blocking
+reason, which no longer holds. See `dxp-org/devxtoolkit-v2-x/DEV-PLAN.md`
+and `dxp-org/devxtoolkit-v2-x/DEV-PATH.md`'s "Phase 2" and "Phase 3"
+entries for the full account.
+
 ### 4. Environment setup wizard → `CKP.09.04`
 
 **Zero implementation**, but not zero prior art at the component level:
@@ -162,15 +178,17 @@ a ladder is not a specification.
 | --- | --- | --- |
 | Mode switching | Real prior art (536 lines, 3 registered PASSes) | `CKP.09.01` — extract, same playbook as `CKP.08` |
 | Diagnostics dashboard | Partially started (`CKP.08.07`) | `CKP.09.02` — investigate 3 missing data sources, then build |
-| Quick-Bar | Zero implementation, real blocker | Blocked on `devxtoolkit-v2-x` leaving Phase 0 |
+| Quick-Bar | Zero implementation, upstream blocker cleared 2026-08-19 (see correction note above) | Not blocked on `devxtoolkit-v2-x` anymore; scheduling is a prioritization call, not yet a PASS |
 | Environment setup wizard | Zero implementation, one component exists | `CKP.09.04` — build wizard shell, wire in `CKP.07` as step 1 |
 | Environment emergence UI | Undefined | Blocked on a design decision — needs definition before scoping |
 
-Three of five items are real, schedulable PASSes. Two are genuinely blocked
-on work outside Cockpit's control (`devxtoolkit-v2-x` maturity) or a decision
-only the portfolio owner can make (what "environment emergence UI" means).
-Claiming a full v1.0 estimate today would mean inventing numbers for those
-two - not done here.
+Three of five items are real, schedulable PASSes. One (environment
+emergence UI) is genuinely blocked on a decision only the portfolio owner
+can make. Quick-Bar's original blocker (`devxtoolkit-v2-x` maturity) was
+cleared 2026-08-19 — see the correction note under item 3 — but it is not
+automatically a PASS as a result; it still needs an explicit scheduling
+decision. Claiming a full v1.0 estimate today would still mean inventing
+numbers for the one item that remains genuinely undefined.
 
 ## CKP.09.05 Update — Provider Workflows, Not Authority Transfer
 

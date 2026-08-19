@@ -731,6 +731,21 @@ a permanent unofficial substitute for scope DevXToolkit v2.x should own.
 built instead, since the same scoping doc identifies it as the item with
 real, usable prior art and no external blocker.
 
+**2026-08-19 correction:** the "empty Phase-0 scaffold with nothing to
+route to" premise no longer holds. `devxtoolkit-v2-x` underwent a scope-
+correction migration the same day — it received the command-registry/
+alias-grammar/introspection pillars `devxtoolkit-v1-x`'s v1.5/v1.6 had
+built despite v2's own architecture brief having reserved them, plus
+`Write-DevStatus` (the output-styling pillar). It is now `status: active`,
+`ModuleVersion 2.1.0`, 12 real exported commands, 46/46 Pester passing —
+not published to GitHub/PowerShell Gallery yet, but no longer an empty
+scaffold. Quick-Bar is still **not scheduled** — clearing the blocker is
+not the same as scheduling the work, and that remains a prioritization
+call for the portfolio owner — but the specific reasoning above ("nothing
+to route to") is stale as of this correction. See
+`dxp-org/devxtoolkit-v2-x/DEV-PLAN.md` and `DEV-PATH.md`'s "Phase 2"/
+"Phase 3" entries for the full account.
+
 ### CKP.09.01 — Mode Switching (HELM), built entirely host-agnostic
 
 Implements the v1.0 ladder's mode-switching item. `EcoAdapter` gains a
@@ -1356,6 +1371,13 @@ Quick-Bar and "environment emergence UI" remain the two blocked v1.0
 ladder items (upstream `devxtoolkit-v2-x` still Phase 0; the design itself
 still undefined). v1.0 is now 3-of-5 real; those two remain genuinely
 outside Cockpit's control.
+
+**2026-08-19 correction:** `devxtoolkit-v2-x`'s "still Phase 0" status
+above is stale — see the correction note under Phase 15's Decision 2 for
+the full account. It is now `status: active`, v2.1.0, 12 real commands.
+"Environment emergence UI" is unaffected by this correction and remains
+blocked on its own undefined-design issue.
+
 ## cockpit-provider-v1 — Contract and Trusted Registry Foundation (2026-07-11)
 
 Defined the portable provider boundary as code rather than a Marlin-specific
