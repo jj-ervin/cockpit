@@ -274,6 +274,68 @@
           <pre class="wizard-result" id="agent-roster-last-result"></pre>
         </section>
       </div>
+
+      <section class="panel">
+        <div class="panel-header wrap">
+          <div>
+            <p class="eyebrow">INIT.30.08</p>
+            <h2>Agent run</h2>
+          </div>
+        </div>
+        <p class="panel-note">Runs a launchable agent CLI against a staged copy of the selected repository, never the live target. Requires "Assess health" above and a listed agent template before planning.</p>
+        <form class="form-grid" id="agent-run-request-form">
+          <label>Agent
+            <select id="agent-run-agent-id"></select>
+          </label>
+          <label>Mode
+            <select id="agent-run-mode">
+              <option value="analyze">analyze (read-only)</option>
+              <option value="propose">propose (staged changes only)</option>
+            </select>
+          </label>
+          <label class="full">Goal
+            <textarea id="agent-run-goal" rows="3" placeholder="What should this agent do?"></textarea>
+          </label>
+          <div class="full">
+            <span class="eyebrow">Permitted capabilities</span>
+            <div class="checkbox-grid" id="agent-run-capabilities"></div>
+          </div>
+          <div class="full">
+            <span class="eyebrow">Selected findings (from the last health assessment)</span>
+            <div class="checkbox-grid" id="agent-run-findings"></div>
+          </div>
+          <div class="button-row full">
+            <button id="agent-run-plan" type="submit">Plan run</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="panel" id="agent-run-plan-panel" hidden>
+        <div class="panel-header wrap">
+          <h2>Plan review</h2>
+          <span id="agent-run-plan-expiry">-</span>
+        </div>
+        <p class="panel-note" id="agent-run-plan-summary"></p>
+        <dl class="metadata-list" id="agent-run-plan-details"></dl>
+        <div class="panel-header"><h2>Included-file manifest</h2><span id="agent-run-manifest-count">0 files</span></div>
+        <div class="table-shell">
+          <table>
+            <thead><tr><th>Path</th><th>Digest</th><th>Size</th></tr></thead>
+            <tbody id="agent-run-manifest-table"></tbody>
+          </table>
+        </div>
+        <div class="button-row">
+          <button id="agent-run-execute" type="button" disabled>Approve and execute</button>
+          <button id="agent-run-discard-plan" type="button" disabled>Discard plan</button>
+        </div>
+      </section>
+
+      <section class="panel" id="agent-run-result-panel" hidden>
+        <div class="panel-header"><h2>Run result</h2><span id="agent-run-result-status">-</span></div>
+        <dl class="metadata-list" id="agent-run-result-details"></dl>
+        <div class="panel-header"><h2>Staged changes</h2></div>
+        <div class="list" id="agent-run-staged-changes"></div>
+      </section>
     </section>
 
     <section class="tab-panel" id="runs">
