@@ -1253,3 +1253,37 @@ audits, registered operations, or agent probes.
 
 Validation: browser smoke 18/18, host-web 33/33, and
 `node --check web/cockpit.js` clean.
+
+## Cross-Repo Note — Marlin Audit Demo Gaps Fixed (2026-08-20)
+
+**Closed:** 2026-08-20 under `marlin` RUN work and a governance-commons RUN
+(`gc-play-2026-08-20-001`), not Cockpit-owned code.
+
+A live Playwright-driven run of this repo's own `host-web` against
+`c:\dev\marlin` proved the discover→validate→remediate→approve→execute→
+verify→evidence-export mechanism genuinely works end to end (real browser,
+real subprocess, real downloaded evidence bundle), but surfaced three gaps
+in the Marlin/GC-AUDIT machinery underneath it, all now fixed:
+
+1. `marlin provider register-self` was implemented but never wired into
+   the built `marlin` CLI — fixed in `marlin/packages/marlin-dxp/src/
+   index.ts` (see `marlin/DEV-PLAN.md`).
+2. `marlin`'s own `PLAY.jsonl` had two structural bugs and an 18-record
+   required-checks non-conformance, corrected/documented under an
+   authorized CI-30 exception (see `marlin/DEV-PLAN.md` and
+   `marlin/PLAY.jsonl`'s `mrl-play-2026-08-20-001`).
+3. `gc-audit.verify` (the `verify` stage of this repo's own stated
+   7-stage chain) was a registered-but-`planned` stub, always returning
+   `not-implemented`. Activated in `governance-commons/GC-AUDIT-REGISTRY.
+   yaml` under its own authorized tooling PLAY (DEV-ACCORD-CI-43;
+   `governance-commons/PLAY.jsonl`'s `gc-play-2026-08-20-001`) — new
+   meaning: confirm a normalize apply actually took effect, by re-running
+   `validate-bootstrap`/`validate-planning`/`validate-pointers`. No Cockpit
+   code changes required; the fix is entirely in the registry and provider
+   layers Cockpit already calls through.
+
+Net effect: the Marlin Audit panel's `verify` stage now returns real
+pass/fail results instead of always failing, closing the gap the original
+demo surfaced. No changes to `web/cockpit.js`, `web/cockpit.html`, or
+`host-web/` were needed — this cross-reference exists because the finding
+came from exercising Cockpit's own UI, not because Cockpit's code changed.
