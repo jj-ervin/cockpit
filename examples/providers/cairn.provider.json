@@ -1,0 +1,53 @@
+{
+  "schema_version": "cockpit-provider-v1",
+  "id": "cairn",
+  "name": "Cairn",
+  "version": "0.1.6",
+  "description": "Agent-assisted schema planning and zero-trust data entry for Cairn's local-first operational registry.",
+  "transport": { "kind": "stdio-json", "protocol": "cockpit-provider-v1" },
+  "commands": [
+    {
+      "id": "cairn.schema.propose",
+      "title": "Propose a schema change",
+      "action": "schema.propose",
+      "mutation": false,
+      "placements": ["view"]
+    },
+    {
+      "id": "cairn.schema.apply",
+      "title": "Apply a proposed schema change",
+      "action": "schema.apply",
+      "mutation": true,
+      "requires_confirmation": true,
+      "placements": ["view"]
+    },
+    {
+      "id": "cairn.entry.tables",
+      "title": "List writable tables",
+      "action": "entry.tables",
+      "mutation": false,
+      "placements": ["view"]
+    },
+    {
+      "id": "cairn.entry.add",
+      "title": "Add a row",
+      "action": "entry.add",
+      "mutation": true,
+      "requires_confirmation": true,
+      "placements": ["view"]
+    },
+    {
+      "id": "cairn.entry.import",
+      "title": "Import rows from CSV",
+      "action": "entry.import",
+      "mutation": true,
+      "requires_confirmation": true,
+      "placements": ["view"]
+    }
+  ],
+  "views": [
+    { "id": "cairn.workspace", "title": "Cairn", "kind": "workspace", "placement": "primary" }
+  ],
+  "capabilities": ["read", "write"],
+  "permissions": []
+}

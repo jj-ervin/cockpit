@@ -51,6 +51,7 @@
       <button class="tab" type="button" data-tab="wizard">Setup Wizard</button>
       <button class="tab" type="button" data-tab="workspace-tab">Workspace</button>
       <button class="tab" type="button" data-tab="niji">Niji</button>
+      <button class="tab" type="button" data-tab="cairn">Cairn</button>
       <button class="tab" type="button" data-tab="lasso">Compose Scratchpad</button>
     </nav>
 
@@ -547,6 +548,48 @@
       </section>
     </section>
 
+    <section class="tab-panel" id="cairn">
+      <section class="panel">
+        <div class="panel-header">
+          <h2>Cairn — Plan</h2>
+          <span id="cairn-plan-status">Not run</span>
+        </div>
+        <p>Proposes a schema change via Cairn's agent loop (table/column names only, never row data) through the real Marlin-discovered <code>cairn</code> provider. Nothing is written until you approve.</p>
+        <div class="button-row">
+          <textarea id="cairn-plan-need" rows="2" placeholder="Describe the schema change you need, in plain language"></textarea>
+        </div>
+        <div class="button-row">
+          <button id="cairn-plan-propose" type="button">Propose plan</button>
+          <button id="cairn-plan-approve" type="button" disabled>Approve and apply</button>
+          <button id="cairn-plan-discard" type="button" disabled>Discard</button>
+        </div>
+        <dl class="metadata-list" id="cairn-plan-summary"></dl>
+        <ul id="cairn-plan-checks"></ul>
+      </section>
+      <section class="panel">
+        <div class="panel-header">
+          <h2>Cairn — Entry</h2>
+          <span id="cairn-entry-status">-</span>
+        </div>
+        <p>Insert-only data entry against any existing table via Cairn's zero-trust <code>data_entry.py</code> surface — no schema access, no raw SQL.</p>
+        <div class="button-row">
+          <select id="cairn-entry-table"></select>
+          <button id="cairn-entry-refresh-tables" type="button">Refresh tables</button>
+        </div>
+        <div id="cairn-entry-fields"></div>
+        <div class="button-row">
+          <button id="cairn-entry-add" type="button" disabled>Add row</button>
+        </div>
+        <div class="button-row">
+          <textarea id="cairn-entry-csv" rows="3" placeholder="CSV text (header row required) to bulk import into the selected table"></textarea>
+        </div>
+        <div class="button-row">
+          <button id="cairn-entry-import" type="button" disabled>Import CSV</button>
+        </div>
+        <div id="cairn-entry-result"></div>
+      </section>
+    </section>
+
     <section class="tab-panel" id="workspace-tab">
       <section class="panel">
         <div class="panel-header wrap">
@@ -656,6 +699,19 @@
         <div class="button-row">
           <button id="agent-cancel-approval" type="button">Cancel</button>
           <button id="agent-confirm-approval" type="button" disabled>Approve and execute</button>
+        </div>
+      </div>
+    </section>
+    <section class="approval-overlay" id="cairn-approval-dialog" role="dialog" aria-modal="true" aria-labelledby="cairn-approval-title" hidden>
+      <div class="approval-dialog">
+        <p class="eyebrow">Human approval required</p>
+        <h2 id="cairn-approval-title">Approve this Cairn action?</h2>
+        <p>This action writes to Cairn's registry (a new migration file, or a new/imported row). Approval is bound to the exact provider, command, and input shown below.</p>
+        <dl class="metadata-list" id="cairn-approval-scope"></dl>
+        <label class="approval-check"><input id="cairn-approval-check" type="checkbox"> I approve this exact Cairn action.</label>
+        <div class="button-row">
+          <button id="cairn-cancel-approval" type="button">Cancel</button>
+          <button id="cairn-confirm-approval" type="button" disabled>Approve and execute</button>
         </div>
       </div>
     </section>
