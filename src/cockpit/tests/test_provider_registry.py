@@ -119,17 +119,6 @@ def test_real_marlin_installed_provider_stdio_roundtrip(tmp_path: Path) -> None:
     cockpit-operation-request-v1 to the installed niji-provider.exe over stdio.
     Proves stranger-install, attestation/digest agreement, and a real spawn —
     not a fixture standing in for any of the three.
-
-    Known current failure (2026-08-21, tracked separately, not a bug in this
-    test or in Cockpit): `marlin install niji` on Windows arm64 still fails
-    here even after marlin-registry's niji manifest was corrected to declare
-    windows/arm64 support, because the `marlin` package's own bundled local
-    dev-registry snapshot (packages/marlin/registry/manifests/niji.yaml,
-    inside the private `marlin` repo, distinct from the public
-    `marlin-registry`) still has the old flat x64-only shape and is consulted
-    by the real CLI's install path before the hosted registry. See
-    marlin-registry commit a38f9c7 for the registry-side fix and its
-    documented follow-up. Fixing the shadowing itself is out of scope here.
     """
     marlin_cli = os.environ["COCKPIT_REAL_PROVIDER_SMOKE_MARLIN_CLI"]
     home = tmp_path / "isolated-home" / "AppData" / "Roaming"
