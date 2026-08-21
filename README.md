@@ -7,6 +7,23 @@ approves escalations.
 This standalone repo now owns the Phase 1 Python package boundary for Cockpit.
 The VS Code host consumes that package through a read-only JSON bridge.
 
+## Reusable App Shell Platform
+
+Cockpit is also a reusable app shell: it provides shared navigation, command
+palette, settings, approvals, artifacts, theming, provider discovery, and common
+UI components while each product supplies its own domain UI. A product can run as
+a Cockpit-hosted panel, reuse the shell as a separately branded app, integrate
+more deeply with eco, or expose a lightweight provider without a custom domain
+panel.
+
+Cockpit owns the frame and trust UI; providers own their commands, domain data,
+and mutations. The platform boundary, current proof cases, and open gaps live in
+[`docs/specifications/cockpit-platform-boundary.md`](docs/specifications/cockpit-platform-boundary.md).
+The concise platform framing is in
+[`docs/specifications/cockpit-shell-platform-design-note.md`](docs/specifications/cockpit-shell-platform-design-note.md),
+and the portable provider contract is
+[`docs/specifications/cockpit-provider-v1.md`](docs/specifications/cockpit-provider-v1.md).
+
 Current package surfaces:
 
 - `src/cockpit/core/adapter.py` - adapter contract and result envelope

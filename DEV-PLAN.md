@@ -1472,8 +1472,8 @@ executable or a resolved `args` entry) and requires `statSync(...)
 .isFile()` before accepting it. New tests: two `manifest.test.ts`
 parser cases (empty string, non-string), two `provider-attestation.
 test.ts` installer cases (in-package but unrelated target; target that
-is a directory). Full suites re-verified green after this pass: 27
-`manifest.test.ts` + 9 `provider-attestation.test.ts` + 2
+is a directory). Full suites re-verified green after this pass: 25
+`manifest.test.ts` + 7 `provider-attestation.test.ts` + 2
 `selfProvider.test.ts` focused, then the full 389 Marlin/marlin-dxp
 vitest suite and both packages' `tsc --noEmit`, both repos'
 `git diff --check` clean. Codex's independent validation on the prior
@@ -1486,3 +1486,225 @@ and Entry (data entry) surfaces only, reusing Cairn's existing safe
 CLI logic (`schema_agent.py`, `data_entry.py`). Vault mediation and
 broader AI-in-UI work explicitly deferred to a separate checkpoint per
 the user's own sequencing, not bundled into this first slice.
+
+## Cairn's First Cockpit Provider Slice: Plan + Entry (2026-08-21)
+
+Built exactly the slice scoped above, reusing the existing generic
+`cockpit-provider-v1` path end to end (host_bridge.py's
+`invoke_provider_command` dispatch, host-web's `actions.js`/
+`bridgeClient.js`, the browser's `invokeProviderCommand` message type) —
+no changes to any of that generic plumbing beyond one timeout entry (see
+below). Both new UI surfaces live in one `cairn.provider.json` manifest
+(five commands: `cairn.schema.propose`/`cairn.schema.apply`,
+`cairn.entry.tables`/`cairn.entry.add`/`cairn.entry.import`) served by a
+new stdio entry point in the Cairn repo, `scripts/provider.py`, which
+calls straight into `schema_agent.py`'s and `data_entry.py`'s existing
+stage functions rather than reimplementing anything.
+
+**The propose/apply split.** `schema_agent.py`'s own CLI human checkpoint
+(`agent_loop.confirm`, a blocking `input()` prompt) cannot survive inside
+a single stdio request/response round trip, so Plan is two commands:
+`cairn.schema.propose` runs ORCA → KORE → Echo-pro and returns the plan
+`pending-approval`, writing nothing; `cairn.schema.apply` re-derives
+context fresh, then runs EDGE → Echo-ref against the same plan the human
+approved via Cockpit's own `requires_confirmation` + bound-approval
+mechanism (the UI's existing audit/doctor/agent approval-dialog pattern,
+reused as-is for a third time — one shared `#cairn-approval-dialog`
+serves all three of Cairn's mutating commands rather than adding a
+fourth near-identical dialog). If Echo-ref's post-write dry run reports a
+failure, `apply` removes the migration file it just wrote before
+returning `failed` — an automatic version of `schema_agent.py`'s own
+`LoopAborted` cleanup for a declined Echo-ref result, chosen over a
+second approval round trip since the human already approved once at
+propose time and Cockpit's protocol has no notion of "provisionally
+written, needs a second look."
+
+**A necessary producer-side refactor.** `data_entry.py`'s `insert_row`
+originally called `die()` (`sys.exit(1)`) on a rejected insert — fine
+for a one-shot CLI process, fatal for a long-lived stdio provider
+process that must survive a rejected write to answer the next request.
+`insert_row` now raises `ValueError` instead; `cmd_add` catches it and
+still calls `die()` to preserve the CLI's exact prior behavior. The same
+shape was extracted into a new `import_rows(con, table, csv_text)`
+function shared by `cmd_import` (file-based, CLI) and the provider's
+`entry.import` command (string-based, since CSV content arrives as a
+JSON string over stdio, not a file path) — same fail-closed validation,
+same one-transaction-per-import discipline, in one place instead of two.
+Four of `data_entry.py`'s own existing tests asserted `SystemExit` from
+calling `insert_row` directly; updated to assert `ValueError` (the CLI
+contract itself, tested through `cmd_add`/`cmd_import`, is unchanged and
+now has an explicit test for the die()-wrapping too, since it used to be
+implicit in `insert_row`'s own behavior).
+
+**Long-running command timeout.** `cairn.schema.propose` calls out to an
+LLM (KORE); `agent_loop.py` documents a real local-CPU-only Ollama call
+measured at 205s. The flat 30s default in both `host_bridge.py`'s
+`_PROVIDER_COMMAND_TIMEOUT_SECONDS` and `actions.js`'s
+`LONG_RUNNING_PROVIDER_COMMAND_TIMEOUT_MS` would have killed the
+provider process mid-call on every real invocation; both now carry a
+360s entry for this command, mirroring the existing
+`marlin.doctor.agents.run.execute` pattern.
+
+**Real Marlin packaging — resolved after a Codex NO-GO.** A first Codex
+review (before any of this was committed) caught three real gaps:
+
+1. **Not installable/discoverable.** The paragraph above described this
+   gap accurately but didn't solve it — no `provider:` stanza on
+   `cairn/marlin.pkg.yaml`, no Marlin registry entry, and the shipped
+   `v0.1.5` artifact predated the manifest entirely. Fixed for real, not
+   worked around: added `cairn-provider.spec` (mirrors
+   `niji-provider.spec` exactly — a compiled `cairn-provider.exe` is the
+   one deliberate exception to Cairn's stdlib-only CLI, since Marlin's
+   `issueProviderAttestation` requires a real, in-package, hashable
+   executable that a bare system Python interpreter can never be).
+   `build_release.py` now bundles `providers/cairn.provider.json` and
+   whatever `pyinstaller cairn-provider.spec` produced into the release
+   zip under `providers/`/`provider/`, matching Niji's layout exactly.
+   Cairn bumped to `v0.1.6`; `marlin.pkg.yaml` carries
+   a real `provider:` stanza (Windows only — no darwin/linux provider
+   build exists or is claimed, same verification boundary the rest of
+   the file already had) with the real rebuilt artifact's sha256. Cairn
+   is now registered in Marlin's bundled registry
+   (`registry/manifests/cairn.yaml` + `registry/index.yaml`), mirroring
+   Niji's own entry — `lookupPackage('cairn')` genuinely resolves it.
+   **Verified locally, not just asserted:** built the real
+   `cairn-provider.exe`, ran it directly with a real stdio request
+   (real result back); extracted the real `dist/cairn-0.1.6.zip` (same
+   `Expand-Archive` command `marlin.pkg.yaml`'s own install step runs)
+   and called the real `issueProviderAttestation()` against the real
+   extracted files — new opt-in test
+   `marlin/packages/marlin/tests/cairn-real-artifact.test.ts` does
+   exactly this and then runs the real compiled provider, asserting a
+   real `succeeded` result. The one remaining step this doesn't cover,
+   deliberately not done here: actually publishing a `v0.1.6` GitHub
+   release is a real, external, hard-to-reverse action outside what an
+   agent should do unilaterally — flagged for the user, not worked
+   around.
+2. **No Cairn browser integration test.** This claim was checked against
+   the live tree and was false at review time —
+   `src/cockpit/tests/test_provider_browser_cairn.py` already existed
+   and passed (2/2) before this NO-GO landed. Strengthened anyway, since
+   the underlying concern (prove the full install/discover → Plan →
+   Entry workflow, not just a hand-typed fixture) was legitimate and
+   worth exceeding: added a third, opt-in **real-provider** test
+   (`test_browser_entry_add_via_real_provider`, mirroring
+   `test_provider_browser_niji.py`'s own fixture-vs-real split) that
+   discovers the actual compiled `cairn-provider.exe` via a hand-built
+   attestation (real file hashes, same convention Niji's own real-provider
+   test uses) and drives a real refresh-tables → fill → approve → add
+   round trip against real migrated schema. Plan's real-provider path
+   isn't exercised the same way — `cairn.schema.propose` calls a real
+   LLM, which would make a standing test flaky/slow/network-dependent —
+   so Plan's real-provider correctness is covered by
+   `cairn-real-artifact.test.ts` (Marlin side) and
+   `tests/test_provider.py`'s direct `process_request()` tests (`call_llm`
+   stubbed) instead; the two fixture-based browser tests still cover
+   Plan's full UI/approval-dialog flow end to end.
+3. **Fresh pre-write checks computed and ignored.** Real, fixed:
+   `cairn.schema.apply` now requires the caller to echo back the exact
+   `checks` list `cairn.schema.propose` returned, recomputes
+   `echo_pro_checks()` fresh against current schema state, and rejects
+   apply as `stale-proposal` if they differ — the human approved *that
+   specific list of concerns*; if the schema moved under the plan between
+   propose and apply, re-proposing is required rather than silently
+   writing under a different (possibly worse) set of checks than the one
+   actually reviewed. `web/cockpit.js`'s approve handler now sends
+   `checks` alongside `plan` in the bound approval input.
+
+**High, also fixed:** `scripts/provider.py` only converted `TypeError`/
+`ValueError` into result envelopes — an LLM/network failure, a SQLite
+error, or a filesystem failure could crash the process instead of
+returning a valid result. Now also catches `RuntimeError` (LLM/network,
+mapped to `agent-unavailable`), `sqlite3.Error` (`database-error`), and
+`OSError` (`filesystem-error`). Fixing this surfaced a real, pre-existing
+secret-leak bug while writing the RuntimeError test: `agent_loop.py`'s
+`_call_gemini` embeds the API key directly in the request URL
+(`?key=...`, unlike Anthropic/OpenAI's header-based auth), and
+`_post_json`'s own failure message embedded that raw URL — previously
+only reaching a human's own terminal stderr via the CLI, now reachable
+through a UI panel via `provider.py`'s new structured-failure path,
+meaningfully widening the exposure. Fixed at the source
+(`agent_loop._redact_url`, strips the query string before it can reach
+any error message) with a test asserting the key never appears in the
+raised exception.
+
+**Tests added**, all passing: in `cairn` — 17 + 5 new
+`tests/test_provider.py` cases (dispatch/validation, both Plan commands
+including the dry-run-failure rollback and the new stale-proposal
+rejection, both Entry mutating commands, the three new structured-failure
+codes, plus a real-subprocess smoke test), `tests/test_data_entry.py`
+updated (4 tests moved from asserting `SystemExit` to `ValueError`, one
+new CLI-level die() test, 3 new `import_rows()`-direct tests), and one
+new `tests/test_agent_loop.py` redaction test — full Cairn suite 130/130
+passing. In `marlin` — new opt-in `tests/cairn-real-artifact.test.ts`
+(real zip → real attestation → real compiled provider) — full
+`packages/marlin` suite 85/85, `packages/marlin-dxp` 262/262, both
+packages' `tsc --noEmit` clean. In `cockpit` — `examples/providers/
+cairn.provider.json` re-synced to `v0.1.6` (schema-validated), and
+`src/cockpit/tests/test_provider_browser_cairn.py` now three tests (two
+fixture-based, one real-provider) — full Cockpit Python suite 188
+passed/1 skipped, full `host-web` `node --test` suite 36/36 passed, all
+three repos' `git diff --check` clean.
+
+**A third Codex pass caught the release pipeline itself was fail-open:**
+`cairn/scripts/build_release.py` would silently produce a "CLI-only"
+zip when the compiled provider was missing, even though
+`marlin.pkg.yaml` unconditionally declared a `provider:` stanza — a
+valid-looking release Marlin couldn't actually install a provider from.
+Also flagged: the real-artifact test derived its "expected" checksum by
+hashing the zip itself, which proves nothing about whether either
+manifest's *declared* checksum is correct. Both fixed on the Cairn/
+Marlin side (`build_release.py` now refuses to build at all if a
+declared `provider:` stanza can't be satisfied or the version doesn't
+match; new `cairn/scripts/verify_release.py` mandatory gate confirms the
+built zip's real hash matches both `marlin.pkg.yaml`'s and Marlin's own
+registry manifest's declared checksums; `cairn-real-artifact.test.ts`
+now asserts against both declared values before trusting the digest) —
+no changes needed on the Cockpit side for this round. Full detail in
+`cairn/DEV-PLAN.md`'s matching entry.
+
+**A fourth Codex pass asked the stale-artifact hole be closed
+mechanically, not just detected.** `build_release.py` now runs the
+PyInstaller compile itself as one atomic step (clean, into a throwaway
+temp directory — `dist/cairn-provider/` no longer persists at all),
+writes a `provider/BUILD-MANIFEST.json` source fingerprint into the zip,
+and only atomically replaces the previous release archive once
+everything has fully succeeded — a failed build leaves the prior good
+zip byte-for-byte untouched. `verify_release.py` now byte-compares every
+packaged source file against the current workspace, schema-validates the
+archived provider manifest, and rejects an executable whose recorded
+build fingerprint no longer matches current source. This repo's own real
+`cairn-provider.exe` fixture test
+(`src/cockpit/tests/test_provider_browser_cairn.py`) needed one change to
+match: it now extracts the compiled provider straight out of the real
+zip instead of a loose `dist/cairn-provider/` directory that no longer
+exists — full detail (including the 13 new regression tests covering
+stale source, a stale archived manifest, failed-build preservation, and
+version/checksum mismatch) in `cairn/DEV-PLAN.md`'s matching entry.
+
+**Next:** stop here for Codex review, as scoped. Vault mediation, broader
+AI-in-UI work, and actually publishing the `v0.1.6` GitHub release remain
+explicitly out of scope / not done here. Marlin's registry update stays
+local and uncommitted — not pushed until the real release exists and a
+clean `marlin install cairn` succeeds against it.
+
+## 2026-08-21 — CHIPP cross-host integration playbook recorded (discussion draft)
+
+Added `docs/CHIPP.md`: **CHIPP — Cross-Host Integration, Packaging, and
+Proof**, a host-neutral discussion draft derived from the Marlin, Niji,
+and Cairn integration work. Cockpit is the first profile
+(`CHIPP-Cockpit`), not a dependency of the core playbook. The existing
+`cockpit-provider-v1` contract and platform-boundary documents remain
+authoritative; CHIPP does not create execution authority or a new release
+gate.
+
+The draft records eight items for explicit further discussion and
+development: separate provider/host/install/release proof boundaries;
+preserve host-versus-domain ownership; standardize two-phase AI mutation;
+return expected failures as structured data; treat installation metadata
+as executable behavior; verify integrity at final use; require artifact
+provenance beyond checksums; and treat cross-repository release sequencing
+as part of correctness. It also records open questions, the initial
+CHIPP-Cockpit responsibility split, candidate profiles, and a possible
+future conformance kit. No conformance tooling or new normative policy was
+implemented in this documentation-only step.
