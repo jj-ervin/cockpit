@@ -334,6 +334,8 @@ def fake_provider(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
         "manifest_digest": "sha256:" + hashlib.sha256(manifest_path.read_bytes()).hexdigest(),
         "package_digest": None,
         "executable": sys.executable,
+        "executable_digest": "sha256:" + hashlib.sha256(script.read_bytes()).hexdigest(),
+        "executable_digest_target": str(script),
         "args": [str(script)],
         "installed_at": "2026-08-05T00:00:00Z",
         "installed_by": "marlin",
@@ -359,6 +361,35 @@ def test_invoke_provider_command_round_trips_through_real_stdio_spawn(fake_provi
     assert result["status"] == "succeeded"
     assert result["provider_id"] == "fake"
     assert result["data"]["echo"] == {"hello": "world"}
+
+
+def test_invoke_provider_command_rejects_and_never_spawns_when_tampered_after_registration(
+    fake_provider: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The core TOCTOU fix: the registry is built once and reused across
+    calls (`_get_provider_registry`'s module-level cache), so registration
+    alone cannot catch a file swapped afterward. verify_integrity() must run
+    immediately before every spawn — proven here by a spy that would record
+    a call if subprocess.run were ever reached, and never does."""
+    spawned = False
+
+    def spy_run(*_args: object, **_kwargs: object) -> None:
+        nonlocal spawned
+        spawned = True
+        raise AssertionError("subprocess.run must not be called for a tampered provider")
+
+    monkeypatch.setattr(host_bridge_module.subprocess, "run", spy_run)
+    fake_provider.write_text("import sys; sys.exit(1)  # tampered after registration\n", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="modified after registration"):
+        execute({
+            "backend": "fake",
+            "workspace_id": "ws-1",
+            "operation": "invoke_provider_command",
+            "command_id": "fake.read",
+            "input": {},
+        })
+    assert spawned is False
 
 
 def test_provider_command_timeout_seconds_maps_agent_run_execute_to_a_longer_budget() -> None:

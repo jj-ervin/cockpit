@@ -249,6 +249,12 @@ def _execute_provider_command(request: dict[str, Any]) -> dict[str, Any]:
         # every field above is already validated individually.
         raise AssertionError(f"constructed provider request failed schema validation: {exc.message}") from exc
 
+    # Registration only proves the executable was intact at discovery time —
+    # the registry is built once and reused for the life of this process, so
+    # a file swapped afterward would otherwise go unnoticed. Re-verify right
+    # before every spawn, not just once at startup.
+    provider.verify_integrity()
+
     try:
         completed = subprocess.run(
             [str(provider.executable), *provider.args],

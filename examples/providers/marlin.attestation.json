@@ -5,7 +5,12 @@
   "manifest_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
   "package_digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
   "executable": "C:/Program Files/Marlin/marlin.exe",
-  "args": ["provider", "--stdio"],
+  "executable_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+  "executable_digest_target": "C:/Program Files/Marlin/marlin.exe",
+  "args": [
+    "provider",
+    "--stdio"
+  ],
   "installed_at": "2026-07-11T00:00:00Z",
   "installed_by": "marlin",
   "signature": null

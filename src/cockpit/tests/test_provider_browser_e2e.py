@@ -99,6 +99,8 @@ def _install_marlin_provider(home: Path) -> None:
         "manifest_digest": "sha256:" + hashlib.sha256(manifest_bytes).hexdigest(),
         "package_digest": None,
         "executable": str(Path(node).resolve()),
+        "executable_digest": "sha256:" + hashlib.sha256(MARLIN_PROVIDER.read_bytes()).hexdigest(),
+        "executable_digest_target": str(MARLIN_PROVIDER.resolve()),
         "args": [str(MARLIN_PROVIDER.resolve())],
         "installed_at": "2026-08-05T00:00:00Z",
         "installed_by": "marlin",

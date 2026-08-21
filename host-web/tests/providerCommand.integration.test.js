@@ -71,6 +71,8 @@ function installFakeProvider(marlinHome) {
     manifest_digest: manifestDigest,
     package_digest: null,
     executable: COCKPIT_PYTHON,
+    executable_digest: `sha256:${crypto.createHash('sha256').update(fs.readFileSync(scriptPath)).digest('hex')}`,
+    executable_digest_target: scriptPath,
     args: [scriptPath],
     installed_at: '2026-08-05T00:00:00Z',
     installed_by: 'marlin',

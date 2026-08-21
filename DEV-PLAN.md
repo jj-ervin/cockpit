@@ -1366,3 +1366,123 @@ machine's arm64 even though the underlying binary and manifest are
 now both correct. Needs a separately-authorized fix in the `marlin`
 repo if/when the real published CLI needs to install niji on arm64
 end-to-end.
+
+## Provider-Executable Integrity Gap — Closed After Codex Review (2026-08-21)
+
+Closes the open gap admitted in `CKP.17.00`'s closure above (line ~903):
+`package_digest` only ever covered the pre-extraction install archive,
+never the extracted `executable` — a provider binary swapped after
+Marlin installed it would register without complaint. Named as the
+precondition to adding any new Cockpit provider in the root
+`c:\dev\DEV-PLAN.md`'s 2026-08-19 Cockpit/Marlin/vault scoping entry,
+and picked as the first step toward the user's actual current goal:
+Cairn installed, with a Cockpit-hosted UI, using its existing AI
+features — a new provider was about to be added, and it deserved to
+land on top of a closed gap, not the same one this file already
+confessed to.
+
+**First pass, then an independent Codex review found three real gaps
+in it before this was committed** — recorded here as one entry since
+nothing had landed yet, not as a correction to committed history:
+
+1. **TOCTOU: verified only at registration, not at spawn.**
+   `ProviderRegistry.register()` hashed the file once; `host_bridge.py`
+   then spawns the cached `provider.executable`/`args` on every later
+   command through a module-level registry singleton
+   (`_get_provider_registry`) that lives for the process's lifetime. A
+   file swapped after registration, before first use, would still run.
+2. **The "last arg is the script" heuristic wasn't a valid generic
+   contract.** `node provider.js --stdio` would hash `--stdio`, not the
+   script. Also, `Path.resolve(strict=True)` on a bad target raised an
+   uncaught `FileNotFoundError` that `discover_providers`'s `except
+   ProviderRegistrationError` didn't catch — one broken provider could
+   have taken discovery down for every other provider too.
+3. **The digest was unauthenticated.** `signature` is always null,
+   so anyone able to replace the executable can equally replace
+   `attestation.json` with a matching digest. The original write-up
+   overstated this as closing a "tamper-detection" gap; it only ever
+   detected accidental drift, not a compromised local write path.
+
+Fixes, all landed before anything was committed:
+
+- **(1)** `RegisteredProvider` now carries `integrity_target` and
+  `executable_digest` and exposes `verify_integrity()`;
+  `host_bridge.py`'s `_execute_provider_command` calls it immediately
+  before every `subprocess.run`, not just once at registration.
+- **(2)** Replaced the positional heuristic with an explicit
+  `executable_digest_target` attestation field — never inferred from
+  `args` position. `manifest.ts` gained `ProviderRuntime.
+  integrityTarget` (defaults to `executable`, overridable for an
+  interpreter+script runtime); `installer.ts` resolves it, enforces the
+  same install-root containment check already applied to
+  manifest/executable, and requires it to exist. `selfProvider.ts` sets
+  it explicitly to `providerScript` with its own containment assertion.
+  Cockpit's `provider_registry.py` now reads the explicit field,
+  requires it to equal `executable` or a declared `args` entry (so an
+  attestation can't claim to verify an unrelated file), and wraps
+  resolve/read in `except OSError` so a bad target becomes an ordinary
+  `ProviderRegistrationError` — discovery isolation restored.
+- **(3)** Threat model corrected everywhere it's described (schema
+  field description, `provider_registry.py`'s comment, this entry):
+  this is unauthenticated post-install integrity/drift detection, not
+  tamper-detection against a fully compromised write path. Real
+  authentication needs Marlin to sign `attestation.json` with a key
+  Cockpit verifies — not implemented, not implied, a distinct future
+  PASS. `test_documents_narrowed_threat_model_unauthenticated_digest`
+  records this limitation as an explicit, honest test rather than
+  letting it pass silently as "secure."
+
+New adversarial tests per the review's ask: post-registration swap
+caught by `verify_integrity()` (`test_provider_registry.py`) and by a
+`subprocess.run` spy proving it's never called
+(`test_host_bridge.py`'s `..._never_spawns_when_tampered_after_
+registration`); a normal `script + flags` command verified correctly
+via explicit target, not the old heuristic; an invalid/missing target
+converted to a clean registration error without crashing discovery
+(`test_provider_discovery.py`'s `test_broken_integrity_target_is_
+reported_not_fatal`); executable-plus-attestation replaced together
+still registers, documenting the narrowed claim rather than hiding it.
+
+Test fixtures updated across `test_provider_registry.py`,
+`test_provider_discovery.py`, `test_provider_browser_niji.py` (both
+attestations), `test_provider_browser_e2e.py`, `test_host_bridge.py`,
+`examples/providers/marlin.attestation.json`, `host-web/tests/
+providerCommand.integration.test.js`; new Marlin-side tests in
+`selfProvider.test.ts` and `provider-attestation.test.ts` (explicit
+`integrityTarget`, containment rejection, missing-target rejection).
+Full suites green: 184 Cockpit Python tests passing (1 pre-existing
+unrelated skip; a Playwright page-load timeout on an unrelated web
+bundle smoke test under load was confirmed flaky, passes alone), 385
+Marlin/marlin-dxp vitest tests.
+
+**Second Codex pass (2026-08-21) found one more, HIGH, not blocking:**
+the fix above closed Cockpit's consumer-side gaps but left Marlin's own
+producer contract unenforced — `manifest.ts`'s `validateEntry` checked
+`provider.args` but never `provider.integrityTarget` (a hosted manifest
+could ship an empty/non-string value straight into `resolveVars`), and
+`installer.ts`'s `issueProviderAttestation` enforced containment and
+existence on the target but never required it to actually equal
+`executable` or a declared `args` entry, nor that it be a regular file
+— so Marlin could emit an attestation naming an unrelated in-package
+file that Cockpit would then correctly, but only reactively, reject.
+Fixed: `manifest.ts` now rejects an empty or non-string
+`integrityTarget` at parse time; `installer.ts` now mirrors Cockpit's
+own consumer check byte-for-byte (target must equal the resolved
+executable or a resolved `args` entry) and requires `statSync(...)
+.isFile()` before accepting it. New tests: two `manifest.test.ts`
+parser cases (empty string, non-string), two `provider-attestation.
+test.ts` installer cases (in-package but unrelated target; target that
+is a directory). Full suites re-verified green after this pass: 27
+`manifest.test.ts` + 9 `provider-attestation.test.ts` + 2
+`selfProvider.test.ts` focused, then the full 389 Marlin/marlin-dxp
+vitest suite and both packages' `tsc --noEmit`, both repos'
+`git diff --check` clean. Codex's independent validation on the prior
+round (56 Cockpit passed/1 skipped subset, Marlin 28/28, marlin-dxp
+2/2, both workspace typechecks, both `git diff --check`) plus this
+final producer-contract fix — Codex marked this **ready to commit**.
+
+**Next:** Cairn's first Cockpit provider slice — Plan (schema design)
+and Entry (data entry) surfaces only, reusing Cairn's existing safe
+CLI logic (`schema_agent.py`, `data_entry.py`). Vault mediation and
+broader AI-in-UI work explicitly deferred to a separate checkpoint per
+the user's own sequencing, not bundled into this first slice.

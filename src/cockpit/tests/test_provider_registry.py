@@ -30,6 +30,8 @@ def write_registration(tmp_path: Path) -> tuple[Path, Path, Path]:
         "manifest_digest": "sha256:" + hashlib.sha256(manifest.read_bytes()).hexdigest(),
         "package_digest": "sha256:" + hashlib.sha256(executable.read_bytes()).hexdigest(),
         "executable": str(executable.resolve()),
+        "executable_digest": "sha256:" + hashlib.sha256(executable.read_bytes()).hexdigest(),
+        "executable_digest_target": str(executable.resolve()),
         "args": [],
         "installed_at": "2026-08-05T00:00:00Z",
         "installed_by": "marlin",
@@ -65,13 +67,135 @@ def test_rejects_manifest_changed_after_attestation(tmp_path: Path) -> None:
         ProviderRegistry(ROOT / "schemas").register(manifest, attestation)
 
 
-def test_package_digest_is_not_verified_against_executable_bytes(tmp_path: Path) -> None:
-    """Documents a real, known gap, found via a real Marlin-installed attestation
-    (see provider_registry.py's comment on `package_digest`): it is the install
-    archive's digest, not the extracted executable's. Registration does not —
-    and currently cannot — detect the executable being swapped after install."""
+def test_rejects_executable_tampered_after_attestation(tmp_path: Path) -> None:
+    """`package_digest` (see provider_registry.py's comment on it) is the install
+    archive's digest, not the extracted executable's, so it can't catch this.
+    `executable_digest` closes that gap: registration must detect the
+    executable being swapped after Marlin installed it."""
     manifest, attestation, executable = write_registration(tmp_path)
     executable.write_bytes(b"tampered executable bytes")
+    with pytest.raises(ProviderRegistrationError, match="does not match its attested digest"):
+        ProviderRegistry(ROOT / "schemas").register(manifest, attestation)
+
+
+def test_rejects_legacy_attestation_missing_executable_digest(tmp_path: Path) -> None:
+    manifest, attestation, _ = write_registration(tmp_path)
+    data = json.loads(attestation.read_text(encoding="utf-8"))
+    del data["executable_digest"]
+    attestation.write_text(json.dumps(data), encoding="utf-8")
+    with pytest.raises(ProviderRegistrationError, match="Reinstall the provider"):
+        ProviderRegistry(ROOT / "schemas").register(manifest, attestation)
+
+
+def test_rejects_null_executable_digest(tmp_path: Path) -> None:
+    manifest, attestation, _ = write_registration(tmp_path)
+    data = json.loads(attestation.read_text(encoding="utf-8"))
+    data["executable_digest"] = None
+    attestation.write_text(json.dumps(data), encoding="utf-8")
+    with pytest.raises(ProviderRegistrationError, match="Reinstall the provider"):
+        ProviderRegistry(ROOT / "schemas").register(manifest, attestation)
+
+
+def test_verifies_explicit_target_for_interpreter_plus_script_command(tmp_path: Path) -> None:
+    """Mirrors marlin-dxp's self-registration shape: `executable` is a generic
+    interpreter, `args` has a real script *plus* an unrelated trailing flag —
+    proving the target comes from the attestation's explicit
+    `executable_digest_target`, never guessed as `args[-1]` (which would
+    resolve to the flag string here, not a file at all)."""
+    manifest, attestation, _ = write_registration(tmp_path)
+    script = tmp_path / "provider.js"
+    script.write_bytes(b"console.log('provider')")
+    data = json.loads(attestation.read_text(encoding="utf-8"))
+    data["args"] = [str(script.resolve()), "--stdio"]
+    data["executable_digest"] = "sha256:" + hashlib.sha256(script.read_bytes()).hexdigest()
+    data["executable_digest_target"] = str(script.resolve())
+    attestation.write_text(json.dumps(data), encoding="utf-8")
+    provider = ProviderRegistry(ROOT / "schemas").register(manifest, attestation)
+    assert provider.provider_id == "niji"
+
+    script.write_bytes(b"console.log('tampered')")
+    with pytest.raises(ProviderRegistrationError, match="does not match its attested digest"):
+        ProviderRegistry(ROOT / "schemas").register(manifest, attestation)
+
+
+def test_rejects_digest_target_not_part_of_the_spawned_command(tmp_path: Path) -> None:
+    """An attestation cannot claim to have verified some unrelated file while
+    the actually-spawned executable/args go unchecked — the target must be
+    `executable` itself or a literal entry in `args`."""
+    manifest, attestation, _ = write_registration(tmp_path)
+    decoy = tmp_path / "decoy.txt"
+    decoy.write_bytes(b"unrelated file")
+    data = json.loads(attestation.read_text(encoding="utf-8"))
+    data["executable_digest_target"] = str(decoy.resolve())
+    data["executable_digest"] = "sha256:" + hashlib.sha256(decoy.read_bytes()).hexdigest()
+    attestation.write_text(json.dumps(data), encoding="utf-8")
+    with pytest.raises(ProviderRegistrationError, match="not `executable` or a declared entry"):
+        ProviderRegistry(ROOT / "schemas").register(manifest, attestation)
+
+
+def test_rejects_nonexistent_digest_target_without_crashing(tmp_path: Path) -> None:
+    """A missing/invalid integrity target must fail as an ordinary
+    ProviderRegistrationError, not an uncaught FileNotFoundError from
+    Path.resolve(strict=True) — discover_providers only catches
+    ProviderRegistrationError, so anything else would crash discovery for
+    every other provider too, not just this broken one. `executable` itself
+    stays valid here so the failure is isolated to the target's own
+    resolve/read, not the earlier `executable.is_file()` check."""
+    manifest, attestation, _ = write_registration(tmp_path)
+    missing_script = tmp_path / "provider.js"  # declared, never created
+    data = json.loads(attestation.read_text(encoding="utf-8"))
+    data["args"] = [str(missing_script)]
+    data["executable_digest_target"] = str(missing_script)
+    attestation.write_text(json.dumps(data), encoding="utf-8")
+    with pytest.raises(ProviderRegistrationError, match="could not be read"):
+        ProviderRegistry(ROOT / "schemas").register(manifest, attestation)
+
+
+def test_rejects_digest_target_missing_when_digest_present(tmp_path: Path) -> None:
+    manifest, attestation, _ = write_registration(tmp_path)
+    data = json.loads(attestation.read_text(encoding="utf-8"))
+    del data["executable_digest_target"]
+    attestation.write_text(json.dumps(data), encoding="utf-8")
+    with pytest.raises(ProviderRegistrationError, match="Reinstall the provider"):
+        ProviderRegistry(ROOT / "schemas").register(manifest, attestation)
+
+
+def test_verify_integrity_rejects_executable_swapped_after_registration(tmp_path: Path) -> None:
+    """The core TOCTOU fix: registration alone only proves the file was
+    intact *at registration time*. A caller (host_bridge, before every
+    spawn) must call verify_integrity() again immediately before use."""
+    manifest, attestation, executable = write_registration(tmp_path)
+    provider = ProviderRegistry(ROOT / "schemas").register(manifest, attestation)
+    provider.verify_integrity()  # intact right after registration
+
+    executable.write_bytes(b"swapped after registration, before first use")
+    with pytest.raises(ProviderRegistrationError, match="modified after registration"):
+        provider.verify_integrity()
+
+
+def test_verify_integrity_rejects_executable_deleted_after_registration(tmp_path: Path) -> None:
+    manifest, attestation, executable = write_registration(tmp_path)
+    provider = ProviderRegistry(ROOT / "schemas").register(manifest, attestation)
+    executable.unlink()
+    with pytest.raises(ProviderRegistrationError, match="no longer readable"):
+        provider.verify_integrity()
+
+
+def test_documents_narrowed_threat_model_unauthenticated_digest(tmp_path: Path) -> None:
+    """Honest limitation, not a bug: `signature` is always null (see
+    installer.ts/selfProvider.ts), so this digest authenticates the
+    executable against attestation.json's own claim, not against Marlin as
+    an issuer. Anyone able to overwrite the executable can equally overwrite
+    attestation.json with a matching digest for the new bytes — registration
+    (correctly) does not detect that combined swap. This test records that
+    known, narrowed scope rather than letting it silently pass as "secure"."""
+    manifest, attestation, executable = write_registration(tmp_path)
+    tampered = b"attacker-controlled replacement binary"
+    executable.write_bytes(tampered)
+    data = json.loads(attestation.read_text(encoding="utf-8"))
+    data["executable_digest"] = "sha256:" + hashlib.sha256(tampered).hexdigest()
+    data["package_digest"] = "sha256:" + hashlib.sha256(tampered).hexdigest()
+    attestation.write_text(json.dumps(data), encoding="utf-8")
     provider = ProviderRegistry(ROOT / "schemas").register(manifest, attestation)
     assert provider.provider_id == "niji"
 

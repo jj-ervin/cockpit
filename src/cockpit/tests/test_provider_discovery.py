@@ -19,6 +19,7 @@ def _install_fixture(
     version: str,
     *,
     manifest_overrides: dict | None = None,
+    attestation_overrides: dict | None = None,
 ) -> Path:
     version_dir = marlin_home / "providers" / provider_id / version
     version_dir.mkdir(parents=True)
@@ -35,19 +36,24 @@ def _install_fixture(
     executable = version_dir / f"{provider_id}-provider.exe"
     executable.write_bytes(b"fixture executable")
 
-    attestation_path = version_dir / "attestation.json"
-    attestation_path.write_text(json.dumps({
+    attestation = {
         "schema_version": "cockpit-provider-attestation-v1",
         "provider_id": provider_id,
         "provider_version": version,
         "manifest_digest": "sha256:" + hashlib.sha256(manifest_path.read_bytes()).hexdigest(),
         "package_digest": None,
         "executable": str(executable.resolve()),
+        "executable_digest": "sha256:" + hashlib.sha256(executable.read_bytes()).hexdigest(),
+        "executable_digest_target": str(executable.resolve()),
         "args": [],
         "installed_at": "2026-08-05T00:00:00Z",
         "installed_by": "marlin",
         "signature": None,
-    }), encoding="utf-8")
+    }
+    if attestation_overrides:
+        attestation.update(attestation_overrides)
+    attestation_path = version_dir / "attestation.json"
+    attestation_path.write_text(json.dumps(attestation), encoding="utf-8")
     return version_dir
 
 
@@ -107,6 +113,29 @@ def test_mixed_release_and_prerelease_directories_do_not_crash(tmp_path: Path) -
     registry, errors = discover_providers(tmp_path, ROOT / "schemas")
     assert errors == {}
     assert registry.get("niji").manifest["version"] == "1.2.0"
+
+
+def test_broken_integrity_target_is_reported_not_fatal(tmp_path: Path) -> None:
+    """A provider attesting a digest target that no longer exists on disk
+    used to crash discovery entirely: `Path.resolve(strict=True)` raises
+    `FileNotFoundError`, which discover_providers' `except
+    ProviderRegistrationError` does not catch, so one broken provider took
+    every other provider down with it. provider_registry.register() must
+    convert that into an ordinary ProviderRegistrationError instead."""
+    missing_script = str(tmp_path / "does-not-exist.js")
+    _install_fixture(
+        tmp_path, "niji", "1.1.1",
+        # `executable` stays real (an interpreter) so the failure is isolated
+        # to the target's own resolve/read, not caught earlier by the
+        # ordinary executable-existence check.
+        attestation_overrides={"args": [missing_script], "executable_digest_target": missing_script},
+    )
+    _install_fixture(tmp_path, "other", "2.0.0")
+
+    registry, errors = discover_providers(tmp_path, ROOT / "schemas")
+    assert len(errors) == 1
+    assert "niji" in next(iter(errors))
+    assert registry.get("other").manifest["version"] == "2.0.0"
 
 
 def test_malformed_version_directory_name_is_skipped_not_fatal(tmp_path: Path) -> None:

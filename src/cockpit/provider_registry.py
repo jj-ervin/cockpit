@@ -34,6 +34,8 @@ class RegisteredProvider:
     attestation: dict[str, Any]
     executable: Path
     args: tuple[str, ...]
+    integrity_target: Path
+    executable_digest: str
 
     @property
     def provider_id(self) -> str:
@@ -46,6 +48,28 @@ class RegisteredProvider:
         raise ProviderRegistrationError(
             f"provider '{self.provider_id}' does not declare command '{command_id}'"
         )
+
+    def verify_integrity(self) -> None:
+        """Re-hashes `integrity_target` against the digest captured at
+        registration time. Registration alone only proves the file was
+        intact *then* — a caller must call this again immediately before
+        every spawn, since the file on disk can change at any point after
+        registration (the registry is typically built once and reused for
+        the life of a host_bridge process). Raises ProviderRegistrationError,
+        never lets a mismatch or a now-missing file through silently."""
+        try:
+            actual_digest = "sha256:" + hashlib.sha256(self.integrity_target.read_bytes()).hexdigest()
+        except OSError as exc:
+            raise ProviderRegistrationError(
+                f"provider '{self.provider_id}' integrity target is no longer "
+                f"readable ({self.integrity_target}): {exc}. Reinstall the provider."
+            ) from exc
+        if actual_digest != self.executable_digest:
+            raise ProviderRegistrationError(
+                f"provider '{self.provider_id}' executable no longer matches its "
+                "attested digest — it was modified after registration. Reinstall "
+                "the provider before invoking it again."
+            )
 
 
 class ProviderRegistry:
@@ -78,25 +102,86 @@ class ProviderRegistry:
         executable = Path(attestation["executable"])
         if not executable.is_absolute() or not executable.is_file():
             raise ProviderRegistrationError("attested provider executable must be an existing absolute file")
+        resolved_executable = executable.resolve(strict=True)
+        args = tuple(attestation.get("args") or ())
 
         # `package_digest`, when present, is the digest of the downloaded install
         # archive that Marlin verified against the registry's declared checksum
         # *before* extraction (see marlin/packages/marlin/src/installer.ts,
         # verifyChecksum). It is not a digest of `executable` itself — the
-        # archive is gone by the time this registration runs, so there is
-        # nothing left here to re-hash it against. Confirmed against a real
-        # Marlin-installed niji 1.1.1 attestation, where hashing `executable`
-        # does not reproduce `package_digest` even though the install was
-        # legitimate. Treat it as install-time provenance only; it does not
-        # protect against the executable being swapped after Marlin installed
-        # it (open gap — closing it needs a Marlin-side digest of the
-        # extracted executable, a separate attestation-schema change).
+        # archive is gone by the time this registration runs — so it is
+        # install-time provenance only, not integrity verification.
+        #
+        # `executable_digest`/`executable_digest_target` are what actually
+        # protect against the installed file being swapped after Marlin wrote
+        # it — checked both here at registration and again by
+        # RegisteredProvider.verify_integrity() immediately before every
+        # spawn, since registration alone cannot catch a file changed later
+        # in the same process's lifetime. `executable_digest_target` is an
+        # explicit choice written by the attester (see
+        # marlin/packages/marlin/src/installer.ts's issueProviderAttestation
+        # and marlin-dxp/src/core/selfProvider.ts) — never inferred here by
+        # position in `args`, which breaks the moment a real command has
+        # trailing flags after its script path.
+        #
+        # THREAT MODEL NOTE: this authenticates the executable against
+        # attestation.json's own claim, not against Marlin as an issuer —
+        # `signature` is still always null. Anyone able to overwrite the
+        # executable on disk can equally overwrite attestation.json with a
+        # matching digest. This catches accidental drift, corruption, and
+        # partial/interrupted installs, not a fully compromised local write
+        # path. Real authentication would need Marlin to sign attestation.json
+        # with a key Cockpit verifies — a distinct, larger, not-yet-started
+        # PASS, not implied by this check.
+        executable_digest = attestation.get("executable_digest")
+        digest_target_str = attestation.get("executable_digest_target")
+        if not executable_digest or not digest_target_str:
+            raise ProviderRegistrationError(
+                f"provider '{attestation['provider_id']}' has no executable_digest — "
+                "it was installed by a Marlin build that predates executable "
+                "integrity checking. Reinstall the provider with a current Marlin "
+                "(e.g. `marlin install <package>`, or restart Marlin itself for its "
+                "own self-registration) to regenerate a trusted attestation."
+            )
+        if digest_target_str != str(executable) and digest_target_str not in args:
+            raise ProviderRegistrationError(
+                f"provider '{attestation['provider_id']}' executable_digest_target "
+                "is not `executable` or a declared entry in `args` — the attestation "
+                "does not cover a file that is actually part of the spawned command."
+            )
+        digest_target_path = Path(digest_target_str)
+        if not digest_target_path.is_absolute():
+            raise ProviderRegistrationError(
+                f"provider '{attestation['provider_id']}' executable_digest_target "
+                "must be an absolute path"
+            )
+        try:
+            resolved_target = digest_target_path.resolve(strict=True)
+            if not resolved_target.is_file():
+                raise ProviderRegistrationError(
+                    f"provider '{attestation['provider_id']}' executable_digest_target "
+                    f"is not a file: {digest_target_str}"
+                )
+            actual_digest = "sha256:" + hashlib.sha256(resolved_target.read_bytes()).hexdigest()
+        except OSError as exc:
+            raise ProviderRegistrationError(
+                f"provider '{attestation['provider_id']}' executable_digest_target "
+                f"could not be read ({digest_target_str}): {exc}"
+            ) from exc
+        if executable_digest.lower() != actual_digest:
+            raise ProviderRegistrationError(
+                f"provider '{attestation['provider_id']}' executable does not match its "
+                "attested digest — the installed file may have been modified since "
+                "Marlin installed it. Reinstall the provider to restore a trusted copy."
+            )
 
         provider = RegisteredProvider(
             manifest=manifest,
             attestation=attestation,
-            executable=executable.resolve(strict=True),
-            args=tuple(attestation.get("args") or ()),
+            executable=resolved_executable,
+            args=args,
+            integrity_target=resolved_target,
+            executable_digest=executable_digest.lower(),
         )
         self._providers[provider.provider_id] = provider
         return provider
