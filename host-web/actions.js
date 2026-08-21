@@ -155,7 +155,21 @@ async function dispatch(type, message, { workspaceRoot, pythonExecutable, bridge
           operation: 'invoke_provider_command', command_id: 'marlin.package.search',
           input: { query: require1(message.query, 'query') }, confirm: false,
         }, opts);
-        return [{ type: 'eco.cockpit.marlinPackageSearchResult', payload: result.data }];
+        return [{ type: 'eco.cockpit.marlinPackageSearchResult', payload: providerResultPayload(result) }];
+      }
+
+      // Read-only preview step for the install-approval flow (INIT.19.06):
+      // resolves real metadata/checksum/source for one package without
+      // installing it, so the UI can show the user something concrete to
+      // approve before marlinInstallPackage's confirm:true gate below is
+      // ever satisfied.
+      case 'eco.cockpit.marlinResolvePackage': {
+        const result = await bridge({
+          backend: 'marlin', workspace_id: workspaceRoot,
+          operation: 'invoke_provider_command', command_id: 'marlin.package.resolve',
+          input: { package_name: require1(message.packageName, 'packageName') }, confirm: false,
+        }, opts);
+        return [{ type: 'eco.cockpit.marlinPackageResolveResult', payload: providerResultPayload(result) }];
       }
 
       case 'eco.cockpit.invokeProviderCommand': {
@@ -186,10 +200,7 @@ async function dispatch(type, message, { workspaceRoot, pythonExecutable, bridge
           input: installInput, confirm: true,
           approval: boundApproval('marlin', 'marlin.package.install', installInput),
         }, opts);
-        return [{
-          type: 'eco.cockpit.marlinInstallResult',
-          payload: { ok: result.status === 'succeeded', ...result.data },
-        }];
+        return [{ type: 'eco.cockpit.marlinInstallResult', payload: providerResultPayload(result) }];
       }
 
       default:
@@ -209,6 +220,20 @@ function require1(value, key) {
     throw new Error(`${key} is required`);
   }
   return value;
+}
+
+/**
+ * Flattens a cockpit-operation-result-v1 response into the {ok, ...data}
+ * shape the web bundle's marlin package handlers render. Never adds an
+ * `error` key with an undefined value on success -- callers spread this
+ * directly into a postMessage payload, and Node's assert.deepEqual (used by
+ * this file's own tests) treats an explicit `error: undefined` key as
+ * different from the key being absent.
+ */
+function providerResultPayload(result) {
+  const ok = result.status === 'succeeded';
+  const message = !ok && result.error && result.error.message ? result.error.message : undefined;
+  return { ok, ...result.data, ...(message ? { error: message } : {}) };
 }
 
 function requirePayload(value) {

@@ -103,16 +103,73 @@ test('marlinInstallPackage denies requests without literal confirmation', async 
 
 test('marlinSearchPackages invokes the Marlin provider', async () => {
   let captured;
-  const deps = makeDeps({ callBridge: async (request) => { captured = request; return { data: { query: request.input.query, packages: ['x'] } }; } });
+  const deps = makeDeps({ callBridge: async (request) => { captured = request; return { status: 'succeeded', data: { query: request.input.query, packages: ['x'] } }; } });
   const messages = await dispatch(
     'eco.cockpit.marlinSearchPackages',
     { query: 'foo' },
     { workspaceRoot: WORKSPACE, deps },
   );
   assert.equal(messages[0].type, 'eco.cockpit.marlinPackageSearchResult');
-  assert.deepEqual(messages[0].payload, { query: 'foo', packages: ['x'] });
+  assert.deepEqual(messages[0].payload, { ok: true, query: 'foo', packages: ['x'] });
   assert.equal(captured.operation, 'invoke_provider_command');
   assert.equal(captured.command_id, 'marlin.package.search');
+});
+
+test('marlinSearchPackages surfaces a provider error distinctly from an empty result', async () => {
+  const deps = makeDeps({ callBridge: async () => ({ status: 'failed', data: {}, error: { code: 'hosted-unreachable', message: 'hosted registry unreachable' } }) });
+  const messages = await dispatch(
+    'eco.cockpit.marlinSearchPackages',
+    { query: 'sealdex' },
+    { workspaceRoot: WORKSPACE, deps },
+  );
+  assert.deepEqual(messages[0].payload, { ok: false, error: 'hosted registry unreachable' });
+});
+
+test('marlinResolvePackage invokes the read-only resolve command with confirm:false', async () => {
+  let captured;
+  const deps = makeDeps({
+    callBridge: async (request) => {
+      captured = request;
+      return {
+        status: 'succeeded',
+        data: {
+          name: 'sealdex',
+          version: '0.2.0',
+          source: 'hosted',
+          checksum: { algorithm: 'sha256', value: '880f5006...' },
+          has_provider: true,
+        },
+      };
+    },
+  });
+  const messages = await dispatch(
+    'eco.cockpit.marlinResolvePackage',
+    { packageName: 'sealdex' },
+    { workspaceRoot: WORKSPACE, deps },
+  );
+  assert.equal(captured.operation, 'invoke_provider_command');
+  assert.equal(captured.command_id, 'marlin.package.resolve');
+  assert.equal(captured.confirm, false);
+  assert.deepEqual(captured.input, { package_name: 'sealdex' });
+  assert.equal(messages[0].type, 'eco.cockpit.marlinPackageResolveResult');
+  assert.deepEqual(messages[0].payload, {
+    ok: true,
+    name: 'sealdex',
+    version: '0.2.0',
+    source: 'hosted',
+    checksum: { algorithm: 'sha256', value: '880f5006...' },
+    has_provider: true,
+  });
+});
+
+test('marlinResolvePackage surfaces a not-found error', async () => {
+  const deps = makeDeps({ callBridge: async () => ({ status: 'failed', data: {}, error: { code: 'package-not-found', message: 'package not found: nope' } }) });
+  const messages = await dispatch(
+    'eco.cockpit.marlinResolvePackage',
+    { packageName: 'nope' },
+    { workspaceRoot: WORKSPACE, deps },
+  );
+  assert.deepEqual(messages[0].payload, { ok: false, error: 'package not found: nope' });
 });
 
 test('marlinInstallPackage invokes the provider after literal confirmation', async () => {
