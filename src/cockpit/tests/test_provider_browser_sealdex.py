@@ -58,7 +58,7 @@ from playwright.sync_api import expect
 COCKPIT_ROOT = Path(__file__).resolve().parents[3]
 COCKPIT_PYTHON = COCKPIT_ROOT / ".venv" / "Scripts" / "python.exe"
 SEALDEX_ROOT = COCKPIT_ROOT.parent / "cairn"
-SEALDEX_VERSION = "0.1.0"
+SEALDEX_VERSION = "0.2.0"
 REAL_SEALDEX_MANIFEST = SEALDEX_ROOT / "providers" / "sealdex.provider.json"
 REAL_SEALDEX_ZIP = SEALDEX_ROOT / "dist" / f"sealdex-{SEALDEX_VERSION}.zip"
 

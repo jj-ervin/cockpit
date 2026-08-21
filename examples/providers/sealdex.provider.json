@@ -2,7 +2,7 @@
   "schema_version": "cockpit-provider-v1",
   "id": "sealdex",
   "name": "Sealdex",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Agent-assisted schema planning and zero-trust data entry for Sealdex's local-first operational registry.",
   "transport": { "kind": "stdio-json", "protocol": "cockpit-provider-v1" },
   "commands": [

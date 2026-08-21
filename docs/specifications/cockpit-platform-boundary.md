@@ -281,15 +281,19 @@ release zip once assembly fully succeeds. `cairn/scripts/verify_release.py`
 mandatorily checks packaged sources against the workspace byte-for-byte,
 schema-validates the archived provider manifest, and rejects a stale or
 tampered executable. `marlin/packages/marlin/tests/sealdex-real-artifact.test.ts`
-extracts the real `dist/sealdex-0.1.0.zip`, calls the real
+extracts the real `dist/sealdex-0.2.0.zip` (first public version moved
+from 0.1.0 to 0.2.0 the same day, to resolve a tag/release-name collision
+with the retired Cairn v0.1.0 release on this repo's GitHub history — see
+`cairn/DEV-PLAN.md`'s dedicated collision-resolution entry; not a design
+change, the rebuilt artifact is otherwise identical), calls the real
 `issueProviderAttestation()` against the real extracted files, and invokes
 the real compiled provider over stdio — asserting a real `succeeded`
 result. This proves resolution-from-a-local-file, extraction, attestation,
 registration, and executable launch all work from the packaged form. It
 does **not** exercise a `marlin install sealdex` fetch from a live hosted
-registry, because no hosted `v0.1.0` release exists yet (next paragraph).
+registry, because no hosted `v0.2.0` release exists yet (next paragraph).
 
-**Release proof — not met, and known to be open.** `v0.1.0` has not been
+**Release proof — not met, and known to be open.** `v0.2.0` has not been
 published as a GitHub release. Marlin's registry snapshot
 (`packages/marlin/registry/manifests/sealdex.yaml` +
 `registry/index.yaml`'s `sealdex` entry) was committed locally (`marlin`
