@@ -1781,3 +1781,49 @@ as part of correctness. It also records open questions, the initial
 CHIPP-Cockpit responsibility split, candidate profiles, and a possible
 future conformance kit. No conformance tooling or new normative policy was
 implemented in this documentation-only step.
+
+## Marlin Cross-Repo Note — Package Install-Approval Panel (INIT.19.06, 2026-08-21)
+
+Marlin's `INIT.19.06` (Cockpit app manager panel) named a real gap: the
+"Marlin Package Search" panel (Setup Wizard tab, `web/cockpit.js`) could
+search and request an install, but its "Install" button posted
+`marlinInstallPackage` with no `confirm` field, so `host-web/actions.js`'s
+existing literal `confirm === true` gate rejected every click. There was
+no UI path that could ever satisfy Marlin's own mutation gate.
+
+Fixed by turning one click into an explicit two-step flow. "Install" now
+posts a new `eco.cockpit.marlinResolvePackage` message (`host-web/
+actions.js`, wired to Marlin's new read-only `marlin.package.resolve`
+command) and renders an approval block with the real resolved name,
+version, source (hosted/bundled-fallback, with a warning on fallback),
+checksum, and whether a Cockpit provider is declared. Only clicking
+"Confirm Install" in that block sends `marlinInstallPackage` with
+`confirm: true`. Cancel and error states (search failure, resolve
+failure) render explicitly rather than silently doing nothing. As a
+byproduct, `providerResultPayload()` (new shared helper in `actions.js`)
+now surfaces the real provider error message for install failures too,
+which the prior code silently dropped.
+
+New `host-web/tests/webInstallApproval.test.js` loads the real `web/
+cockpit.html`/`cockpit.js` bundle into jsdom and drives the click flow
+(search sealdex -> Install -> approval block -> Confirm Install) through
+real DOM events against fixture host responses, asserting the exact
+outgoing message only ever carries `confirm: true` after the human
+clicks Confirm. Separately verified against real hosted data: a real
+Chromium browser (Playwright) against a really-spawned `host-web`
+server, a brand-new disposable `MARLIN_HOME`, and the real published
+Sealdex v0.2.0 release. The approval block showed `sealdex@0.2.0`,
+`hosted`, and checksum `880f5006...`; after Confirm Install, the on-disk
+`providers/sealdex/0.2.0/attestation.json` and an independently
+recomputed `sha256sum` of the installed executable both matched; Cockpit's
+own `discover_providers()` then found the freshly-installed provider and
+a real `invoke_provider_command` (`sealdex.entry.tables`) succeeded
+against it. Marlin's installer mutated the persistent Windows User PATH
+as part of that install; detected and reverted afterward, same limitation
+already logged in the earlier v0.2.0 hosted-install proof.
+
+Full detail and the Marlin-side implementation (`marlin.package.resolve`,
+its provider-manifest declaration, and its own test coverage) are
+recorded in `marlin/DEV-PLAN.md` and `marlin/passes/init/INIT.19.06.md`.
+Update and remove mutation UI remain unimplemented in the panel — this
+was scoped as the smallest next proof, not full `INIT.19.06` closure.
