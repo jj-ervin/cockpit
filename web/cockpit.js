@@ -33,7 +33,14 @@
     lastDeletedArtifact: null,
     wizardStep: 0,
     marlinSearchResults: [],
+    marlinSearchError: '',
     marlinInstallResult: null,
+    // INIT.19.06 install-approval flow: clicking "Install" on a search
+    // result no longer installs directly. It resolves real metadata first
+    // (status 'resolving' -> 'ready'), and only marlinInstallPackage's own
+    // confirm:true gate (host-web/actions.js) is satisfied once the human
+    // clicks Confirm Install on the resolved metadata (status 'installing').
+    marlinPackageApproval: { packageName: '', status: 'idle', resolved: null, error: '' },
     selectedWorkspacePath: '',
     audit: {
       target: '',
@@ -644,14 +651,34 @@
     }
     if (message.type === 'eco.cockpit.marlinPackageSearchResult') {
       const payload = message.payload || {};
-      state.marlinSearchResults = Array.isArray(payload.packages) ? payload.packages : [];
-      showNotice('Marlin package search returned ' + state.marlinSearchResults.length + ' result(s).', false);
+      if (payload.ok === false) {
+        state.marlinSearchResults = [];
+        state.marlinSearchError = payload.error || 'Marlin package search failed.';
+        showNotice(state.marlinSearchError, true);
+      } else {
+        state.marlinSearchResults = Array.isArray(payload.packages) ? payload.packages : [];
+        state.marlinSearchError = '';
+        showNotice('Marlin package search returned ' + state.marlinSearchResults.length + ' result(s).', false);
+      }
+      renderWizard();
+      return;
+    }
+    if (message.type === 'eco.cockpit.marlinPackageResolveResult') {
+      const payload = message.payload || {};
+      const packageName = state.marlinPackageApproval.packageName;
+      if (payload.ok === false) {
+        state.marlinPackageApproval = { packageName: packageName, status: 'error', resolved: null, error: payload.error || 'Resolve failed.' };
+      } else {
+        state.marlinPackageApproval = { packageName: packageName, status: 'ready', resolved: payload, error: '' };
+      }
       renderWizard();
       return;
     }
     if (message.type === 'eco.cockpit.marlinInstallResult') {
       state.marlinInstallResult = message.payload || {};
-      showNotice(state.marlinInstallResult.ok === false ? 'Marlin install failed.' : 'Marlin install completed.', state.marlinInstallResult.ok === false);
+      state.marlinPackageApproval = { packageName: '', status: 'idle', resolved: null, error: '' };
+      const failed = state.marlinInstallResult.ok === false;
+      showNotice(failed ? (state.marlinInstallResult.error || 'Marlin install failed.') : 'Marlin install completed.', failed);
       renderWizard();
       post({ type: 'eco.cockpit.refresh' });
       return;
@@ -1154,6 +1181,7 @@
     const input = document.createElement('input');
     const submit = document.createElement('button');
     const results = document.createElement('div');
+    const approvalHost = document.createElement('div');
 
     providerPanel.className = 'wizard-provider-panel';
     heading.textContent = 'Marlin Package Search';
@@ -1165,6 +1193,7 @@
     submit.type = 'submit';
     submit.textContent = 'Search';
     results.className = 'list';
+    approvalHost.className = 'wizard-approval';
 
     form.addEventListener('submit', function (event) {
       event.preventDefault();
@@ -1180,14 +1209,23 @@
     providerPanel.appendChild(heading);
     providerPanel.appendChild(form);
     providerPanel.appendChild(results);
+    providerPanel.appendChild(approvalHost);
     container.appendChild(providerPanel);
 
     renderMarlinPackageResults(results);
+    renderMarlinPackageApproval(approvalHost);
     renderMarlinInstallResult(container);
   }
 
   function renderMarlinPackageResults(container) {
     clear(container);
+    if (state.marlinSearchError) {
+      const note = document.createElement('div');
+      note.className = 'item is-error';
+      note.textContent = 'Search failed: ' + state.marlinSearchError;
+      container.appendChild(note);
+      return;
+    }
     if (!state.marlinSearchResults.length) {
       const note = document.createElement('div');
       note.className = 'item';
@@ -1195,6 +1233,8 @@
       container.appendChild(note);
       return;
     }
+
+    const approvalPending = state.marlinPackageApproval.status !== 'idle' && state.marlinPackageApproval.status !== 'error';
 
     state.marlinSearchResults.forEach(function (pkg) {
       const row = document.createElement('div');
@@ -1206,9 +1246,12 @@
       detail.textContent = String(pkg.description || '') + (pkg.source ? ' [' + pkg.source + ']' : '');
       action.type = 'button';
       action.textContent = 'Install';
+      action.disabled = approvalPending;
       action.addEventListener('click', function () {
         if (pkg.name) {
-          post({ type: 'eco.cockpit.marlinInstallPackage', packageName: pkg.name });
+          state.marlinPackageApproval = { packageName: pkg.name, status: 'resolving', resolved: null, error: '' };
+          renderWizard();
+          post({ type: 'eco.cockpit.marlinResolvePackage', packageName: pkg.name });
         }
       });
       row.appendChild(title);
@@ -1216,6 +1259,104 @@
       row.appendChild(action);
       container.appendChild(row);
     });
+  }
+
+  /**
+   * The approval step between "Install" and an actual mutating
+   * marlin.package.install call (INIT.19.06). marlinResolvePackage is
+   * read-only, so 'resolving'/'ready'/'error' never touch the machine;
+   * only clicking Confirm Install here ever sends confirm:true.
+   */
+  function renderMarlinPackageApproval(container) {
+    clear(container);
+    const approval = state.marlinPackageApproval;
+    if (approval.status === 'idle') {
+      return;
+    }
+
+    if (approval.status === 'resolving') {
+      const note = document.createElement('p');
+      note.className = 'panel-note';
+      note.textContent = 'Resolving ' + approval.packageName + '…';
+      container.appendChild(note);
+      return;
+    }
+
+    if (approval.status === 'installing') {
+      const note = document.createElement('p');
+      note.className = 'panel-note';
+      note.textContent = 'Installing ' + approval.packageName + '…';
+      container.appendChild(note);
+      return;
+    }
+
+    if (approval.status === 'error') {
+      const note = document.createElement('p');
+      note.className = 'panel-note is-error';
+      note.textContent = 'Could not resolve ' + approval.packageName + ': ' + approval.error;
+      container.appendChild(note);
+      const dismiss = document.createElement('button');
+      dismiss.type = 'button';
+      dismiss.textContent = 'Dismiss';
+      dismiss.addEventListener('click', function () {
+        state.marlinPackageApproval = { packageName: '', status: 'idle', resolved: null, error: '' };
+        renderWizard();
+      });
+      container.appendChild(dismiss);
+      return;
+    }
+
+    // status === 'ready': render the real resolved metadata for the human
+    // to approve before any install call is made.
+    const resolved = approval.resolved || {};
+    const box = document.createElement('div');
+    box.className = 'wizard-approval-box';
+
+    const title = document.createElement('h3');
+    title.textContent = 'Approve install: ' + String(resolved.name || approval.packageName) + '@' + String(resolved.version || '-');
+    box.appendChild(title);
+
+    const dl = document.createElement('dl');
+    dl.appendChild(metadataRow('Source', resolved.source || 'unknown'));
+    if (resolved.source === 'bundled-fallback' && resolved.fallback_reason) {
+      dl.appendChild(metadataRow('Fallback reason', resolved.fallback_reason));
+    }
+    const checksum = resolved.checksum;
+    dl.appendChild(metadataRow(
+      'Checksum',
+      checksum && checksum.value ? (checksum.algorithm || 'sha256') + ':' + checksum.value : 'not declared',
+    ));
+    dl.appendChild(metadataRow('Cockpit provider', resolved.has_provider ? 'yes' : 'no'));
+    box.appendChild(dl);
+
+    if (resolved.source === 'bundled-fallback') {
+      const warn = document.createElement('p');
+      warn.className = 'panel-note is-error';
+      warn.textContent = 'Hosted registry was not used for this resolution — this package/version may be stale.';
+      box.appendChild(warn);
+    }
+
+    const confirmBtn = document.createElement('button');
+    confirmBtn.type = 'button';
+    confirmBtn.textContent = 'Confirm Install';
+    confirmBtn.addEventListener('click', function () {
+      const packageName = approval.packageName;
+      state.marlinPackageApproval = { packageName: packageName, status: 'installing', resolved: approval.resolved, error: '' };
+      renderWizard();
+      post({ type: 'eco.cockpit.marlinInstallPackage', packageName: packageName, confirm: true });
+    });
+
+    const cancelBtn = document.createElement('button');
+    cancelBtn.type = 'button';
+    cancelBtn.textContent = 'Cancel';
+    cancelBtn.addEventListener('click', function () {
+      state.marlinPackageApproval = { packageName: '', status: 'idle', resolved: null, error: '' };
+      renderWizard();
+    });
+
+    box.appendChild(confirmBtn);
+    box.appendChild(cancelBtn);
+    container.appendChild(box);
   }
 
   function renderMarlinInstallResult(container) {
