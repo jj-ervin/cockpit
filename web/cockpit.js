@@ -62,6 +62,16 @@
       rosterDigest: '',
       approval: null,
     },
+    // Mode 4 proof: dispatches to the real Marlin-discovered `niji` provider
+    // over its actual cockpit-provider-v1 stdio protocol, via the same
+    // generic invoke_provider_command path Marlin's own panels use. Kept
+    // entirely separate from `state.snapshot.niji` (the older in-process
+    // adapter rendered by renderNiji) so the two are never conflated.
+    nijiProof: {
+      activeCommand: '',
+      error: '',
+      lastResult: null,
+    },
     noticeTimer: null,
   };
 
@@ -166,6 +176,9 @@
     nijiBase: byId('niji-base'),
     nijiScheme: byId('niji-scheme'),
     nijiSwatches: byId('niji-swatches'),
+    nijiProofRun: byId('niji-proof-run'),
+    nijiProofStatus: byId('niji-proof-status'),
+    nijiProofSwatches: byId('niji-proof-swatches'),
     auditRepository: byId('audit-repository'),
     auditDiscoverStatus: byId('audit-discover-status'),
     auditValidateStatus: byId('audit-validate-status'),
@@ -346,6 +359,25 @@
     elements.undoDeleteArtifact.disabled = true;
   });
 
+  elements.nijiProofRun.addEventListener('click', function () {
+    if (state.nijiProof.activeCommand) {
+      return;
+    }
+    state.nijiProof.error = '';
+    state.nijiProof.activeCommand = 'niji.palette.preview';
+    renderNijiProof();
+    post({
+      type: 'eco.cockpit.invokeProviderCommand',
+      providerId: 'niji',
+      commandId: 'niji.palette.preview',
+      // Defaults matching the real niji-provider.exe's minimum required
+      // input (base_hex is mandatory) — this is a real command invocation,
+      // not a display-only stub, so it needs a real, valid payload.
+      input: { base_hex: '#3366CC', scheme_key: 'complementary', naming_mode: 'natural', swatch_count: 5 },
+      confirm: false,
+    });
+  });
+
   elements.workspaceReveal.addEventListener('click', function () {
     if (state.selectedWorkspacePath) {
       post({
@@ -457,6 +489,11 @@
         state.doctor.activeCommand = '';
         renderDoctorWorkflow();
       }
+      if (state.nijiProof.activeCommand && payload.ok === false) {
+        state.nijiProof.error = payload.message || 'Provider command failed.';
+        state.nijiProof.activeCommand = '';
+        renderNijiProof();
+      }
       showNotice(payload.message || 'Action completed.', payload.ok === false, payload.persist === true);
       if (payload.refresh !== false) {
         post({ type: 'eco.cockpit.refresh' });
@@ -492,6 +529,7 @@
       handleAuditProviderResult(message.payload || {});
       handleDoctorProviderResult(message.payload || {});
       handleAgentProviderResult(message.payload || {});
+      handleNijiProofProviderResult(message.payload || {});
       return;
     }
     if (message.type === 'eco.cockpit.error') {
@@ -501,6 +539,7 @@
   });
 
   post({ type: 'eco.cockpit.ready' });
+  renderNijiProof();
 
   function renderSnapshot(payload) {
     state.snapshot = normalizeSnapshot(payload);
@@ -1976,6 +2015,62 @@
       tile.appendChild(label);
       tile.appendChild(detail);
       elements.nijiSwatches.appendChild(tile);
+    });
+  }
+
+  function handleNijiProofProviderResult(result) {
+    if (result.provider_id !== 'niji' || result.command_id !== 'niji.palette.preview') {
+      return;
+    }
+    state.nijiProof.lastResult = result;
+    state.nijiProof.activeCommand = '';
+    state.nijiProof.error = result.status === 'failed'
+      ? ((result.error && result.error.message) || 'Provider reported failure.')
+      : '';
+    renderNijiProof();
+  }
+
+  function renderNijiProof() {
+    const running = Boolean(state.nijiProof.activeCommand);
+    elements.nijiProofRun.disabled = running;
+    elements.nijiProofRun.textContent = running ? 'Running...' : 'Run niji.palette.preview';
+
+    const result = state.nijiProof.lastResult;
+    if (running) {
+      elements.nijiProofStatus.textContent = 'Running...';
+    } else if (state.nijiProof.error) {
+      elements.nijiProofStatus.textContent = 'Failed: ' + state.nijiProof.error;
+    } else if (result) {
+      elements.nijiProofStatus.textContent = result.status || 'unknown';
+    } else {
+      elements.nijiProofStatus.textContent = 'Not run';
+    }
+
+    clear(elements.nijiProofSwatches);
+    const palette = result && result.data && result.data.palette;
+    const swatches = palette && Array.isArray(palette.swatches) ? palette.swatches : [];
+    if (!swatches.length) {
+      const note = document.createElement('div');
+      note.className = 'item';
+      note.textContent = state.nijiProof.error || 'No result yet - click Run to invoke the real discovered provider.';
+      elements.nijiProofSwatches.appendChild(note);
+      return;
+    }
+
+    swatches.forEach(function (swatch) {
+      const tile = document.createElement('div');
+      const chip = document.createElement('span');
+      const label = document.createElement('strong');
+      const detail = document.createElement('span');
+      tile.className = 'swatch';
+      chip.className = 'swatch-chip';
+      chip.style.background = swatch.hex || '#000000';
+      label.textContent = swatch.name || swatch.role || 'swatch';
+      detail.textContent = (swatch.role || '-') + ' ' + (swatch.hex || '');
+      tile.appendChild(chip);
+      tile.appendChild(label);
+      tile.appendChild(detail);
+      elements.nijiProofSwatches.appendChild(tile);
     });
   }
 

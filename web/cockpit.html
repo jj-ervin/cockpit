@@ -534,6 +534,17 @@
         </div>
         <div class="swatch-grid" id="niji-swatches"></div>
       </section>
+      <section class="panel">
+        <div class="panel-header">
+          <h2>Real Provider (Mode 4 proof)</h2>
+          <span id="niji-proof-status">Not run</span>
+        </div>
+        <p>Invokes the Marlin-discovered <code>niji</code> provider directly over its real cockpit-provider-v1 stdio protocol - the same generic Mode 4 dispatch path used elsewhere in Cockpit, not the in-process adapter above.</p>
+        <div class="button-row">
+          <button id="niji-proof-run" type="button">Run niji.palette.preview</button>
+        </div>
+        <div class="swatch-grid" id="niji-proof-swatches"></div>
+      </section>
     </section>
 
     <section class="tab-panel" id="workspace-tab">

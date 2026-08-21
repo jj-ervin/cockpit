@@ -1287,3 +1287,82 @@ pass/fail results instead of always failing, closing the gap the original
 demo surfaced. No changes to `web/cockpit.js`, `web/cockpit.html`, or
 `host-web/` were needed — this cross-reference exists because the finding
 came from exercising Cockpit's own UI, not because Cockpit's code changed.
+
+## Platform Positioning — Cockpit Platform Boundary Locked (2026-08-20)
+
+**Closed:** 2026-08-20, user directive, same session as the Marlin Audit
+demo cross-repo note above.
+
+The demo's finding — that Cockpit's only proven provider plugs
+portfolio-specific GC-AUDIT content into an otherwise provider-agnostic
+shell, making Cockpit useful to nobody but this portfolio's own user —
+is resolved as a permanent positioning decision, not a bug to fix by
+making every future provider look like Marlin's. See
+`docs/specifications/cockpit-platform-boundary.md` for the full
+statement. Summary: Cockpit is a customizable AI workspace shell with a
+shared layer (shell, nav, command palette, settings, themes, approvals,
+logs, provider discovery, diagnostics, extension points) that hosts a
+tiered spectrum of providers — eco-native apps get the deepest
+integration, but lighter provider contracts (a manifest, no governance
+stack) are an equally valid, permanent tier, not a lesser one. Separately,
+user-facing experience (themes, layout, density, shortcuts, workspace
+profiles) is freely customizable; trust semantics (approval meaning,
+permission warnings, provenance/evidence meaning, secret handling,
+provider identity, security errors) are fixed platform behavior, never
+themeable or per-provider.
+
+The new doc also records, honestly, that Niji's current Cockpit
+integration (`src/cockpit/adapters/niji.py`, wired into `host-web`'s
+snapshot builder as a read-only health/state/preview card) is real
+shipped code but is not equivalent to Marlin's proof: it has never been
+run live against the real `niji` package (only a `FakeNijiAdapter` in
+its test suite), and it has no approve/execute/verify/evidence stages —
+it should not be cited as a second successful governed-loop integration
+until it earns that claim the way Marlin's did.
+
+## Niji Mode 4 Provider Proof — Closed (2026-08-21)
+
+**Closed:** 2026-08-21, user-authorized gated sequence, same session as
+the platform-boundary lock above.
+
+Proved Cockpit can dispatch to a real, Marlin-discovered, external
+`niji` provider over its real `cockpit-provider-v1` stdio protocol — not
+`FakeNijiAdapter`, and not a rewrite of the existing in-process
+`niji.py` adapter, which was left untouched. Full narrative and
+acceptance-criteria checklist: `docs/specifications/cockpit-platform-boundary.md`'s
+"Niji as a real mode-4 provider — proven 2026-08-21" section.
+
+Summary of what changed in this repo:
+
+- `web/cockpit.html` / `web/cockpit.js`: added a "Real Provider (Mode 4
+  proof)" panel to the Niji tab. Runs `niji.palette.preview` through the
+  existing generic `eco.cockpit.invokeProviderCommand` action — no
+  backend plumbing changes were needed, since that path (`actions.js`,
+  `host_bridge.py`'s `_execute_provider_command`) was already
+  provider-agnostic and already proven against Marlin.
+- `src/cockpit/tests/test_provider_browser_niji.py` (new): a default
+  fixture-backed real-browser test (stages the real
+  `providers/<id>/<version>/` directory shape with a stand-in stdio
+  script, no build required) and an opt-in real-provider real-browser
+  test (stages the actual `niji-provider.exe`, skipped unless a local
+  build exists). Both pass locally.
+- `src/cockpit/tests/test_provider_registry.py`: added an inline note
+  to the pre-existing opt-in `test_real_marlin_installed_provider_stdio_roundtrip`
+  explaining why it currently still fails on this machine (a separate,
+  tracked issue in the private `marlin` repo, not this proof) — no
+  assertion or behavior changed.
+
+Cross-repo work this proof depended on, not in this repo: a
+`marlin-registry` manifest fix adding `windows.arm64` support for niji
+1.1.1 via x64 emulation (commit `a38f9c7`, pushed). Full record:
+`marlin-registry`'s own commit message and this session's history.
+
+Known follow-up, explicitly not fixed here: the private `marlin`
+repo's bundled local dev-registry snapshot
+(`packages/marlin/registry/manifests/niji.yaml`) shadows the corrected
+`marlin-registry` entry for niji when installing through the real
+`marlin install` CLI, so that specific path still fails on this
+machine's arm64 even though the underlying binary and manifest are
+now both correct. Needs a separately-authorized fix in the `marlin`
+repo if/when the real published CLI needs to install niji on arm64
+end-to-end.
