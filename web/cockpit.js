@@ -72,13 +72,13 @@
       error: '',
       lastResult: null,
     },
-    // Cairn's two UI surfaces (Plan, Entry), dispatched through the same
+    // Sealdex's two UI surfaces (Plan, Entry), dispatched through the same
     // generic invoke_provider_command path as niji/marlin above. Plan is
     // split across two commands (propose / apply) because the human
     // approval step lives in Cockpit's own confirm+approval mechanism,
     // not in a second in-process prompt -- see scripts/provider.py's
     // module docstring in the cairn repo for why.
-    cairn: {
+    sealdex: {
       plan: { activeCommand: '', error: '', proposeResult: null },
       entry: { activeCommand: '', error: '', tables: {}, selectedTable: '', lastResult: '' },
       pendingApproval: null,
@@ -190,26 +190,26 @@
     nijiProofRun: byId('niji-proof-run'),
     nijiProofStatus: byId('niji-proof-status'),
     nijiProofSwatches: byId('niji-proof-swatches'),
-    cairnPlanNeed: byId('cairn-plan-need'),
-    cairnPlanPropose: byId('cairn-plan-propose'),
-    cairnPlanApprove: byId('cairn-plan-approve'),
-    cairnPlanDiscard: byId('cairn-plan-discard'),
-    cairnPlanStatus: byId('cairn-plan-status'),
-    cairnPlanSummary: byId('cairn-plan-summary'),
-    cairnPlanChecks: byId('cairn-plan-checks'),
-    cairnEntryStatus: byId('cairn-entry-status'),
-    cairnEntryTable: byId('cairn-entry-table'),
-    cairnEntryRefreshTables: byId('cairn-entry-refresh-tables'),
-    cairnEntryFields: byId('cairn-entry-fields'),
-    cairnEntryAdd: byId('cairn-entry-add'),
-    cairnEntryCsv: byId('cairn-entry-csv'),
-    cairnEntryImport: byId('cairn-entry-import'),
-    cairnEntryResult: byId('cairn-entry-result'),
-    cairnApprovalDialog: byId('cairn-approval-dialog'),
-    cairnApprovalScope: byId('cairn-approval-scope'),
-    cairnApprovalCheck: byId('cairn-approval-check'),
-    cairnCancelApproval: byId('cairn-cancel-approval'),
-    cairnConfirmApproval: byId('cairn-confirm-approval'),
+    sealdexPlanNeed: byId('sealdex-plan-need'),
+    sealdexPlanPropose: byId('sealdex-plan-propose'),
+    sealdexPlanApprove: byId('sealdex-plan-approve'),
+    sealdexPlanDiscard: byId('sealdex-plan-discard'),
+    sealdexPlanStatus: byId('sealdex-plan-status'),
+    sealdexPlanSummary: byId('sealdex-plan-summary'),
+    sealdexPlanChecks: byId('sealdex-plan-checks'),
+    sealdexEntryStatus: byId('sealdex-entry-status'),
+    sealdexEntryTable: byId('sealdex-entry-table'),
+    sealdexEntryRefreshTables: byId('sealdex-entry-refresh-tables'),
+    sealdexEntryFields: byId('sealdex-entry-fields'),
+    sealdexEntryAdd: byId('sealdex-entry-add'),
+    sealdexEntryCsv: byId('sealdex-entry-csv'),
+    sealdexEntryImport: byId('sealdex-entry-import'),
+    sealdexEntryResult: byId('sealdex-entry-result'),
+    sealdexApprovalDialog: byId('sealdex-approval-dialog'),
+    sealdexApprovalScope: byId('sealdex-approval-scope'),
+    sealdexApprovalCheck: byId('sealdex-approval-check'),
+    sealdexCancelApproval: byId('sealdex-cancel-approval'),
+    sealdexConfirmApproval: byId('sealdex-confirm-approval'),
     auditRepository: byId('audit-repository'),
     auditDiscoverStatus: byId('audit-discover-status'),
     auditValidateStatus: byId('audit-validate-status'),
@@ -409,22 +409,22 @@
     });
   });
 
-  elements.cairnPlanPropose.addEventListener('click', function () {
-    if (state.cairn.plan.activeCommand) {
+  elements.sealdexPlanPropose.addEventListener('click', function () {
+    if (state.sealdex.plan.activeCommand) {
       return;
     }
-    const need = elements.cairnPlanNeed.value.trim();
+    const need = elements.sealdexPlanNeed.value.trim();
     if (!need) {
       return;
     }
-    state.cairn.plan.error = '';
-    state.cairn.plan.activeCommand = 'cairn.schema.propose';
-    renderCairnPlan();
-    runCairnCommand('cairn.schema.propose', { need: need }, false, undefined);
+    state.sealdex.plan.error = '';
+    state.sealdex.plan.activeCommand = 'sealdex.schema.propose';
+    renderSealdexPlan();
+    runSealdexCommand('sealdex.schema.propose', { need: need }, false, undefined);
   });
 
-  elements.cairnPlanApprove.addEventListener('click', function () {
-    const result = state.cairn.plan.proposeResult;
+  elements.sealdexPlanApprove.addEventListener('click', function () {
+    const result = state.sealdex.plan.proposeResult;
     if (!result || result.status !== 'pending-approval' || !result.data || !result.data.plan) {
       return;
     }
@@ -432,77 +432,77 @@
     // propose time -- provider.py rejects apply as stale if a fresh
     // recomputation differs, so the approval must carry the same list
     // that was actually reviewed, not just the plan.
-    openCairnApproval('cairn.schema.apply', { plan: result.data.plan, checks: result.data.checks || [] });
+    openSealdexApproval('sealdex.schema.apply', { plan: result.data.plan, checks: result.data.checks || [] });
   });
 
-  elements.cairnPlanDiscard.addEventListener('click', function () {
-    state.cairn.plan.proposeResult = null;
-    state.cairn.plan.error = '';
-    renderCairnPlan();
+  elements.sealdexPlanDiscard.addEventListener('click', function () {
+    state.sealdex.plan.proposeResult = null;
+    state.sealdex.plan.error = '';
+    renderSealdexPlan();
   });
 
-  elements.cairnEntryRefreshTables.addEventListener('click', function () {
-    if (state.cairn.entry.activeCommand) {
+  elements.sealdexEntryRefreshTables.addEventListener('click', function () {
+    if (state.sealdex.entry.activeCommand) {
       return;
     }
-    state.cairn.entry.error = '';
-    state.cairn.entry.activeCommand = 'cairn.entry.tables';
-    renderCairnEntry();
-    runCairnCommand('cairn.entry.tables', {}, false, undefined);
+    state.sealdex.entry.error = '';
+    state.sealdex.entry.activeCommand = 'sealdex.entry.tables';
+    renderSealdexEntry();
+    runSealdexCommand('sealdex.entry.tables', {}, false, undefined);
   });
 
-  elements.cairnEntryTable.addEventListener('change', function () {
-    state.cairn.entry.selectedTable = elements.cairnEntryTable.value;
-    renderCairnEntryFields();
+  elements.sealdexEntryTable.addEventListener('change', function () {
+    state.sealdex.entry.selectedTable = elements.sealdexEntryTable.value;
+    renderSealdexEntryFields();
   });
 
-  elements.cairnEntryAdd.addEventListener('click', function () {
-    const table = state.cairn.entry.selectedTable;
+  elements.sealdexEntryAdd.addEventListener('click', function () {
+    const table = state.sealdex.entry.selectedTable;
     if (!table) {
       return;
     }
-    const fields = collectCairnEntryFields();
+    const fields = collectSealdexEntryFields();
     if (!fields) {
       return;
     }
-    openCairnApproval('cairn.entry.add', { table: table, fields: fields });
+    openSealdexApproval('sealdex.entry.add', { table: table, fields: fields });
   });
 
-  elements.cairnEntryImport.addEventListener('click', function () {
-    const table = state.cairn.entry.selectedTable;
-    const csvText = elements.cairnEntryCsv.value;
+  elements.sealdexEntryImport.addEventListener('click', function () {
+    const table = state.sealdex.entry.selectedTable;
+    const csvText = elements.sealdexEntryCsv.value;
     if (!table || !csvText.trim()) {
       return;
     }
-    openCairnApproval('cairn.entry.import', { table: table, csv_text: csvText });
+    openSealdexApproval('sealdex.entry.import', { table: table, csv_text: csvText });
   });
 
-  elements.cairnApprovalCheck.addEventListener('change', function () {
-    elements.cairnConfirmApproval.disabled = !elements.cairnApprovalCheck.checked;
+  elements.sealdexApprovalCheck.addEventListener('change', function () {
+    elements.sealdexConfirmApproval.disabled = !elements.sealdexApprovalCheck.checked;
   });
 
-  elements.cairnCancelApproval.addEventListener('click', function () {
-    closeCairnApproval();
+  elements.sealdexCancelApproval.addEventListener('click', function () {
+    closeSealdexApproval();
   });
 
-  elements.cairnConfirmApproval.addEventListener('click', function () {
-    const approval = state.cairn.pendingApproval;
-    if (!elements.cairnApprovalCheck.checked || !approval) {
-      closeCairnApproval();
+  elements.sealdexConfirmApproval.addEventListener('click', function () {
+    const approval = state.sealdex.pendingApproval;
+    if (!elements.sealdexApprovalCheck.checked || !approval) {
+      closeSealdexApproval();
       return;
     }
     const commandId = approval.commandId;
     const input = approval.input;
     const bound = { token: approval.token, scope: approval.scope };
-    closeCairnApproval();
-    if (commandId === 'cairn.schema.apply') {
-      state.cairn.plan.activeCommand = commandId;
-      renderCairnPlan();
+    closeSealdexApproval();
+    if (commandId === 'sealdex.schema.apply') {
+      state.sealdex.plan.activeCommand = commandId;
+      renderSealdexPlan();
     } else {
-      state.cairn.entry.activeCommand = commandId;
-      renderCairnEntry();
+      state.sealdex.entry.activeCommand = commandId;
+      renderSealdexEntry();
     }
-    runCairnCommand(commandId, input, true, bound);
+    runSealdexCommand(commandId, input, true, bound);
   });
 
   elements.workspaceReveal.addEventListener('click', function () {
@@ -621,15 +621,15 @@
         state.nijiProof.activeCommand = '';
         renderNijiProof();
       }
-      if (state.cairn.plan.activeCommand && payload.ok === false) {
-        state.cairn.plan.error = payload.message || 'Provider command failed.';
-        state.cairn.plan.activeCommand = '';
-        renderCairnPlan();
+      if (state.sealdex.plan.activeCommand && payload.ok === false) {
+        state.sealdex.plan.error = payload.message || 'Provider command failed.';
+        state.sealdex.plan.activeCommand = '';
+        renderSealdexPlan();
       }
-      if (state.cairn.entry.activeCommand && payload.ok === false) {
-        state.cairn.entry.error = payload.message || 'Provider command failed.';
-        state.cairn.entry.activeCommand = '';
-        renderCairnEntry();
+      if (state.sealdex.entry.activeCommand && payload.ok === false) {
+        state.sealdex.entry.error = payload.message || 'Provider command failed.';
+        state.sealdex.entry.activeCommand = '';
+        renderSealdexEntry();
       }
       showNotice(payload.message || 'Action completed.', payload.ok === false, payload.persist === true);
       if (payload.refresh !== false) {
@@ -667,8 +667,8 @@
       handleDoctorProviderResult(message.payload || {});
       handleAgentProviderResult(message.payload || {});
       handleNijiProofProviderResult(message.payload || {});
-      handleCairnPlanProviderResult(message.payload || {});
-      handleCairnEntryProviderResult(message.payload || {});
+      handleSealdexPlanProviderResult(message.payload || {});
+      handleSealdexEntryProviderResult(message.payload || {});
       return;
     }
     if (message.type === 'eco.cockpit.error') {
@@ -679,8 +679,8 @@
 
   post({ type: 'eco.cockpit.ready' });
   renderNijiProof();
-  renderCairnPlan();
-  renderCairnEntry();
+  renderSealdexPlan();
+  renderSealdexEntry();
 
   function renderSnapshot(payload) {
     state.snapshot = normalizeSnapshot(payload);
@@ -2215,10 +2215,10 @@
     });
   }
 
-  function runCairnCommand(commandId, input, confirm, approval) {
+  function runSealdexCommand(commandId, input, confirm, approval) {
     post({
       type: 'eco.cockpit.invokeProviderCommand',
-      providerId: 'cairn',
+      providerId: 'sealdex',
       commandId: commandId,
       input: input,
       confirm: Boolean(confirm),
@@ -2226,13 +2226,13 @@
     });
   }
 
-  function openCairnApproval(commandId, input) {
+  function openSealdexApproval(commandId, input) {
     const token = approvalToken();
-    const scope = approvalScope('cairn', commandId, input);
-    state.cairn.pendingApproval = { commandId: commandId, input: input, token: token, scope: scope };
-    clear(elements.cairnApprovalScope);
+    const scope = approvalScope('sealdex', commandId, input);
+    state.sealdex.pendingApproval = { commandId: commandId, input: input, token: token, scope: scope };
+    clear(elements.sealdexApprovalScope);
     [
-      ['Provider', 'cairn'],
+      ['Provider', 'sealdex'],
       ['Command', commandId],
       ['Input', JSON.stringify(input)],
     ].forEach(function (entry) {
@@ -2240,68 +2240,68 @@
       const dd = document.createElement('dd');
       dt.textContent = entry[0];
       dd.textContent = entry[1];
-      elements.cairnApprovalScope.appendChild(dt);
-      elements.cairnApprovalScope.appendChild(dd);
+      elements.sealdexApprovalScope.appendChild(dt);
+      elements.sealdexApprovalScope.appendChild(dd);
     });
-    elements.cairnApprovalCheck.checked = false;
-    elements.cairnConfirmApproval.disabled = true;
-    elements.cairnApprovalDialog.hidden = false;
-    elements.cairnApprovalCheck.focus();
+    elements.sealdexApprovalCheck.checked = false;
+    elements.sealdexConfirmApproval.disabled = true;
+    elements.sealdexApprovalDialog.hidden = false;
+    elements.sealdexApprovalCheck.focus();
   }
 
-  function closeCairnApproval() {
-    elements.cairnApprovalDialog.hidden = true;
-    elements.cairnApprovalCheck.checked = false;
-    elements.cairnConfirmApproval.disabled = true;
-    state.cairn.pendingApproval = null;
+  function closeSealdexApproval() {
+    elements.sealdexApprovalDialog.hidden = true;
+    elements.sealdexApprovalCheck.checked = false;
+    elements.sealdexConfirmApproval.disabled = true;
+    state.sealdex.pendingApproval = null;
   }
 
-  function handleCairnPlanProviderResult(result) {
-    if (result.provider_id !== 'cairn') {
+  function handleSealdexPlanProviderResult(result) {
+    if (result.provider_id !== 'sealdex') {
       return;
     }
-    if (result.command_id !== 'cairn.schema.propose' && result.command_id !== 'cairn.schema.apply') {
+    if (result.command_id !== 'sealdex.schema.propose' && result.command_id !== 'sealdex.schema.apply') {
       return;
     }
-    state.cairn.plan.activeCommand = '';
-    if (result.command_id === 'cairn.schema.propose') {
-      state.cairn.plan.proposeResult = result;
-      state.cairn.plan.error = result.status === 'failed'
+    state.sealdex.plan.activeCommand = '';
+    if (result.command_id === 'sealdex.schema.propose') {
+      state.sealdex.plan.proposeResult = result;
+      state.sealdex.plan.error = result.status === 'failed'
         ? ((result.error && result.error.message) || 'Provider reported failure.')
         : '';
     } else {
-      state.cairn.plan.error = result.status === 'failed'
+      state.sealdex.plan.error = result.status === 'failed'
         ? ((result.error && result.error.message) || 'Apply failed.')
         : '';
       if (result.status === 'succeeded') {
-        state.cairn.plan.proposeResult = null;
-        elements.cairnPlanNeed.value = '';
+        state.sealdex.plan.proposeResult = null;
+        elements.sealdexPlanNeed.value = '';
       }
     }
-    renderCairnPlan();
+    renderSealdexPlan();
   }
 
-  function renderCairnPlan() {
-    const running = Boolean(state.cairn.plan.activeCommand);
-    elements.cairnPlanPropose.disabled = running;
+  function renderSealdexPlan() {
+    const running = Boolean(state.sealdex.plan.activeCommand);
+    elements.sealdexPlanPropose.disabled = running;
 
-    const result = state.cairn.plan.proposeResult;
+    const result = state.sealdex.plan.proposeResult;
     const hasPendingPlan = Boolean(result && result.status === 'pending-approval' && result.data && result.data.plan);
-    elements.cairnPlanApprove.disabled = running || !hasPendingPlan;
-    elements.cairnPlanDiscard.disabled = running || !hasPendingPlan;
+    elements.sealdexPlanApprove.disabled = running || !hasPendingPlan;
+    elements.sealdexPlanDiscard.disabled = running || !hasPendingPlan;
 
     if (running) {
-      elements.cairnPlanStatus.textContent = state.cairn.plan.activeCommand === 'cairn.schema.apply' ? 'Applying...' : 'Proposing...';
-    } else if (state.cairn.plan.error) {
-      elements.cairnPlanStatus.textContent = 'Failed: ' + state.cairn.plan.error;
+      elements.sealdexPlanStatus.textContent = state.sealdex.plan.activeCommand === 'sealdex.schema.apply' ? 'Applying...' : 'Proposing...';
+    } else if (state.sealdex.plan.error) {
+      elements.sealdexPlanStatus.textContent = 'Failed: ' + state.sealdex.plan.error;
     } else if (hasPendingPlan) {
-      elements.cairnPlanStatus.textContent = 'Pending approval';
+      elements.sealdexPlanStatus.textContent = 'Pending approval';
     } else {
-      elements.cairnPlanStatus.textContent = 'Not run';
+      elements.sealdexPlanStatus.textContent = 'Not run';
     }
 
-    clear(elements.cairnPlanSummary);
-    clear(elements.cairnPlanChecks);
+    clear(elements.sealdexPlanSummary);
+    clear(elements.sealdexPlanChecks);
     if (!hasPendingPlan) {
       return;
     }
@@ -2316,25 +2316,25 @@
       const dd = document.createElement('dd');
       dt.textContent = entry[0];
       dd.textContent = entry[1];
-      elements.cairnPlanSummary.appendChild(dt);
-      elements.cairnPlanSummary.appendChild(dd);
+      elements.sealdexPlanSummary.appendChild(dt);
+      elements.sealdexPlanSummary.appendChild(dd);
     });
     (result.data.checks || []).forEach(function (check) {
       const li = document.createElement('li');
       li.textContent = check;
-      elements.cairnPlanChecks.appendChild(li);
+      elements.sealdexPlanChecks.appendChild(li);
     });
   }
 
-  function collectCairnEntryFields() {
-    const table = state.cairn.entry.selectedTable;
-    const columns = state.cairn.entry.tables[table] || {};
+  function collectSealdexEntryFields() {
+    const table = state.sealdex.entry.selectedTable;
+    const columns = state.sealdex.entry.tables[table] || {};
     const fields = {};
     Object.keys(columns).forEach(function (name) {
       if (columns[name].pk) {
         return;
       }
-      const input = elements.cairnEntryFields.querySelector('[data-field="' + name + '"]');
+      const input = elements.sealdexEntryFields.querySelector('[data-field="' + name + '"]');
       if (input && input.value !== '') {
         fields[name] = input.value;
       }
@@ -2342,68 +2342,68 @@
     return Object.keys(fields).length ? fields : null;
   }
 
-  function handleCairnEntryProviderResult(result) {
-    if (result.provider_id !== 'cairn') {
+  function handleSealdexEntryProviderResult(result) {
+    if (result.provider_id !== 'sealdex') {
       return;
     }
-    if (result.command_id !== 'cairn.entry.tables' && result.command_id !== 'cairn.entry.add' && result.command_id !== 'cairn.entry.import') {
+    if (result.command_id !== 'sealdex.entry.tables' && result.command_id !== 'sealdex.entry.add' && result.command_id !== 'sealdex.entry.import') {
       return;
     }
-    state.cairn.entry.activeCommand = '';
-    state.cairn.entry.error = result.status === 'failed'
+    state.sealdex.entry.activeCommand = '';
+    state.sealdex.entry.error = result.status === 'failed'
       ? ((result.error && result.error.message) || 'Provider reported failure.')
       : '';
-    if (result.command_id === 'cairn.entry.tables' && result.status === 'succeeded') {
-      state.cairn.entry.tables = (result.data && result.data.tables) || {};
-      if (!state.cairn.entry.tables[state.cairn.entry.selectedTable]) {
-        state.cairn.entry.selectedTable = Object.keys(state.cairn.entry.tables)[0] || '';
+    if (result.command_id === 'sealdex.entry.tables' && result.status === 'succeeded') {
+      state.sealdex.entry.tables = (result.data && result.data.tables) || {};
+      if (!state.sealdex.entry.tables[state.sealdex.entry.selectedTable]) {
+        state.sealdex.entry.selectedTable = Object.keys(state.sealdex.entry.tables)[0] || '';
       }
     }
-    if (result.command_id === 'cairn.entry.add' && result.status === 'succeeded') {
-      state.cairn.entry.lastResult = 'Inserted row id ' + (result.data && result.data.row_id) + ' into ' + (result.data && result.data.table) + '.';
+    if (result.command_id === 'sealdex.entry.add' && result.status === 'succeeded') {
+      state.sealdex.entry.lastResult = 'Inserted row id ' + (result.data && result.data.row_id) + ' into ' + (result.data && result.data.table) + '.';
     }
-    if (result.command_id === 'cairn.entry.import' && result.status === 'succeeded') {
-      state.cairn.entry.lastResult = 'Imported ' + (result.data && result.data.inserted) + ' row(s) into ' + (result.data && result.data.table) + '.';
-      elements.cairnEntryCsv.value = '';
+    if (result.command_id === 'sealdex.entry.import' && result.status === 'succeeded') {
+      state.sealdex.entry.lastResult = 'Imported ' + (result.data && result.data.inserted) + ' row(s) into ' + (result.data && result.data.table) + '.';
+      elements.sealdexEntryCsv.value = '';
     }
-    renderCairnEntry();
+    renderSealdexEntry();
   }
 
-  function renderCairnEntry() {
-    const running = Boolean(state.cairn.entry.activeCommand);
-    elements.cairnEntryRefreshTables.disabled = running;
-    const table = state.cairn.entry.selectedTable;
-    elements.cairnEntryAdd.disabled = running || !table;
-    elements.cairnEntryImport.disabled = running || !table;
+  function renderSealdexEntry() {
+    const running = Boolean(state.sealdex.entry.activeCommand);
+    elements.sealdexEntryRefreshTables.disabled = running;
+    const table = state.sealdex.entry.selectedTable;
+    elements.sealdexEntryAdd.disabled = running || !table;
+    elements.sealdexEntryImport.disabled = running || !table;
 
     if (running) {
-      elements.cairnEntryStatus.textContent = 'Working...';
-    } else if (state.cairn.entry.error) {
-      elements.cairnEntryStatus.textContent = 'Failed: ' + state.cairn.entry.error;
-    } else if (state.cairn.entry.lastResult) {
-      elements.cairnEntryStatus.textContent = state.cairn.entry.lastResult;
+      elements.sealdexEntryStatus.textContent = 'Working...';
+    } else if (state.sealdex.entry.error) {
+      elements.sealdexEntryStatus.textContent = 'Failed: ' + state.sealdex.entry.error;
+    } else if (state.sealdex.entry.lastResult) {
+      elements.sealdexEntryStatus.textContent = state.sealdex.entry.lastResult;
     } else {
-      elements.cairnEntryStatus.textContent = '-';
+      elements.sealdexEntryStatus.textContent = '-';
     }
 
-    const tableNames = Object.keys(state.cairn.entry.tables);
-    clear(elements.cairnEntryTable);
+    const tableNames = Object.keys(state.sealdex.entry.tables);
+    clear(elements.sealdexEntryTable);
     tableNames.forEach(function (name) {
       const option = document.createElement('option');
       option.value = name;
       option.textContent = name;
-      elements.cairnEntryTable.appendChild(option);
+      elements.sealdexEntryTable.appendChild(option);
     });
     if (table && tableNames.indexOf(table) !== -1) {
-      elements.cairnEntryTable.value = table;
+      elements.sealdexEntryTable.value = table;
     }
-    renderCairnEntryFields();
+    renderSealdexEntryFields();
   }
 
-  function renderCairnEntryFields() {
-    clear(elements.cairnEntryFields);
-    const table = state.cairn.entry.selectedTable;
-    const columns = state.cairn.entry.tables[table] || {};
+  function renderSealdexEntryFields() {
+    clear(elements.sealdexEntryFields);
+    const table = state.sealdex.entry.selectedTable;
+    const columns = state.sealdex.entry.tables[table] || {};
     Object.keys(columns).forEach(function (name) {
       if (columns[name].pk) {
         return;
@@ -2414,7 +2414,7 @@
       input.type = 'text';
       input.dataset.field = name;
       label.appendChild(input);
-      elements.cairnEntryFields.appendChild(label);
+      elements.sealdexEntryFields.appendChild(label);
     });
   }
 

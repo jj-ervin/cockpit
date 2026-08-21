@@ -53,12 +53,12 @@ _PROVIDER_TIMEOUT_SECONDS = 30
 #: not listed here keep the flat default.
 _PROVIDER_COMMAND_TIMEOUT_SECONDS: dict[str, int] = {
     "marlin.doctor.agents.run.execute": 11 * 60,
-    # cairn.schema.propose calls out to an LLM (schema_agent.py's KORE
-    # stage); Cairn's own agent_loop.py documents a real CPU-only local
+    # sealdex.schema.propose calls out to an LLM (schema_agent.py's KORE
+    # stage); Sealdex's own agent_loop.py documents a real CPU-only local
     # Ollama call measured at 205s wall time, with a 300s default timeout
     # of its own. The flat 30s default here would kill the provider
     # process mid-call on every real invocation.
-    "cairn.schema.propose": 6 * 60,
+    "sealdex.schema.propose": 6 * 60,
 }
 
 

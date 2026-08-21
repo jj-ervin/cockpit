@@ -51,7 +51,7 @@
       <button class="tab" type="button" data-tab="wizard">Setup Wizard</button>
       <button class="tab" type="button" data-tab="workspace-tab">Workspace</button>
       <button class="tab" type="button" data-tab="niji">Niji</button>
-      <button class="tab" type="button" data-tab="cairn">Cairn</button>
+      <button class="tab" type="button" data-tab="sealdex">Sealdex</button>
       <button class="tab" type="button" data-tab="lasso">Compose Scratchpad</button>
     </nav>
 
@@ -548,45 +548,45 @@
       </section>
     </section>
 
-    <section class="tab-panel" id="cairn">
+    <section class="tab-panel" id="sealdex">
       <section class="panel">
         <div class="panel-header">
-          <h2>Cairn — Plan</h2>
-          <span id="cairn-plan-status">Not run</span>
+          <h2>Sealdex — Plan</h2>
+          <span id="sealdex-plan-status">Not run</span>
         </div>
-        <p>Proposes a schema change via Cairn's agent loop (table/column names only, never row data) through the real Marlin-discovered <code>cairn</code> provider. Nothing is written until you approve.</p>
+        <p>Proposes a schema change via Sealdex's agent loop (table/column names only, never row data) through the real Marlin-discovered <code>sealdex</code> provider. Nothing is written until you approve.</p>
         <div class="button-row">
-          <textarea id="cairn-plan-need" rows="2" placeholder="Describe the schema change you need, in plain language"></textarea>
+          <textarea id="sealdex-plan-need" rows="2" placeholder="Describe the schema change you need, in plain language"></textarea>
         </div>
         <div class="button-row">
-          <button id="cairn-plan-propose" type="button">Propose plan</button>
-          <button id="cairn-plan-approve" type="button" disabled>Approve and apply</button>
-          <button id="cairn-plan-discard" type="button" disabled>Discard</button>
+          <button id="sealdex-plan-propose" type="button">Propose plan</button>
+          <button id="sealdex-plan-approve" type="button" disabled>Approve and apply</button>
+          <button id="sealdex-plan-discard" type="button" disabled>Discard</button>
         </div>
-        <dl class="metadata-list" id="cairn-plan-summary"></dl>
-        <ul id="cairn-plan-checks"></ul>
+        <dl class="metadata-list" id="sealdex-plan-summary"></dl>
+        <ul id="sealdex-plan-checks"></ul>
       </section>
       <section class="panel">
         <div class="panel-header">
-          <h2>Cairn — Entry</h2>
-          <span id="cairn-entry-status">-</span>
+          <h2>Sealdex — Entry</h2>
+          <span id="sealdex-entry-status">-</span>
         </div>
-        <p>Insert-only data entry against any existing table via Cairn's zero-trust <code>data_entry.py</code> surface — no schema access, no raw SQL.</p>
+        <p>Insert-only data entry against any existing table via Sealdex's zero-trust <code>data_entry.py</code> surface — no schema access, no raw SQL.</p>
         <div class="button-row">
-          <select id="cairn-entry-table"></select>
-          <button id="cairn-entry-refresh-tables" type="button">Refresh tables</button>
+          <select id="sealdex-entry-table"></select>
+          <button id="sealdex-entry-refresh-tables" type="button">Refresh tables</button>
         </div>
-        <div id="cairn-entry-fields"></div>
+        <div id="sealdex-entry-fields"></div>
         <div class="button-row">
-          <button id="cairn-entry-add" type="button" disabled>Add row</button>
-        </div>
-        <div class="button-row">
-          <textarea id="cairn-entry-csv" rows="3" placeholder="CSV text (header row required) to bulk import into the selected table"></textarea>
+          <button id="sealdex-entry-add" type="button" disabled>Add row</button>
         </div>
         <div class="button-row">
-          <button id="cairn-entry-import" type="button" disabled>Import CSV</button>
+          <textarea id="sealdex-entry-csv" rows="3" placeholder="CSV text (header row required) to bulk import into the selected table"></textarea>
         </div>
-        <div id="cairn-entry-result"></div>
+        <div class="button-row">
+          <button id="sealdex-entry-import" type="button" disabled>Import CSV</button>
+        </div>
+        <div id="sealdex-entry-result"></div>
       </section>
     </section>
 
@@ -702,16 +702,16 @@
         </div>
       </div>
     </section>
-    <section class="approval-overlay" id="cairn-approval-dialog" role="dialog" aria-modal="true" aria-labelledby="cairn-approval-title" hidden>
+    <section class="approval-overlay" id="sealdex-approval-dialog" role="dialog" aria-modal="true" aria-labelledby="sealdex-approval-title" hidden>
       <div class="approval-dialog">
         <p class="eyebrow">Human approval required</p>
-        <h2 id="cairn-approval-title">Approve this Cairn action?</h2>
-        <p>This action writes to Cairn's registry (a new migration file, or a new/imported row). Approval is bound to the exact provider, command, and input shown below.</p>
-        <dl class="metadata-list" id="cairn-approval-scope"></dl>
-        <label class="approval-check"><input id="cairn-approval-check" type="checkbox"> I approve this exact Cairn action.</label>
+        <h2 id="sealdex-approval-title">Approve this Sealdex action?</h2>
+        <p>This action writes to Sealdex's registry (a new migration file, or a new/imported row). Approval is bound to the exact provider, command, and input shown below.</p>
+        <dl class="metadata-list" id="sealdex-approval-scope"></dl>
+        <label class="approval-check"><input id="sealdex-approval-check" type="checkbox"> I approve this exact Sealdex action.</label>
         <div class="button-row">
-          <button id="cairn-cancel-approval" type="button">Cancel</button>
-          <button id="cairn-confirm-approval" type="button" disabled>Approve and execute</button>
+          <button id="sealdex-cancel-approval" type="button">Cancel</button>
+          <button id="sealdex-confirm-approval" type="button" disabled>Approve and execute</button>
         </div>
       </div>
     </section>

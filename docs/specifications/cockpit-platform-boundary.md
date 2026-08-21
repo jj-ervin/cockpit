@@ -1,8 +1,17 @@
 # cockpit-platform-boundary
 
 Status: positioning decision, locked 2026-08-20; mode-4 Niji proof closed
-2026-08-21; Cairn mode-1 local/artifact proof closed 2026-08-21 (hosted
+2026-08-21; Sealdex mode-1 local/artifact proof closed 2026-08-21 (hosted
 release proof still open — see below)
+
+**2026-08-21 addendum:** the provider referenced throughout this document
+was renamed Cairn → Sealdex the same day the proof below was closed. The
+proof events, command ids, executable, and artifact described here are
+stated under the current name Sealdex; the local repo directory (`cairn/`)
+and its own historical planning docs were not renamed and keep the name
+Cairn where they describe past decisions — see `cairn/DEV-PLAN.md`'s
+rename entry for the full rationale.
+
 Authority: user directive, same session as the Cockpit priority-shift
 memory and the live Marlin host-web demo; downstream of `cockpit-provider-v1`
 Related: `cockpit-provider-v1.md` (the mechanism this boundary governs),
@@ -60,7 +69,7 @@ Identical across every app or panel, whether hosted or derived:
 ## Domain UI — adapted per app
 
 The part Cockpit deliberately does not standardize: Niji's palette
-canvas and color tools, Cairn's reference/vault mediation flows,
+canvas and color tools, Sealdex's reference/vault mediation flows,
 Kinjuu's budget/deadline model, Marlin's package/doctor panels. Each
 app's reason for existing lives here; the shell above exists so none of
 them have to rebuild navigation, approvals, or settings to have it.
@@ -72,7 +81,7 @@ fits, and none is a lesser or intermediate step toward another:
 
 1. **Cockpit-hosted panel** — runs inside the main Cockpit app's own
    process/window. Occupants: Marlin's audit panel, and, proven
-   2026-08-21, Cairn's Plan and Entry tabs (see below).
+   2026-08-21, Sealdex's Plan and Entry tabs (see below).
 2. **Cockpit-derived standalone app** — reuses Cockpit's shell and
    component kit but ships as its own branded app, not inside Cockpit's
    process. No current occupant; this is the mode the VS
@@ -154,13 +163,13 @@ occupants, don't let it go stale.
     normal creative/tool provider proof, not a governance claim — it does
     not exercise approve/execute/verify/evidence and should not be read
     as such.
-- **Cairn** — occupies mode 1 (hosted panel), proven 2026-08-21 at the
+- **Sealdex** — occupies mode 1 (hosted panel), proven 2026-08-21 at the
   provider-contract, host-experience, and local-installation proof
   boundaries; release proof (a published, hosted, clean-install artifact)
   is explicitly not yet done. See the dedicated section below for the
-  full breakdown. Its domain UI is Plan (schema design via Cairn's
+  full breakdown. Its domain UI is Plan (schema design via Sealdex's
   existing schema-agent pipeline, human-approved before write) and Entry
-  (safe data entry via Cairn's existing data-entry logic) — narrower than
+  (safe data entry via Sealdex's existing data-entry logic) — narrower than
   the "reference/vault mediation flows" originally named in the
   priority-shift memory; vault mediation itself remains unbuilt and
   explicitly out of scope for this slice.
@@ -234,34 +243,36 @@ admitted to bluffing. Mode 2 remains strategically interesting but
 still needs a real provider/app underneath it, and stays a separate,
 later decision.
 
-## Cairn as a real mode-1 hosted domain UI — proven 2026-08-21 (local/artifact proof only)
+## Sealdex as a real mode-1 hosted domain UI — proven 2026-08-21 (local/artifact proof only)
 
 Built per the four-round Codex review arc recorded in full in
 `cockpit/DEV-PLAN.md`'s "Cairn's First Cockpit Provider Slice" entry and
-`cairn/DEV-PLAN.md`'s matching entries. Stated here using CHIPP-Cockpit's
-proof-boundary vocabulary (`../CHIPP.md`) so this section doesn't imply
-more than has actually been exercised.
+`cairn/DEV-PLAN.md`'s matching entries — both written and titled under
+the name Cairn, the product's name at the time; the product was renamed
+Sealdex the same day this section was last updated. Stated here using
+CHIPP-Cockpit's proof-boundary vocabulary (`../CHIPP.md`) so this
+section doesn't imply more than has actually been exercised.
 
 **Provider contract proof — met.** `cairn/scripts/provider.py` implements
-`cockpit-provider-v1` with five commands (`cairn.schema.propose`/`apply`,
-`cairn.entry.tables`/`add`/`import`), a propose → human-approve → revalidate
+`cockpit-provider-v1` with five commands (`sealdex.schema.propose`/`apply`,
+`sealdex.entry.tables`/`add`/`import`), a propose → human-approve → revalidate
 → apply split for schema mutation (stale-proposal rejection if the schema
 moved under the plan between propose and apply), and structured failure
 codes for invalid input, LLM/network, database, and filesystem errors
 instead of process crashes. Covered by 22 cases in `cairn/tests/test_provider.py`.
 
 **Host experience proof — met.** `web/cockpit.html`/`cockpit.js` add a
-Cairn tab with Plan and Entry panels through the same generic
+Sealdex tab with Plan and Entry panels through the same generic
 `invoke_provider_command` path Marlin's and Niji's panels use — no new
-host plumbing beyond two command-timeout entries (`cairn.schema.propose`
+host plumbing beyond two command-timeout entries (`sealdex.schema.propose`
 calls a real LLM). Covered by
-`src/cockpit/tests/test_provider_browser_cairn.py`: two fixture-based
+`src/cockpit/tests/test_provider_browser_sealdex.py`: two fixture-based
 browser tests (Plan propose→approve→apply, Entry add) and one opt-in test
-that drives a real compiled `cairn-provider.exe` through a real
+that drives a real compiled `sealdex-provider.exe` through a real
 refresh-tables → fill → approve → add round trip.
 
 **Installation proof — met, against a local artifact, not a hosted
-download.** Cairn now ships a real compiled `cairn-provider.exe`
+download.** Sealdex now ships a real compiled `sealdex-provider.exe`
 (PyInstaller, mirroring `niji-provider.spec`), built by one atomic release
 command (`cairn/scripts/build_release.py`) that compiles from source into
 a scratch directory, fingerprints the packaged source into a
@@ -269,32 +280,32 @@ a scratch directory, fingerprints the packaged source into a
 release zip once assembly fully succeeds. `cairn/scripts/verify_release.py`
 mandatorily checks packaged sources against the workspace byte-for-byte,
 schema-validates the archived provider manifest, and rejects a stale or
-tampered executable. `marlin/packages/marlin/tests/cairn-real-artifact.test.ts`
-extracts the real `dist/cairn-0.1.6.zip`, calls the real
+tampered executable. `marlin/packages/marlin/tests/sealdex-real-artifact.test.ts`
+extracts the real `dist/sealdex-0.1.0.zip`, calls the real
 `issueProviderAttestation()` against the real extracted files, and invokes
 the real compiled provider over stdio — asserting a real `succeeded`
 result. This proves resolution-from-a-local-file, extraction, attestation,
 registration, and executable launch all work from the packaged form. It
-does **not** exercise a `marlin install cairn` fetch from a live hosted
-registry, because no hosted `v0.1.6` release exists yet (next paragraph).
+does **not** exercise a `marlin install sealdex` fetch from a live hosted
+registry, because no hosted `v0.1.0` release exists yet (next paragraph).
 
-**Release proof — not met, and known to be open.** `v0.1.6` has not been
+**Release proof — not met, and known to be open.** `v0.1.0` has not been
 published as a GitHub release. Marlin's registry snapshot
-(`packages/marlin/registry/manifests/cairn.yaml` +
-`registry/index.yaml`'s `cairn` entry) was updated locally with the real
-build's checksum but is deliberately **left uncommitted** — per CHIPP's
+(`packages/marlin/registry/manifests/sealdex.yaml` +
+`registry/index.yaml`'s `sealdex` entry) was committed locally (`marlin`
+commit `fe584bb`, not pushed) with the real build's checksum — per CHIPP's
 own sequencing track (build/verify → publish → retrieve/verify hosted →
-clean install → commit registry only after hosted proof passes), a
-registry declaration must not be pushed ahead of the artifact it points
+clean install → push registry only after hosted proof passes), a
+registry declaration must not be **pushed** ahead of the artifact it points
 to actually existing at a public URL. No clean-environment
-`marlin install cairn` has been run against a real hosted registry.
+`marlin install sealdex` has been run against a real hosted registry.
 Publishing the release is a real, external, hard-to-reverse action
 reserved for explicit owner authorization, not something this proof
 performs unilaterally.
 
-**Do not round this up.** "Cairn works in Cockpit" is true at the
+**Do not round this up.** "Sealdex works in Cockpit" is true at the
 provider-contract, host-experience, and local-installation boundaries.
-"Cairn is installable in Cockpit" is not yet true for a clean environment
+"Sealdex is installable in Cockpit" is not yet true for a clean environment
 pulling from the public registry — that claim waits on release proof.
 
 ## How to apply
@@ -312,5 +323,5 @@ legitimate target and is currently unproven, so it deserves deliberate
 consideration, not neglect by default. When citing proof for any
 provider, name the specific CHIPP proof boundary (provider contract,
 host experience, installation, release) rather than a bare "it works" —
-Cairn's own entry above is the reference example of why that distinction
+Sealdex's own entry above is the reference example of why that distinction
 matters: three boundaries proven, one (release) explicitly still open.

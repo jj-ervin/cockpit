@@ -1688,6 +1688,79 @@ explicitly out of scope / not done here. Marlin's registry update stays
 local and uncommitted — not pushed until the real release exists and a
 clean `marlin install cairn` succeeds against it.
 
+## Renamed: Cairn -> Sealdex, Phase 2 (Cockpit integration) (2026-08-21)
+
+Cairn's public identity was renamed Sealdex (see `cairn/DEV-PLAN.md`'s
+own Phase 1 rename entry for the full identity-clearance rationale).
+This entry covers Phase 2 only: syncing Cockpit's provider integration
+to the new identifiers. Phase 1 (`cairn` repo's own in-repo rename) and
+Phase 3 (Marlin's bundled registry proof) were completed and committed
+separately, ahead of this phase (`cairn` commit `ac280ce`, `marlin`
+commit `fe584bb`, neither pushed). The local repo directory `c:\dev\cairn`
+was deliberately **not** renamed in any phase so far — every path
+reference below that still reads `cairn/...` is a real, correct
+filesystem path, not a missed rename.
+
+**Renamed:** `examples/providers/cairn.provider.json` ->
+`examples/providers/sealdex.provider.json` (id/name/version/command ids
+resynced to the real `cairn/providers/sealdex.provider.json`: version
+`0.1.0`, five `sealdex.*` command ids). `src/cockpit/tests/test_provider_browser_cairn.py`
+-> `test_provider_browser_sealdex.py` (all internal identifiers, element
+selectors, provider/command ids, and the real-artifact path renamed to
+`dist/sealdex-0.1.0.zip` / `providers/sealdex.provider.json` /
+`provider/sealdex-provider.exe`, matching the real zip's real internal
+member names, verified with `zipfile.namelist()` before writing the
+test). `host-web/actions.js` and `src/cockpit/host_bridge.py`: the
+`cairn.schema.propose` long-running-command timeout key renamed to
+`sealdex.schema.propose` in both places (they must match exactly, or the
+6-minute timeout silently stops applying). `web/cockpit.html`/`cockpit.js`:
+tab label, element ids (`cairn-plan-*` -> `sealdex-plan-*`, etc.), state
+key (`state.cairn` -> `state.sealdex`), and every `cairn.*` command/provider
+id renamed to `sealdex.*` — one comment line in `cockpit.js` referencing
+"the cairn repo" by path was deliberately left as `cairn`, since that's
+the real directory name.
+
+**Docs:** `docs/CHIPP.md` — its one Cairn mention (naming the three
+Cockpit integration cases) updated to Sealdex with a same-day-rename
+note, since it's an active discussion draft, not a frozen record.
+`docs/specifications/cockpit-platform-boundary.md` and
+`cockpit-shell-platform-design-note.md` — both are living "current
+state" specs (the boundary doc's own text says "update it as tiers get
+real occupants, don't let it go stale"), so renamed throughout to
+Sealdex rather than frozen, with a short dated addendum each noting the
+proof was originally built and recorded under the name Cairn before the
+same-day rename. While updating the boundary doc's release-proof
+paragraph for the new artifact/version names, also corrected a claim
+that had gone stale for an unrelated reason: it said Marlin's registry
+snapshot was "left uncommitted," which was true when that paragraph was
+first written but is no longer true now that Phase 3 committed it
+locally (`marlin` commit `fe584bb`, still not pushed) — corrected to
+"committed locally, not pushed" rather than left inaccurate. Historical
+titles and paths were explicitly preserved, not renamed: the boundary
+doc's reference to `cockpit/DEV-PLAN.md`'s "Cairn's First Cockpit
+Provider Slice" entry keeps that exact historical heading text, since
+that section title in this very file (below) is itself unchanged; and
+every `cairn/scripts/...`, `cairn/tests/...`, `cairn/DEV-PLAN.md` path
+reference stays `cairn` because that's the real, unrenamed directory.
+This DEV-PLAN.md entry is itself append-only, per the same rule — no
+existing entry above this one was edited.
+
+**Verified, not just asserted:** `pytest src/cockpit/tests -k "not
+browser"` — **182 passed, 1 skipped, 6 deselected**. `host-web`'s
+`npm test` — **36 passed**. `pytest src/cockpit/tests -k "browser"` —
+**6 passed**, including `test_provider_browser_sealdex.py::test_browser_entry_add_via_real_provider`,
+which extracts the real `provider/sealdex-provider.exe` out of the real
+`dist/sealdex-0.1.0.zip`, hand-builds an attestation from the real
+extracted file hashes, and drives it through a real Chromium browser via
+Playwright — not skipped, not a fixture. A final case-insensitive
+`cairn` grep across the whole repo turned up exactly six files, every
+hit either a real `cairn/...` filesystem path, a deliberate historical
+note, or a pre-existing entry in this file above this one.
+
+**Not done, explicitly out of scope for this phase:** Marlin, vault,
+root, PyPI/npm/domain namespace claims, any GitHub tag or release, any
+publication, and renaming the local `cairn` repo directory itself.
+
 ## 2026-08-21 — CHIPP cross-host integration playbook recorded (discussion draft)
 
 Added `docs/CHIPP.md`: **CHIPP — Cross-Host Integration, Packaging, and

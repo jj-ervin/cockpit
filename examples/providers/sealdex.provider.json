@@ -1,20 +1,20 @@
 {
   "schema_version": "cockpit-provider-v1",
-  "id": "cairn",
-  "name": "Cairn",
-  "version": "0.1.6",
-  "description": "Agent-assisted schema planning and zero-trust data entry for Cairn's local-first operational registry.",
+  "id": "sealdex",
+  "name": "Sealdex",
+  "version": "0.1.0",
+  "description": "Agent-assisted schema planning and zero-trust data entry for Sealdex's local-first operational registry.",
   "transport": { "kind": "stdio-json", "protocol": "cockpit-provider-v1" },
   "commands": [
     {
-      "id": "cairn.schema.propose",
+      "id": "sealdex.schema.propose",
       "title": "Propose a schema change",
       "action": "schema.propose",
       "mutation": false,
       "placements": ["view"]
     },
     {
-      "id": "cairn.schema.apply",
+      "id": "sealdex.schema.apply",
       "title": "Apply a proposed schema change",
       "action": "schema.apply",
       "mutation": true,
@@ -22,14 +22,14 @@
       "placements": ["view"]
     },
     {
-      "id": "cairn.entry.tables",
+      "id": "sealdex.entry.tables",
       "title": "List writable tables",
       "action": "entry.tables",
       "mutation": false,
       "placements": ["view"]
     },
     {
-      "id": "cairn.entry.add",
+      "id": "sealdex.entry.add",
       "title": "Add a row",
       "action": "entry.add",
       "mutation": true,
@@ -37,7 +37,7 @@
       "placements": ["view"]
     },
     {
-      "id": "cairn.entry.import",
+      "id": "sealdex.entry.import",
       "title": "Import rows from CSV",
       "action": "entry.import",
       "mutation": true,
@@ -46,7 +46,7 @@
     }
   ],
   "views": [
-    { "id": "cairn.workspace", "title": "Cairn", "kind": "workspace", "placement": "primary" }
+    { "id": "sealdex.workspace", "title": "Sealdex", "kind": "workspace", "placement": "primary" }
   ],
   "capabilities": ["read", "write"],
   "permissions": []

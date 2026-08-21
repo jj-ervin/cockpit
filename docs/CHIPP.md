@@ -26,9 +26,10 @@ package does not prove host discovery; a browser fixture does not prove the
 compiled provider; and a local artifact does not prove a public release. CHIPP
 keeps those claims separate and makes the handoffs between them explicit.
 
-This draft records lessons from the Marlin, Niji, and Cairn Cockpit work for
-further discussion and development. It is not yet a normative release gate or
-a claim that every proposed tool below exists.
+This draft records lessons from the Marlin, Niji, and Sealdex Cockpit work
+(Sealdex was named Cairn until a same-day rename, 2026-08-21) for further
+discussion and development. It is not yet a normative release gate or a
+claim that every proposed tool below exists.
 
 ## Stable Core And Profiles
 

@@ -15,9 +15,9 @@ const { resolveContainedPath } = require('./pathContainment');
 const LONG_RUNNING_PROVIDER_COMMAND_TIMEOUT_MS = {
   'marlin.doctor.agents.run.execute': 11 * 60 * 1000,
   // Mirrors host_bridge.py's _PROVIDER_COMMAND_TIMEOUT_SECONDS entry for
-  // the same command -- cairn.schema.propose calls out to an LLM and can
+  // the same command -- sealdex.schema.propose calls out to an LLM and can
   // take up to ~300s on local CPU-only Ollama.
-  'cairn.schema.propose': 6 * 60 * 1000,
+  'sealdex.schema.propose': 6 * 60 * 1000,
 };
 
 function timeoutMsForProviderCommand(commandId) {
