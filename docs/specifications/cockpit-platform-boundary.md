@@ -281,11 +281,12 @@ release zip once assembly fully succeeds. `cairn/scripts/verify_release.py`
 mandatorily checks packaged sources against the workspace byte-for-byte,
 schema-validates the archived provider manifest, and rejects a stale or
 tampered executable. `marlin/packages/marlin/tests/sealdex-real-artifact.test.ts`
-extracts the real `dist/sealdex-0.2.0.zip` (first public version moved
-from 0.1.0 to 0.2.0 the same day, to resolve a tag/release-name collision
-with the retired Cairn v0.1.0 release on this repo's GitHub history — see
-`cairn/DEV-PLAN.md`'s dedicated collision-resolution entry; not a design
-change, the rebuilt artifact is otherwise identical), calls the real
+extracts the real `dist/sealdex-0.2.1.zip` (first public version was
+0.2.0, moved there from 0.1.0 the same day, to resolve a tag/release-name
+collision with the retired Cairn v0.1.0 release on this repo's GitHub
+history — see `cairn/DEV-PLAN.md`'s dedicated collision-resolution entry;
+0.2.1 is a later, unrelated fresh-install schema-bootstrap fix, not a
+second collision), calls the real
 `issueProviderAttestation()` against the real extracted files, and invokes
 the real compiled provider over stdio — asserting a real `succeeded`
 result. This proves resolution-from-a-local-file, extraction, attestation,
