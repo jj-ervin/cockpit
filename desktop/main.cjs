@@ -1,9 +1,11 @@
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, ipcMain } = require('electron');
 const fs = require('fs');
 const http = require('http');
 const path = require('path');
 
 let localServer;
+let hostUrlPromise = null;
+let installWindow = null;
 
 function windowIconPath() {
   return path.join(__dirname, 'assets', 'cockpit-icon-pack', 'cockpit.ico');
@@ -45,24 +47,74 @@ function bridgePath() {
   return path.join(process.resourcesPath, 'bridge', 'cockpit-bridge.exe');
 }
 
-async function startHost() {
-  exposeDesktopDependenciesToHost();
-  const hostRoot = app.isPackaged
-    ? path.join(process.resourcesPath, 'host-web')
-    : path.join(__dirname, '..', 'host-web');
-  const { createApp } = require(path.join(hostRoot, 'server.js'));
-  const expressApp = createApp({
-    workspaceRoot: workspaceFromArgs(process.argv),
-    pythonExecutable: process.env.COCKPIT_PYTHON || 'python',
-    bridgeExecutable: bridgePath(),
-  });
-  localServer = http.createServer(expressApp);
-  await new Promise((resolve, reject) => {
-    localServer.once('error', reject);
-    localServer.listen(0, '127.0.0.1', resolve);
-  });
-  return `http://127.0.0.1:${localServer.address().port}`;
+/**
+ * Idempotent: install-mode and the full shell can both need the host in
+ * the same process lifetime (e.g. clicking "Open Cockpit" after an
+ * install-mode install), and must share the one already-listening server
+ * rather than each starting a competing loopback listener.
+ */
+function startHost() {
+  if (hostUrlPromise) return hostUrlPromise;
+  hostUrlPromise = (async () => {
+    exposeDesktopDependenciesToHost();
+    const hostRoot = app.isPackaged
+      ? path.join(process.resourcesPath, 'host-web')
+      : path.join(__dirname, '..', 'host-web');
+    const { createApp } = require(path.join(hostRoot, 'server.js'));
+    const expressApp = createApp({
+      workspaceRoot: workspaceFromArgs(process.argv),
+      pythonExecutable: process.env.COCKPIT_PYTHON || 'python',
+      bridgeExecutable: bridgePath(),
+      installIntent: process.env.COCKPIT_INSTALL_INTENT || null,
+    });
+    localServer = http.createServer(expressApp);
+    await new Promise((resolve, reject) => {
+      localServer.once('error', reject);
+      localServer.listen(0, '127.0.0.1', resolve);
+    });
+    return `http://127.0.0.1:${localServer.address().port}`;
+  })();
+  return hostUrlPromise;
 }
+
+function isInstallMode(env = process.env) {
+  return Boolean(env.COCKPIT_INSTALL_INTENT);
+}
+
+function installWindowTitle(env = process.env) {
+  const intent = env.COCKPIT_INSTALL_INTENT || '';
+  return 'Install ' + (intent ? intent.charAt(0).toUpperCase() + intent.slice(1) : 'Package');
+}
+
+/**
+ * The constrained install-mode window (see the install-mode design note in
+ * DEV-PLAN.md): package name/version/source/checksum and Install/Cancel
+ * only, never the full shell's nav/tabs/wizard. Loads /install instead of
+ * /, from a small fixed-purpose BrowserWindow with its own narrowly-scoped
+ * preload (installPreload.cjs) instead of the shell's no-bridge preload.
+ */
+async function createInstallWindow() {
+  const url = await startHost();
+  const window = new BrowserWindow({
+    width: 480, height: 480, minWidth: 420, minHeight: 420,
+    title: installWindowTitle(), icon: windowIconPath(),
+    webPreferences: { preload: path.join(__dirname, 'installPreload.cjs'), contextIsolation: true, nodeIntegration: false, sandbox: true },
+  });
+  installWindow = window;
+  window.on('closed', () => { installWindow = null; });
+  await window.loadURL(`${url}/install`);
+}
+
+ipcMain.on('cockpit-install:close', (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  if (win) win.close();
+});
+
+ipcMain.on('cockpit-install:open-cockpit', async (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  await createWindow();
+  if (win) win.close();
+});
 
 async function createWindow() {
   const smokeTest = isSmokeTest(process.argv);
@@ -130,8 +182,8 @@ function recordStartupFailure(error) {
   app.quit();
 }
 
-app.whenReady().then(createWindow).catch(recordStartupFailure);
+app.whenReady().then(() => (isInstallMode() ? createInstallWindow() : createWindow())).catch(recordStartupFailure);
 app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });
 app.on('before-quit', () => { if (localServer) localServer.close(); });
 
-module.exports = { argumentValue, isSmokeTest, workspaceFromArgs, waitForShell };
+module.exports = { argumentValue, isSmokeTest, workspaceFromArgs, waitForShell, isInstallMode, installWindowTitle };

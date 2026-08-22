@@ -22,6 +22,19 @@ test('ready/refresh return one eco.cockpit.state message with the built snapshot
   assert.equal(messages.length, 1);
   assert.equal(messages[0].type, 'eco.cockpit.state');
   assert.equal(messages[0].payload.workspaceRoot, WORKSPACE);
+  assert.equal('installIntent' in messages[0].payload, false, 'no installIntent key when none was configured');
+});
+
+test('ready/refresh include installIntent in the payload when the host was launched with one', async () => {
+  const deps = makeDeps({ buildSnapshot: async (root) => ({ workspaceRoot: root }) });
+  const messages = await dispatch('eco.cockpit.ready', {}, { workspaceRoot: WORKSPACE, installIntent: 'sealdex', deps });
+  assert.equal(messages[0].payload.installIntent, 'sealdex');
+});
+
+test('refresh includes installIntent on every response, not just the first (one-shot consumption is the bundle\'s job, not the host\'s)', async () => {
+  const deps = makeDeps({ buildSnapshot: async (root) => ({ workspaceRoot: root }) });
+  const messages = await dispatch('eco.cockpit.refresh', {}, { workspaceRoot: WORKSPACE, installIntent: 'sealdex', deps });
+  assert.equal(messages[0].payload.installIntent, 'sealdex');
 });
 
 test('approveEscalation calls bridge approve and returns an actionResult', async () => {

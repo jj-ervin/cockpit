@@ -1188,7 +1188,7 @@
     form.className = 'wizard-search';
     label.textContent = 'Package';
     input.type = 'text';
-    input.value = 'niji';
+    input.value = state.snapshot.installIntent || 'niji';
     input.autocomplete = 'off';
     submit.type = 'submit';
     submit.textContent = 'Search';
@@ -2793,6 +2793,7 @@
       mode: snapshot.mode || null,
       niji: snapshot.niji || {},
       diagnostics: snapshot.diagnostics || {},
+      installIntent: snapshot.installIntent || null,
     };
   }
 
@@ -2808,6 +2809,7 @@
       mode: null,
       niji: {},
       diagnostics: {},
+      installIntent: null,
     };
   }
 

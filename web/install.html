@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta
+    http-equiv="Content-Security-Policy"
+    content="default-src 'none'; img-src ${cspSource} 'self' https:; style-src ${cspSource} 'self' 'unsafe-inline'; script-src 'nonce-${nonce}' 'self';"
+  >
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Install</title>
+  <link rel="stylesheet" href="install.css">
+</head>
+<body>
+  <main class="install-shell">
+    <header class="install-header">
+      <h1 id="install-title">Install</h1>
+      <p class="install-subtitle" id="install-subtitle"></p>
+    </header>
+
+    <section class="install-card" id="install-card">
+      <dl class="install-metadata" id="install-metadata"></dl>
+      <p class="install-note" id="install-note" hidden></p>
+      <details class="install-details" id="install-details" hidden>
+        <summary>Details</summary>
+        <pre id="install-details-body"></pre>
+      </details>
+    </section>
+
+    <div class="install-actions" id="install-actions"></div>
+
+    <footer class="install-footer">powered by Marlin &amp; Cockpit</footer>
+  </main>
+  <!-- cockpit-install-intent -->
+  <!-- cockpit-host-bootstrap -->
+  <script nonce="${nonce}" src="install.js"></script>
+</body>
+</html>

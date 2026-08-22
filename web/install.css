@@ -1,0 +1,125 @@
+:root {
+  color-scheme: light dark;
+  --surface: #1e1e1e;
+  --surface-2: #252526;
+  --text: #d4d4d4;
+  --muted: #9d9d9d;
+  --line: #3c3c3c;
+  --accent: #0e639c;
+  --accent-text: #ffffff;
+  --danger: #f48771;
+  --success: #49b36d;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--surface);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 13px;
+}
+
+.install-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 20px;
+  min-height: 100vh;
+}
+
+.install-header h1 {
+  margin: 0 0 4px;
+  font-size: 18px;
+}
+
+.install-subtitle {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.install-card {
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 14px;
+}
+
+.install-metadata {
+  margin: 0;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 12px;
+}
+
+.install-metadata dt {
+  color: var(--muted);
+}
+
+.install-metadata dd {
+  margin: 0;
+  word-break: break-all;
+}
+
+.install-note {
+  margin: 10px 0 0;
+  font-size: 12px;
+}
+
+.install-note.is-error {
+  color: var(--danger);
+}
+
+.install-note.is-success {
+  color: var(--success);
+}
+
+.install-details {
+  margin-top: 10px;
+  font-size: 12px;
+}
+
+.install-details pre {
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 160px;
+  overflow: auto;
+}
+
+.install-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.install-actions button {
+  background: var(--accent);
+  color: var(--accent-text);
+  border: none;
+  border-radius: 4px;
+  padding: 6px 14px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.install-actions button.secondary {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--line);
+}
+
+.install-actions button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.install-footer {
+  margin-top: auto;
+  text-align: center;
+  color: var(--muted);
+  font-size: 11px;
+}

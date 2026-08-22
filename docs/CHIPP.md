@@ -66,6 +66,21 @@ CHIPP separates four proof boundaries:
 Evidence belongs to the boundary it actually exercises. No boundary inherits a
 green status merely because an earlier boundary passed.
 
+### One-Click App Install Requirement
+
+For an app/provider release, "installable" means a normal user can find one
+obvious install or download action, start a clickable installer or platform
+bootstrap, review approval/checksum/provider metadata inside that flow, and
+end with the app installed and runnable without using a CLI, manually
+unpacking a zip, or knowing how the host package manager works.
+
+Technical package-manager proof is necessary but not sufficient for a
+public-user-ready release. A clean `marlin install <package>` path proves the
+installer engine; it does not prove the release has a user-facing front door.
+CHIPP release records should target a path from release page to
+installed/runnable app in under five minutes, unless the omission is explicit,
+accepted, and recorded as a limitation.
+
 ## Eight Development Tracks
 
 ### 1. Keep Proof Boundaries Separate

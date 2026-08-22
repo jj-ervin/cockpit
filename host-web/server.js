@@ -63,7 +63,30 @@ function renderHtml() {
   return html;
 }
 
-function createApp({ workspaceRoot, pythonExecutable, bridgeExecutable, deps } = {}) {
+/**
+ * Renders the constrained install-mode page (web/install.html). Shares
+ * renderHtml()'s nonce/CSP handling, plus one extra substitution: the
+ * target package name is baked in directly (window.__installIntent) rather
+ * than delivered through a snapshot round trip, since install-mode has no
+ * use for the full eco.cockpit.state payload the shell needs.
+ */
+function renderInstallHtml(installIntent) {
+  const nonce = crypto.randomBytes(16).toString('hex');
+  let html = fs.readFileSync(path.join(WEB_DIR, 'install.html'), 'utf-8');
+  html = html.replaceAll('${cspSource}', "'self'");
+  html = html.replaceAll('${nonce}', nonce);
+  html = html.replace(
+    /content="default-src 'none'[^"]*"/,
+    `content="default-src 'none'; connect-src 'self'; img-src 'self' https:; ` +
+    `style-src 'self' 'unsafe-inline'; script-src 'nonce-${nonce}' 'self';"`,
+  );
+  const intentScript = `<script nonce="${nonce}">window.__installIntent = ${JSON.stringify(installIntent || '')};</script>`;
+  html = html.replace('<!-- cockpit-install-intent -->', intentScript);
+  html = html.replace('<!-- cockpit-host-bootstrap -->', bootstrapScript(nonce));
+  return html;
+}
+
+function createApp({ workspaceRoot, pythonExecutable, bridgeExecutable, installIntent, deps } = {}) {
   const app = express();
   app.use(express.json());
 
@@ -71,11 +94,15 @@ function createApp({ workspaceRoot, pythonExecutable, bridgeExecutable, deps } =
     res.set('Content-Type', 'text/html').send(renderHtml());
   });
 
+  app.get('/install', (req, res) => {
+    res.set('Content-Type', 'text/html').send(renderInstallHtml(installIntent));
+  });
+
   app.use(express.static(WEB_DIR, { index: false }));
 
   app.post('/api/bridge', async (req, res) => {
     try {
-      const messages = await dispatch(req.body.type, req.body, { workspaceRoot, pythonExecutable, bridgeExecutable, deps });
+      const messages = await dispatch(req.body.type, req.body, { workspaceRoot, pythonExecutable, bridgeExecutable, installIntent, deps });
       res.json(messages);
     } catch (err) {
       res.json([{ type: 'eco.cockpit.error', payload: { message: err instanceof Error ? err.message : String(err) } }]);
@@ -85,4 +112,4 @@ function createApp({ workspaceRoot, pythonExecutable, bridgeExecutable, deps } =
   return app;
 }
 
-module.exports = { createApp, renderHtml };
+module.exports = { createApp, renderHtml, renderInstallHtml };

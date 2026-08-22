@@ -45,7 +45,7 @@ function timeoutMsForProviderCommand(commandId) {
  *   - marlinInstallPackage: invokes the provider only when the bundle sends
  *     the literal boolean confirmation required by the protocol.
  */
-async function dispatch(type, message, { workspaceRoot, pythonExecutable, bridgeExecutable, deps } = {}) {
+async function dispatch(type, message, { workspaceRoot, pythonExecutable, bridgeExecutable, installIntent, deps } = {}) {
   const bridge = (deps && deps.callBridge) || callBridge;
   const snapshot = (deps && deps.buildSnapshot) || buildSnapshot;
   const osOps = (deps && deps.osOpen) || osOpen;
@@ -70,6 +70,12 @@ async function dispatch(type, message, { workspaceRoot, pythonExecutable, bridge
       case 'eco.cockpit.ready':
       case 'eco.cockpit.refresh': {
         const payload = await snapshot(workspaceRoot, opts);
+        // Per-package installer launch intent (Marlin's package-launcher.mjs
+        // sets COCKPIT_INSTALL_INTENT before spawning Cockpit.exe). Carried
+        // on every ready/refresh response rather than consumed here -- the
+        // web bundle is what decides to act on it exactly once; this host
+        // layer just relays what the process environment says.
+        if (installIntent) payload.installIntent = installIntent;
         return [{ type: 'eco.cockpit.state', payload }];
       }
 

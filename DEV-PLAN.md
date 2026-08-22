@@ -1827,3 +1827,89 @@ its provider-manifest declaration, and its own test coverage) are
 recorded in `marlin/DEV-PLAN.md` and `marlin/passes/init/INIT.19.06.md`.
 Update and remove mutation UI remain unimplemented in the panel — this
 was scoped as the smallest next proof, not full `INIT.19.06` closure.
+
+## Constrained install-mode window (2026-08-21)
+
+Correction to the per-package bootstrap installer design in
+`marlin/DEV-PLAN.md`: a per-package installer (e.g.
+`Sealdex-Install-0.2.0.exe`) must not open the full Cockpit shell as its
+primary experience — a first cut that auto-switched to the Setup Wizard
+tab and auto-fired a search was replaced, before it shipped, with a
+small dedicated "install mode" window.
+
+**New, separate bundle** (`web/install.html`/`install.js`/`install.css`)
+— not a mode flag inside `web/cockpit.js`. It has no nav, tabs, or
+wizard markup at all; the only content is a package name/version/
+source/checksum/provider card, Install/Cancel, and (after success) an
+Open Cockpit + Close pair plus a collapsible Details section with the
+raw resolve/install JSON. It speaks the exact same `window.cockpitHost.
+postMessage` contract the full shell uses — `eco.cockpit.
+marlinResolvePackage` fired automatically on load (no click) and `eco.
+cockpit.marlinInstallPackage` with `confirm: true` only after a human
+clicks Install — so it goes through the identical host-web dispatch
+cases already covered by `webInstallApproval.test.js`; Marlin remains
+the sole owner of resolve/install/checksum/attestation. `host-web/
+server.js` gained a `GET /install` route (`renderInstallHtml()`, mirrors
+`renderHtml()`'s nonce/CSP handling, bakes the target package name in
+directly as `window.__installIntent` rather than via a snapshot round
+trip).
+
+**Window ownership:** `desktop/main.cjs`, not the bootstrap wrapper —
+when `COCKPIT_INSTALL_INTENT` is set, it opens a small fixed-size
+`BrowserWindow` (480×480, titled "Install {Package}") loading `/install`
+instead of the normal 1440×960 shell window loading `/`. A new
+`installPreload.cjs` (narrowly scoped to two window-chrome IPC calls —
+close this window, hand off to the full shell — never a provider
+bridge, matching the existing shell preload's "no renderer-to-Node
+bridge" comment) backs the page's "Cancel"/"Close"/"Open Cockpit"
+buttons. `startHost()` was made idempotent (cached promise) so
+"Open Cockpit" after a successful install-mode install can create the
+full shell window against the same already-listening loopback server
+rather than starting a second one.
+
+**Removed:** `web/cockpit.js`'s `handleInstallIntent()` one-shot
+auto-tab-switch-and-search — that was exactly the "opens the full shell
+as the primary UX" behavior being corrected. The Setup Wizard's manual
+package search panel is untouched and still prefills from
+`installIntent` as a convenience for power users who land there
+directly; it just no longer auto-fires.
+
+**Tests:** `host-web/tests/installRoute.test.js` (the `/install` route
+serves the minimal page with the intent baked in, `/` is unaffected);
+`host-web/tests/webInstallMode.test.js` (9 jsdom browser-level tests —
+auto-resolve with no click, no full-shell markup anywhere in the DOM,
+fail-closed with no target, approval fields render, Install sends
+`confirm: true`, Cancel/resolve-failure/install-failure states, success
+state never claims a launch target that doesn't exist, and a thrown
+provider error surfacing as a generic `actionResult` — not just the
+typed result message — still resolves the UI instead of hanging
+forever, a real gap this work found in its own first draft and fixed).
+`host-web/tests/webInstallApproval.test.js`'s install-intent test was
+rewritten to assert the *opposite* of its original claim: the full
+shell must never auto-act on `installIntent` any more.
+
+**Real clickable-exe proof:** the actually-built `Sealdex-Install-0.2.0.exe`
+(not dev/unpacked mode), silently installed (`/S /D=<dir>`), launched
+against a disposable `MARLIN_HOME`/`COCKPIT_MARLIN_HOME` with
+`cockpit-core` already warm-installed. Playwright connected to the real
+spawned install-mode window: title "Install Sealdex", zero `.tab`/`nav`/
+`#wizard` elements anywhere in the DOM, real hosted resolve
+(`sealdex@0.2.0`, `hosted`, checksum `sha256:880f5006...`), clicked
+Install, got "Install complete." with Open Cockpit + Close (no "Open
+Sealdex" — `InstalledPackage.bins` was non-empty but no host action to
+launch an arbitrary installed package's bin exists yet, so the UI
+correctly never claims a launch target it can't actually open).
+Independently verified afterward, not just trusted from the page: `gh
+api`'s real GitHub release asset digest for `sealdex-0.2.0.zip` matched
+both the checksum shown in the UI and `attestation.json`'s
+`package_digest`, and a fresh `sha256sum` of the installed
+`sealdex-provider.exe` matched `attestation.json`'s `executable_digest`.
+The install's Windows User PATH mutation was detected and reverted
+afterward, same as the prior INIT.19.06 proof.
+
+Getting to that proof surfaced two real, pre-existing bugs unrelated to
+this feature — a stale `dist/cockpit-bridge` PyInstaller build missing a
+schema field (silently broke all provider discovery) and a missing
+`GH_TOKEN` masked by an unrelated Node/libuv crash on that error path —
+both diagnosed and the first one fixed (rebuilt the bridge); full detail
+in `marlin/DEV-PLAN.md`'s matching entry.

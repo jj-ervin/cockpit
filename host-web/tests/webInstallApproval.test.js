@@ -296,3 +296,32 @@ test('install-approval flow: a resolve failure renders an error, not a stale app
   assert.match(errorNote.textContent, /package not found: nope/);
   assert.equal(posted.some((m) => m.type === 'eco.cockpit.marlinInstallPackage'), false);
 });
+
+test('install intent: the full shell no longer auto-acts on installIntent (that is install-mode\'s job now, see webInstallMode.test.js)', async () => {
+  const { document, posted } = mountCockpit(
+    baseResponses({
+      'eco.cockpit.ready': {
+        type: 'eco.cockpit.state',
+        payload: {
+          installIntent: 'sealdex',
+          development: {
+            installReadiness: {
+              status: 'ready', mode: 'preview', requires_human_apply: true,
+              preview_steps: [], apply_command: ['echo', 'noop'],
+            },
+          },
+        },
+      },
+    }),
+  );
+
+  await tick();
+
+  assert.equal(
+    posted.some((m) => m.type === 'eco.cockpit.marlinSearchPackages'),
+    false,
+    'the full shell must never auto-search from installIntent -- install-mode (web/install.js) owns that surface now',
+  );
+  const wizardTab = document.querySelector(".tab[data-tab='wizard']");
+  assert.equal(wizardTab.classList.contains('is-active'), false, 'the full shell must land on its normal default tab');
+});

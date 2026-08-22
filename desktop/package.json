@@ -7,7 +7,7 @@
   "scripts": {
     "icons:verify": "node scripts/verify-icon-pack.cjs",
     "start": "electron .",
-    "check": "node --check main.cjs && node --check preload.cjs",
+    "check": "node --check main.cjs && node --check preload.cjs && node --check installPreload.cjs",
     "build:win": "npm run build:win:x64",
     "build:win:x64": "npm run icons:verify && electron-builder --win dir --x64 --config.directories.output=release/x64",
     "build:win:arm64": "npm run icons:verify && electron-builder --win dir --arm64 --config.directories.output=release/arm64"
@@ -26,6 +26,7 @@
     "files": [
       "main.cjs",
       "preload.cjs",
+      "installPreload.cjs",
       "assets/cockpit-icon-pack/cockpit.ico",
       "package.json"
     ],
