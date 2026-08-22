@@ -81,6 +81,83 @@ CHIPP release records should target a path from release page to
 installed/runnable app in under five minutes, unless the omission is explicit,
 accepted, and recorded as a limitation.
 
+## UI Proportion And Window-Shape Guidance (2026-08-21)
+
+Design guidance for Cockpit-hosted and Cockpit-derived window shapes.
+This is guidance for designers and implementers, not a normative gate —
+no implementation is proposed by this note.
+
+- **Full app shells** (the full Cockpit workspace, or a Cockpit-derived
+  standalone shell) default to a 16:10 window proportion.
+- **Installer/wizard windows** use 5:3 or a near-golden horizontal
+  proportion (e.g. 800x480) — compact and task-focused, not shell-shaped.
+- **Splash screens** use 16:9 or 5:3 and stay on screen only briefly.
+- **Approval dialogs** stay compact, never full-shell-sized — an approval
+  is a focused decision, not a workspace.
+- The golden ratio (~1.618:1) is a useful default across the above for
+  near-square-to-wide proportions; it is guidance, not dogma. Departing
+  from it for a concrete layout reason (content density, platform
+  convention, accessibility) needs no special justification.
+
+A Marlin per-package installer window (see INIT.19.06's constrained
+install-mode window, and Marlin's own `DEV-RELEASE.md` for the fuller
+wizard-stage guidance) is the clearest current example of the
+installer/wizard row above, and reinforces the existing CHIPP-Cockpit
+ownership boundary: full Cockpit nav, tabs, and the Setup Wizard must
+never be exposed as part of a package-installer flow unless the user
+takes an explicit action to open Cockpit itself.
+
+## Installer Identity Transition Model (2026-08-21)
+
+Design guidance for how visual identity moves between Marlin and a
+managed package across an installer flow, paired with the same-dated
+guidance in `marlin/DEV-RELEASE.md` (which carries the full reusable
+branding-contract field list). No implementation is proposed by this
+note.
+
+**Core principle.** Treat install as a deliberate identity handoff: the
+installer visually belongs to Marlin until authorization is granted, then
+visually belongs to the package being installed.
+
+**Stages.**
+
+1. **Marlin splash** — Marlin visually dominant. "Preparing installer" /
+   "Preparing Sealdex." Minimal loading indicator. The package is not yet
+   featured prominently.
+2. **Marlin authorization query** — Marlin remains visually dominant.
+   Heading: "Install Sealdex?" Explains that Marlin will guide the
+   installation. Shows the package's name/version in body text, not as
+   the dominant visual. Cancel / Continue. A concise trust indicator
+   (e.g. checksum/attestation status) where available.
+3. **Package installation wizard** — after Continue, visual dominance
+   shifts to the package: its icon/name/version become prominent. Marlin
+   becomes a quiet footer attribution ("Installed with Marlin"), never
+   co-branded equally. Window dimensions and navigation stay stable
+   across the shift — it is a branding change, not a resize or a
+   different window.
+4. **Completion** — the package remains visually dominant. "Sealdex
+   installed successfully," installed version and location, a Launch/Open
+   option only when a real launch target exists, a Finish button, and
+   quiet Marlin attribution.
+
+**Boundary**, restated from CHIPP-Cockpit's ownership split above: Marlin
+(and, where Cockpit's install-mode window implements a stage, Cockpit)
+controls layout, navigation, accessibility, safety messaging, approval
+controls, and install status throughout every stage. A package supplies
+identity content only (see the branding contract in `marlin/DEV-RELEASE.md`)
+— it cannot override trusted controls or compromise readability.
+
+**Boundary tests** (a design-review checklist, not automated tests) —
+check every design or implementation against all four, since they pull in
+opposite directions: too much Marlin (the user believes they are
+installing Marlin itself); too little Marlin (the user does not know
+which installer is acting); too much package too early (authorization is
+unclear); too little package after authorization (the user loses
+confidence about what they are configuring).
+
+Design guidance only; no implementation is proposed or approved by this
+note.
+
 ## Eight Development Tracks
 
 ### 1. Keep Proof Boundaries Separate
