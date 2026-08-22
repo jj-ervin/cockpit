@@ -158,6 +158,31 @@ confidence about what they are configuring).
 Design guidance only; no implementation is proposed or approved by this
 note.
 
+## Marlin One-Click Installer Base Template (2026-08-21)
+
+Promotes the Installer Identity Transition Model above from guidance to
+the required base template for Marlin's generated Windows one-click
+package installers (full detail, including the Install-Time Choices vs.
+Post-Install Walkthrough split, lives in `marlin/DEV-RELEASE.md`). This is
+the design target for the next implementation slice — no implementation
+is authorized by this note alone.
+
+- Per-package installers must use the Marlin One-Click Installer Template
+  — not a single-card page, and not the full Cockpit shell. Where
+  Cockpit's constrained install-mode window is the implementing surface,
+  it must conform to this template rather than exposing shell chrome.
+- Required flow: Marlin Splash -> Marlin Authorization -> App Wizard ->
+  Progress -> Complete.
+- Marlin (and Cockpit, where it hosts a stage) owns layout, navigation,
+  accessibility, trust messaging, approval controls, status/progress,
+  checksum/source display, and attestation reporting; the package
+  supplies identity/content only, through the branding contract, with
+  required fallbacks for missing metadata.
+- The App Wizard stage is scoped to install-time decisions only
+  (footprint, trust, privileged changes, required dependencies, first
+  launch); onboarding, tutorials, and optional configuration belong to a
+  post-install walkthrough the app owns, not the installer.
+
 ## Eight Development Tracks
 
 ### 1. Keep Proof Boundaries Separate
