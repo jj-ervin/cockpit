@@ -98,10 +98,10 @@ frozen Cockpit bridge, and the provider schemas. Build the payload here, then
 build MarlinSetup from the Marlin repository:
 
 ```powershell
-.\scripts\build-marlin-payload.ps1 -Architecture x64
-.\scripts\build-marlin-payload.ps1 -Architecture arm64
+.\scripts\build-marlin-payload.ps1 -Version 1.1.0 -Architecture x64
+.\scripts\build-marlin-payload.ps1 -Version 1.1.0 -Architecture arm64
 C:\dev\marlin\scripts\build-windows-setup.ps1 `
-  -CockpitArtifact .\dist\marlin\cockpit-core-1.0.0-windows-x64.zip `
+  -CockpitArtifact .\dist\marlin\cockpit-core-1.1.0-windows-x64.zip `
   -CockpitManifest .\marlin.pkg.yaml `
   -Architecture x64
 .\scripts\stranger-install-smoke.ps1 -SandboxRoot C:\sandbox

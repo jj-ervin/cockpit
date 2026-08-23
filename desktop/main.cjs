@@ -96,7 +96,11 @@ function installWindowTitle(env = process.env) {
 async function createInstallWindow() {
   const url = await startHost();
   const window = new BrowserWindow({
-    width: 480, height: 480, minWidth: 420, minHeight: 420,
+    // 5:3, per CHIPP.md / marlin/DEV-RELEASE.md's window-proportion
+    // guidance for installer/wizard windows -- compact and task-focused,
+    // not shell-shaped. Size stays fixed across every stage of the
+    // identity-transition flow; only branding/content change.
+    width: 640, height: 384, minWidth: 560, minHeight: 336,
     title: installWindowTitle(), icon: windowIconPath(),
     webPreferences: { preload: path.join(__dirname, 'installPreload.cjs'), contextIsolation: true, nodeIntegration: false, sandbox: true },
   });

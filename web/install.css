@@ -9,6 +9,16 @@
   --accent-text: #ffffff;
   --danger: #f48771;
   --success: #49b36d;
+  /*
+   * Template default for the "app is now dominant" phase of the identity
+   * transition (Location/Ready/Progress/Complete). Real per-package accent
+   * tokens are part of the branding contract in DEV-RELEASE.md's "Reusable
+   * branding contract" section but are not yet returned by
+   * marlin.package.resolve -- until they are, every install uses this one
+   * template accent as the safe fallback, distinct from Marlin's own accent
+   * so the handoff still reads visually even without per-app theming.
+   */
+  --app-accent: #3fb950;
 }
 
 * {
@@ -20,40 +30,138 @@ body {
   background: var(--surface);
   color: var(--text);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  font-size: 13px;
+  font-size: 12px;
 }
 
 .install-shell {
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  padding: 20px;
+  gap: 12px;
+  padding: 16px;
   min-height: 100vh;
 }
 
+.brand-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.brand-badge {
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 15px;
+  background: var(--accent);
+  color: var(--accent-text);
+}
+
+/* identity-app: the package being installed is visually dominant. Only the
+   badge color and heading weight shift -- window size/layout stay stable
+   across the handoff, per the Installer Identity Transition Model. */
+body.identity-app .brand-badge {
+  background: var(--app-accent);
+}
+
+/*
+ * Proof-only: a real Sealdex mark instead of the generic monogram
+ * fallback, per the branding-contract "use a real asset when one is
+ * available" instruction. Statically wired for this one package by
+ * install.js -- NOT the generic branding-contract mechanism (see that
+ * file's comment). A clean standalone icon (assets/sealdex-icon-64.png),
+ * no cropping needed.
+ */
+.brand-badge.is-sealdex-asset {
+  background-image: url('assets/sealdex-icon-64.png');
+  background-repeat: no-repeat;
+  background-size: contain;
+  background-position: center;
+  background-color: transparent;
+}
+
+/*
+ * Shown once, on the first Sealdex-dominant stage (Location) only -- the
+ * app's "grand entrance" moment, mirroring how the Marlin bootstrap
+ * wizard's own splash hero appears once at its first screen. Sized to
+ * the compact 640x384 install window, not the asset's native 1200x306.
+ * sealdex-wordmark-transparent.png/-light.png are dark-text wordmarks
+ * meant for a light background -- illegible against this page's dark
+ * surface -- so only -header-dark.png (built for a dark background) is
+ * used here; the other two aren't a fit for this template and are left
+ * unused rather than misapplied.
+ */
+.stage-hero {
+  display: block;
+  max-width: 240px;
+  width: 100%;
+  height: auto;
+  margin: 0 auto 10px;
+}
+
+/*
+ * Marlin's own identity asset -- a clean standalone square icon (no
+ * cropping/estimation needed, unlike the Sealdex composite sheet above).
+ * Used only for the authorization stage's badge; see install.js's
+ * renderBadge() for why splash/resolve-error/no-target stay on the
+ * monogram.
+ */
+.brand-badge.is-marlin-asset {
+  background-image: url('assets/marlin-install-query-icon.png');
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center;
+  background-color: transparent;
+}
+
+.brand-text {
+  min-width: 0;
+}
+
 .install-header h1 {
-  margin: 0 0 4px;
-  font-size: 18px;
+  margin: 0 0 2px;
+  font-size: 15px;
+}
+
+body.identity-app .install-header h1 {
+  font-size: 17px;
 }
 
 .install-subtitle {
   margin: 0;
   color: var(--muted);
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .install-card {
   background: var(--surface-2);
   border: 1px solid var(--line);
   border-radius: 6px;
-  padding: 14px;
+  padding: 12px;
+}
+
+.install-heading {
+  margin: 0 0 6px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.install-body {
+  margin: 0 0 8px;
+  color: var(--muted);
+  font-size: 11px;
 }
 
 .install-metadata {
   margin: 0;
   display: grid;
   grid-template-columns: auto 1fr;
-  gap: 6px 12px;
+  gap: 5px 10px;
+  font-size: 11px;
 }
 
 .install-metadata dt {
@@ -66,8 +174,8 @@ body {
 }
 
 .install-note {
-  margin: 10px 0 0;
-  font-size: 12px;
+  margin: 8px 0 0;
+  font-size: 11px;
 }
 
 .install-note.is-error {
@@ -79,15 +187,38 @@ body {
 }
 
 .install-details {
-  margin-top: 10px;
-  font-size: 12px;
+  margin-top: 8px;
+  font-size: 11px;
 }
 
 .install-details pre {
   white-space: pre-wrap;
   word-break: break-all;
-  max-height: 160px;
+  max-height: 130px;
   overflow: auto;
+}
+
+.install-progress {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+
+.install-progress-bar {
+  height: 100%;
+  width: 40%;
+  background: var(--accent);
+  animation: install-progress-slide 1.1s ease-in-out infinite;
+}
+
+body.identity-app .install-progress-bar {
+  background: var(--app-accent);
+}
+
+@keyframes install-progress-slide {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(250%); }
 }
 
 .install-actions {
@@ -101,9 +232,13 @@ body {
   color: var(--accent-text);
   border: none;
   border-radius: 4px;
-  padding: 6px 14px;
-  font-size: 13px;
+  padding: 5px 12px;
+  font-size: 12px;
   cursor: pointer;
+}
+
+body.identity-app .install-actions button:not(.secondary) {
+  background: var(--app-accent);
 }
 
 .install-actions button.secondary {
@@ -122,4 +257,5 @@ body {
   text-align: center;
   color: var(--muted);
   font-size: 11px;
+  min-height: 1em;
 }

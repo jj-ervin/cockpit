@@ -13,11 +13,19 @@
 <body>
   <main class="install-shell">
     <header class="install-header">
-      <h1 id="install-title">Install</h1>
-      <p class="install-subtitle" id="install-subtitle"></p>
+      <div class="brand-row">
+        <span class="brand-badge" id="brand-badge" aria-hidden="true"></span>
+        <div class="brand-text">
+          <h1 id="install-title">Marlin</h1>
+          <p class="install-subtitle" id="install-subtitle"></p>
+        </div>
+      </div>
     </header>
 
     <section class="install-card" id="install-card">
+      <img class="stage-hero" id="stage-hero" alt="" hidden>
+      <p class="install-heading" id="install-heading" hidden></p>
+      <p class="install-body" id="install-body" hidden></p>
       <dl class="install-metadata" id="install-metadata"></dl>
       <p class="install-note" id="install-note" hidden></p>
       <details class="install-details" id="install-details" hidden>
@@ -26,9 +34,13 @@
       </details>
     </section>
 
+    <div class="install-progress" id="install-progress" hidden>
+      <div class="install-progress-bar"></div>
+    </div>
+
     <div class="install-actions" id="install-actions"></div>
 
-    <footer class="install-footer">powered by Marlin &amp; Cockpit</footer>
+    <footer class="install-footer" id="install-footer"></footer>
   </main>
   <!-- cockpit-install-intent -->
   <!-- cockpit-host-bootstrap -->

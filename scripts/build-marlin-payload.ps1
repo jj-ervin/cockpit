@@ -4,7 +4,14 @@ param(
     [string] $OutputDirectory = "",
     [ValidateSet("x64", "arm64")]
     [string] $Architecture = "x64",
-    [string] $PythonExecutable = ""
+    [string] $PythonExecutable = "",
+    # Was a hardcoded "1.0.0" literal in the output filename -- rebuilding
+    # different content under the same version string is exactly the
+    # same-version/different-content ambiguity this portfolio already hit
+    # once with Cairn/Sealdex v0.1.0. Callers must say which version
+    # they're producing; there is no silent default that could go stale.
+    [Parameter(Mandatory = $true)]
+    [string] $Version
 )
 
 Set-StrictMode -Version Latest
@@ -23,7 +30,7 @@ if (-not $OutputDirectory) {
 }
 $unpackedName = if ($Architecture -eq "arm64") { "win-arm64-unpacked" } else { "win-unpacked" }
 $payloadDirectory = Join-Path $desktopRoot "release\$Architecture\$unpackedName"
-$payloadPath = Join-Path $OutputDirectory "cockpit-core-1.0.0-windows-$Architecture.zip"
+$payloadPath = Join-Path $OutputDirectory "cockpit-core-$Version-windows-$Architecture.zip"
 
 & $assertPe -Path $python -Architecture $Architecture | Out-Null
 & $python -m PyInstaller --version | Out-Null
