@@ -1913,3 +1913,28 @@ schema field (silently broke all provider discovery) and a missing
 `GH_TOKEN` masked by an unrelated Node/libuv crash on that error path —
 both diagnosed and the first one fixed (rebuilt the bridge); full detail
 in `marlin/DEV-PLAN.md`'s matching entry.
+
+
+---
+
+## CKP.10 — Reddit Publishing v0.1
+
+**Implemented:** 2026-09-18
+
+Cockpit now has a first-class **Publishing** tab with Reddit as the first publishing provider.
+
+The implementation deliberately follows the existing universal-host boundary:
+
+- Cockpit owns the publishing UI and human approval surface.
+- A local host-side scheduler owns persistent queue state and timing.
+- Reddit API access is isolated behind a small provider client.
+- Queue state persists under the active workspace.
+- The scheduler defaults to paused.
+- Default automatic-posting window is 120–240 minutes.
+- Immediate posting requires explicit host-side confirmation.
+- Missing Reddit credentials fail closed.
+- No browser automation or credential scraping is used.
+
+The implementation is documented in `docs/specifications/CKP.10-reddit-publishing.md`.
+
+**Next:** CKP.10.1 — Reddit subreddit preflight/policy inspection before scheduling.
