@@ -293,3 +293,27 @@ test('invokeProviderCommand missing commandId returns a failed actionResult, not
   assert.equal(messages[0].payload.ok, false);
   assert.match(messages[0].payload.message, /commandId/);
 });
+
+
+test('Reddit queue actions use the persistent scheduler boundary', async () => {
+  const queue = [];
+  const scheduler = {
+    addDraft(payload) { queue.push(payload); return { id: 'q1', ...payload, status: 'pending-approval' }; },
+    status() { return { configured: false, paused: true, queue }; },
+    approve(id) { assert.equal(id, 'q1'); return {}; },
+    postNow(id, confirm) { assert.equal(id, 'q1'); assert.equal(confirm, true); return Promise.resolve({ result: { id: 't3_q1' } }); },
+    pause() { return this.status(); },
+    resume() { return { ...this.status(), paused: false }; },
+    setSettings(payload) { assert.equal(payload.min_minutes, 120); return this.status(); },
+  };
+  const deps = makeDeps({ redditScheduler: scheduler });
+  const added = await dispatch('eco.cockpit.redditQueueAdd', { payload: { subreddit: 'test', title: 'Hello', text: 'World', approval_required: true } }, { workspaceRoot: WORKSPACE, deps });
+  assert.equal(added[0].type, 'eco.cockpit.redditState');
+  assert.equal(added[1].payload.ok, true);
+
+  const approved = await dispatch('eco.cockpit.redditApprove', { id: 'q1' }, { workspaceRoot: WORKSPACE, deps });
+  assert.equal(approved[1].payload.ok, true);
+
+  const posted = await dispatch('eco.cockpit.redditPostNow', { id: 'q1', confirm: true }, { workspaceRoot: WORKSPACE, deps });
+  assert.equal(posted[1].payload.ok, true);
+});
