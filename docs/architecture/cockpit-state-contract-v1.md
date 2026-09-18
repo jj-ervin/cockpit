@@ -1,0 +1,54 @@
+# Cockpit Operational State Contract v1
+
+## Ownership
+
+Operational state is owned by Cockpit's operational core/state layer.
+
+The GUI is a **consumer and renderer** of that state. It may issue intents, but it must not become the authoritative store for approvals, wizard progress, selected operational context, or execution lifecycle.
+
+## State categories
+
+Core-owned state includes:
+
+- provider/host snapshot
+- selected run and run filter
+- approval state and approval scope
+- wizard progress
+- workspace selection/context
+- provider operation lifecycle state
+- operation errors/results
+
+Pure presentation state may remain local to the GUI when it has no operational meaning.
+
+## Update model
+
+The intended flow is:
+
+`host/provider result -> state store -> state change -> render`
+
+and:
+
+`user interaction -> intent -> Cockpit operational core -> state change`
+
+The renderer must not mutate operational state directly.
+
+## Contract
+
+`schemas/cockpit-state-v1.schema.json` defines the minimum stable envelope:
+
+- `schema_version`
+- monotonic `revision`
+- `snapshot`
+- `ui` operational selections
+
+The existing snapshot payload may evolve independently behind the envelope; fields become contractually stable when promoted into the schema.
+
+## Approval rule
+
+An approval is operational state, not a dialog-only UI flag. The state must identify the action being approved and its scope. Closing a dialog without approval must not silently mutate or authorize anything.
+
+## Dependency rule
+
+**Cockpit GUI MUST NOT become the authority for operational state.**
+
+The GUI may depend on Cockpit state contracts. Cockpit core may depend on provider/host contracts. Neither depends on an application shell.
