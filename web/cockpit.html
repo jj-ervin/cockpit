@@ -52,8 +52,6 @@
       <button class="tab" type="button" data-tab="workspace-tab">Workspace</button>
       <button class="tab" type="button" data-tab="niji">Niji</button>
       <button class="tab" type="button" data-tab="sealdex">Sealdex</button>
-      <span class="nav-label">Publish</span>
-      <button class="tab" type="button" data-tab="publishing">Publishing</button>
       <button class="tab" type="button" data-tab="lasso">Compose Scratchpad</button>
     </nav>
 
@@ -618,89 +616,6 @@
           </div>
           <div class="repo-list" id="workspace-repos"></div>
         </section>
-      </section>
-    </section>
-
-    <section class="tab-panel" id="publishing">
-      <section class="panel">
-        <div class="panel-header wrap">
-          <div>
-            <p class="eyebrow">Publishing</p>
-            <h2>Reddit</h2>
-          </div>
-          <span id="reddit-config-status">Not configured</span>
-        </div>
-        <p class="panel-note">Local-first Reddit publishing. Drafts are persisted by the Cockpit host. Automatic posting remains paused until you explicitly resume it.</p>
-        <div class="status-grid">
-          <article><span>Scheduler</span><strong id="reddit-scheduler-status">Paused</strong></article>
-          <article><span>Queue</span><strong id="reddit-queue-count">0</strong></article>
-          <article><span>Next post</span><strong id="reddit-next-post">-</strong></article>
-          <article><span>Window</span><strong id="reddit-window">2h–4h</strong></article>
-        </div>
-        <div class="button-row">
-          <button id="reddit-resume" type="button">Resume scheduler</button>
-          <button id="reddit-pause" type="button">Pause scheduler</button>
-          <button id="reddit-refresh" type="button">Refresh</button>
-        </div>
-      </section>
-
-      <div class="panel-grid">
-        <section class="panel">
-          <div class="panel-header"><h2>New post</h2><span>Draft → Approve → Schedule</span></div>
-          <form id="reddit-draft-form" class="form-grid">
-            <label>Subreddit
-              <input id="reddit-subreddit" type="text" placeholder="r/learnprogramming" required>
-            </label>
-            <label>Post type
-              <select id="reddit-kind">
-                <option value="self">Text post</option>
-                <option value="link">Link post</option>
-              </select>
-            </label>
-            <label class="full">Title
-              <input id="reddit-title" type="text" maxlength="300" required>
-            </label>
-            <label class="full" id="reddit-text-field">Body
-              <textarea id="reddit-text" rows="8" required></textarea>
-            </label>
-            <label class="full" id="reddit-url-field" hidden>URL
-              <input id="reddit-url" type="url" placeholder="https://example.com">
-            </label>
-            <label>Minimum interval (minutes)
-              <input id="reddit-min-minutes" type="number" min="1" value="120" required>
-            </label>
-            <label>Maximum interval (minutes)
-              <input id="reddit-max-minutes" type="number" min="1" value="240" required>
-            </label>
-            <label class="approval-check full">
-              <input id="reddit-approval-required" type="checkbox" checked>
-              Require human approval before scheduling
-            </label>
-            <div class="button-row full">
-              <button type="submit">Add to queue</button>
-            </div>
-          </form>
-        </section>
-
-        <section class="panel">
-          <div class="panel-header"><h2>Publishing rules</h2></div>
-          <ul class="list">
-            <li class="item"><strong>Human gate</strong><span>Approval is required by default.</span></li>
-            <li class="item"><strong>Cooldown</strong><span>The scheduler chooses a time inside the configured interval.</span></li>
-            <li class="item"><strong>Local persistence</strong><span>Queue state lives under the active workspace's .cockpit directory.</span></li>
-            <li class="item"><strong>Fail closed</strong><span>Missing Reddit credentials prevent submission rather than falling back to browser automation.</span></li>
-          </ul>
-        </section>
-      </div>
-
-      <section class="panel">
-        <div class="panel-header"><h2>Queue</h2><span id="reddit-queue-status">No posts</span></div>
-        <div class="table-shell">
-          <table>
-            <thead><tr><th>Subreddit</th><th>Title</th><th>Status</th><th>Next</th><th>Action</th></tr></thead>
-            <tbody id="reddit-queue-table"></tbody>
-          </table>
-        </div>
       </section>
     </section>
 
