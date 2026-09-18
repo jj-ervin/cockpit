@@ -6,6 +6,7 @@ const path = require('path');
 const express = require('express');
 
 const { dispatch } = require('./actions');
+const { RedditPublishingScheduler } = require('./redditScheduler');
 
 const WEB_DIR = path.join(__dirname, '..', 'web');
 
@@ -90,6 +91,9 @@ function createApp({ workspaceRoot, pythonExecutable, bridgeExecutable, installI
   const app = express();
   app.use(express.json());
 
+  const redditScheduler = new RedditPublishingScheduler(workspaceRoot || process.cwd());
+  redditScheduler.start();
+
   app.get('/', (req, res) => {
     res.set('Content-Type', 'text/html').send(renderHtml());
   });
@@ -102,13 +106,14 @@ function createApp({ workspaceRoot, pythonExecutable, bridgeExecutable, installI
 
   app.post('/api/bridge', async (req, res) => {
     try {
-      const messages = await dispatch(req.body.type, req.body, { workspaceRoot, pythonExecutable, bridgeExecutable, installIntent, deps });
+      const messages = await dispatch(req.body.type, req.body, { workspaceRoot, pythonExecutable, bridgeExecutable, installIntent, deps: { ...(deps || {}), redditScheduler } });
       res.json(messages);
     } catch (err) {
       res.json([{ type: 'eco.cockpit.error', payload: { message: err instanceof Error ? err.message : String(err) } }]);
     }
   });
 
+  app.on?.('close', () => redditScheduler.stop());
   return app;
 }
 
