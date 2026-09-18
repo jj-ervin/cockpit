@@ -336,7 +336,6 @@
     post({ type: 'eco.cockpit.', paused: true });
   });
   elements..addEventListener('click', function () {
-    post({ type: 'eco.cockpit.redditState' });
   });
   elements..addEventListener('change', renderRedditPublishing);
   elements..addEventListener('submit', function (event) {
