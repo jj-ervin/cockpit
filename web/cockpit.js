@@ -85,6 +85,14 @@
     // approval step lives in Cockpit's own confirm+approval mechanism,
     // not in a second in-process prompt -- see scripts/provider.py's
     // module docstring in the cairn repo for why.
+    reddit: {
+      configured: false,
+      configuration_error: '',
+      paused: true,
+      min_minutes: 120,
+      max_minutes: 240,
+      queue: [],
+    },
     sealdex: {
       plan: { activeCommand: '', error: '', proposeResult: null },
       entry: { activeCommand: '', error: '', tables: {}, selectedTable: '', lastResult: '' },
@@ -302,10 +310,70 @@
     lassoMerge: byId('lasso-merge'),
     lassoClear: byId('lasso-clear'),
     lassoOutput: byId('lasso-output'),
+    redditConfigStatus: byId('reddit-config-status'),
+    redditSchedulerStatus: byId('reddit-scheduler-status'),
+    redditQueueCount: byId('reddit-queue-count'),
+    redditNextPost: byId('reddit-next-post'),
+    redditWindow: byId('reddit-window'),
+    redditResume: byId('reddit-resume'),
+    redditPause: byId('reddit-pause'),
+    redditRefresh: byId('reddit-refresh'),
+    redditDraftForm: byId('reddit-draft-form'),
+    redditSubreddit: byId('reddit-subreddit'),
+    redditKind: byId('reddit-kind'),
+    redditTitle: byId('reddit-title'),
+    redditText: byId('reddit-text'),
+    redditTextField: byId('reddit-text-field'),
+    redditUrl: byId('reddit-url'),
+    redditUrlField: byId('reddit-url-field'),
+    redditMinMinutes: byId('reddit-min-minutes'),
+    redditMaxMinutes: byId('reddit-max-minutes'),
+    redditApprovalRequired: byId('reddit-approval-required'),
+    redditQueueStatus: byId('reddit-queue-status'),
+    redditQueueTable: byId('reddit-queue-table'),
   };
 
   elements.refresh.addEventListener('click', function () {
     post({ type: 'eco.cockpit.refresh' });
+  });
+
+  elements.redditResume.addEventListener('click', function () {
+    post({ type: 'eco.cockpit.redditPause', paused: false });
+  });
+  elements.redditPause.addEventListener('click', function () {
+    post({ type: 'eco.cockpit.redditPause', paused: true });
+  });
+  elements.redditRefresh.addEventListener('click', function () {
+    post({ type: 'eco.cockpit.redditState' });
+  });
+  elements.redditKind.addEventListener('change', renderRedditPublishing);
+  elements.redditDraftForm.addEventListener('submit', function (event) {
+    event.preventDefault();
+    const min = Number(elements.redditMinMinutes.value);
+    const max = Number(elements.redditMaxMinutes.value);
+    if (!Number.isFinite(min) || !Number.isFinite(max) || min < 1 || max < min) {
+      showNotice('Reddit interval must be valid and maximum must be at least minimum.', true);
+      return;
+    }
+    post({
+      type: 'eco.cockpit.redditSettings',
+      payload: { min_minutes: min, max_minutes: max },
+    });
+    post({
+      type: 'eco.cockpit.redditQueueAdd',
+      payload: {
+        subreddit: elements.redditSubreddit.value.trim(),
+        title: elements.redditTitle.value.trim(),
+        kind: elements.redditKind.value,
+        text: elements.redditText.value,
+        url: elements.redditUrl.value.trim(),
+        approval_required: elements.redditApprovalRequired.checked,
+      },
+    });
+    elements.redditDraftForm.reset();
+    elements.redditApprovalRequired.checked = true;
+    elements.redditMinMinutes.value = String(min);
+    elements.redditMaxMinutes.value = String(max);
   });
 
   elements.tabs.forEach(function (tab) {
@@ -611,6 +679,12 @@
       renderSnapshot(message.payload);
       return;
     }
+
+    if (message.type === 'eco.cockpit.redditState') {
+      state.reddit = message.payload || state.reddit;
+      renderRedditPublishing();
+      return;
+    }
     if (message.type === 'eco.cockpit.actionResult') {
       const payload = message.payload || {};
       if (state.audit.activeCommand && payload.ok === false) {
@@ -708,6 +782,8 @@
   renderNijiProof();
   renderSealdexPlan();
   renderSealdexEntry();
+  renderRedditPublishing();
+  post({ type: 'eco.cockpit.redditState' });
 
   function renderSnapshot(payload) {
     state.snapshot = normalizeSnapshot(payload);
@@ -2682,6 +2758,85 @@
 
     elements.lassoOutput.value = parts.join('\n');
     showNotice('Lasso selected lanes merged into composed output.', false);
+  }
+
+  function renderRedditPublishing() {
+    const reddit = state.reddit || {};
+    const queue = Array.isArray(reddit.queue) ? reddit.queue : [];
+    const pending = queue.filter(function (item) {
+      return item.status === 'queued' || item.status === 'pending-approval' || item.status === 'posting';
+    });
+    elements.redditConfigStatus.textContent = reddit.configured ? 'Configured' : (reddit.configuration_error || 'Not configured');
+    elements.redditSchedulerStatus.textContent = reddit.paused ? 'Paused' : 'Running';
+    elements.redditQueueCount.textContent = String(pending.length);
+    elements.redditWindow.textContent = String(reddit.min_minutes || 120) + 'm–' + String(reddit.max_minutes || 240) + 'm';
+    const next = queue
+      .filter(function (item) { return item.status === 'queued' && item.next_at; })
+      .sort(function (a, b) { return Date.parse(a.next_at) - Date.parse(b.next_at); })[0];
+    elements.redditNextPost.textContent = next ? new Date(next.next_at).toLocaleString() : '-';
+    elements.redditResume.disabled = !reddit.paused;
+    elements.redditPause.disabled = Boolean(reddit.paused);
+    elements.redditMinMinutes.value = String(reddit.min_minutes || 120);
+    elements.redditMaxMinutes.value = String(reddit.max_minutes || 240);
+
+    elements.redditTextField.hidden = elements.redditKind.value === 'link';
+    elements.redditUrlField.hidden = elements.redditKind.value !== 'link';
+    elements.redditText.required = elements.redditKind.value !== 'link';
+    elements.redditUrl.required = elements.redditKind.value === 'link';
+
+    clear(elements.redditQueueTable);
+    if (!queue.length) {
+      elements.redditQueueTable.appendChild(emptyTableRow(5, 'No Reddit posts in the queue.'));
+      elements.redditQueueStatus.textContent = 'No posts';
+      return;
+    }
+    elements.redditQueueStatus.textContent = queue.length + ' post(s)';
+    queue.forEach(function (item) {
+      const row = document.createElement('tr');
+      row.appendChild(cell('r/' + (item.subreddit || '-')));
+      row.appendChild(cell(item.title || '-'));
+      const status = cell(item.status || '-');
+      status.className = 'reddit-status-' + (item.status || 'unknown');
+      row.appendChild(status);
+      row.appendChild(cell(item.next_at ? new Date(item.next_at).toLocaleString() : (item.posted_at ? new Date(item.posted_at).toLocaleString() : '-')));
+      const action = document.createElement('td');
+      if (item.status === 'pending-approval') {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.textContent = 'Approve';
+        button.addEventListener('click', function () {
+          post({ type: 'eco.cockpit.redditApprove', id: item.id });
+        });
+        action.appendChild(button);
+      } else if (['queued', 'failed'].includes(item.status)) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.textContent = 'Post now';
+        button.addEventListener('click', function () {
+          if (!window.confirm('Post this item to Reddit now?')) return;
+          post({ type: 'eco.cockpit.redditPostNow', id: item.id, confirm: true });
+        });
+        action.appendChild(button);
+      } else if (item.status === 'posted') {
+        const link = item.result && (item.result.permalink || item.result.url);
+        if (link) {
+          const anchor = document.createElement('a');
+          anchor.href = link.startsWith('http') ? link : 'https://www.reddit.com' + link;
+          anchor.target = '_blank';
+          anchor.rel = 'noreferrer';
+          anchor.textContent = 'Open';
+          action.appendChild(anchor);
+        }
+      }
+      if (item.error) {
+        const detail = document.createElement('span');
+        detail.className = 'panel-note is-error';
+        detail.textContent = item.error;
+        action.appendChild(detail);
+      }
+      row.appendChild(action);
+      elements.redditQueueTable.appendChild(row);
+    });
   }
 
   function syncRunFilterOptions(runs) {

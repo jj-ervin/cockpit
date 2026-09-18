@@ -827,3 +827,14 @@ tr:hover {
     grid-template-columns: 1fr;
   }
 }
+
+
+/* Publishing */
+#publishing .status-grid { margin-top: 12px; }
+#publishing .list { margin: 0; padding: 0; list-style: none; }
+#publishing .list .item { border-bottom: 1px solid var(--line); padding: 10px 0; }
+#publishing .list .item:last-child { border-bottom: 0; }
+#reddit-queue-table td:nth-child(2) { max-width: 360px; overflow-wrap: anywhere; }
+.reddit-status-posted { color: var(--success, #2e7d32); }
+.reddit-status-failed { color: var(--danger); }
+.reddit-status-pending-approval { color: var(--warning, #f0a000); }
