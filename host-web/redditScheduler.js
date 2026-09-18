@@ -80,7 +80,7 @@ class RedditPublishingScheduler {
     const item = {
       id: crypto.randomUUID(),
       created_at: new Date(this.now()).toISOString(),
-      subreddit: subreddit.replace(/^r\\//, ''),
+      subreddit: subreddit.replace(/^r\//, ''),
       title,
       text,
       url,
@@ -110,7 +110,7 @@ class RedditPublishingScheduler {
   async postNow(id, confirm) {
     if (confirm !== true) throw new Error('Posting requires literal boolean confirmation.');
     const item = this.find(id);
-    if (!['queued', 'pending-approval', 'failed'].includes(item.status)) {
+    if (!['queued', 'failed'].includes(item.status)) {
       throw new Error(`Post is not postable from state ${item.status}`);
     }
     return this.execute(item);
