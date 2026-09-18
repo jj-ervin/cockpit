@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cockpit.dev/schemas/cockpit-state-v1.schema.json",
+  "title": "Cockpit Operational State v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "revision", "snapshot", "ui"],
+  "properties": {
+    "schema_version": { "const": "cockpit-state-v1" },
+    "revision": { "type": "integer", "minimum": 0 },
+    "snapshot": { "type": "object" },
+    "ui": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["selectedRunId", "runFilter", "wizardStep"],
+      "properties": {
+        "selectedRunId": { "type": "string" },
+        "runFilter": { "type": "string" },
+        "wizardStep": { "type": "integer", "minimum": 0 }
+      }
+    }
+  }
+}
