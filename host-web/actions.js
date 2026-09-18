@@ -178,6 +178,52 @@ async function dispatch(type, message, { workspaceRoot, pythonExecutable, bridge
         return [{ type: 'eco.cockpit.marlinPackageResolveResult', payload: providerResultPayload(result) }];
       }
 
+      case 'eco.cockpit.redditState': {
+        const scheduler = deps && deps.redditScheduler;
+        if (!scheduler) throw new Error('Reddit publishing scheduler is not configured.');
+        return [{ type: 'eco.cockpit.redditState', payload: scheduler.status() }];
+      }
+
+      case 'eco.cockpit.redditQueueAdd': {
+        const scheduler = deps && deps.redditScheduler;
+        if (!scheduler) throw new Error('Reddit publishing scheduler is not configured.');
+        const item = scheduler.addDraft(requirePayload(message.payload));
+        return [
+          { type: 'eco.cockpit.redditState', payload: scheduler.status() },
+          actionResult(true, message.payload && message.payload.approval_required === false
+            ? 'Reddit post queued for automatic publishing.'
+            : 'Reddit post saved and is awaiting human approval.', false),
+        ];
+      }
+
+      case 'eco.cockpit.redditApprove': {
+        const scheduler = deps && deps.redditScheduler;
+        if (!scheduler) throw new Error('Reddit publishing scheduler is not configured.');
+        scheduler.approve(require1(message.id, 'id'));
+        return [{ type: 'eco.cockpit.redditState', payload: scheduler.status() }, actionResult(true, 'Reddit post approved and scheduled.', false)];
+      }
+
+      case 'eco.cockpit.redditPostNow': {
+        const scheduler = deps && deps.redditScheduler;
+        if (!scheduler) throw new Error('Reddit publishing scheduler is not configured.');
+        const item = await scheduler.postNow(require1(message.id, 'id'), message.confirm === true);
+        return [{ type: 'eco.cockpit.redditState', payload: scheduler.status() }, actionResult(true, `Reddit post submitted: ${item.result?.permalink || item.result?.url || item.result?.id || 'success'}`, false)];
+      }
+
+      case 'eco.cockpit.redditPause': {
+        const scheduler = deps && deps.redditScheduler;
+        if (!scheduler) throw new Error('Reddit publishing scheduler is not configured.');
+        const result = message.paused === false ? scheduler.resume() : scheduler.pause();
+        return [{ type: 'eco.cockpit.redditState', payload: result }, actionResult(true, result.paused ? 'Reddit scheduler paused.' : 'Reddit scheduler resumed.', false)];
+      }
+
+      case 'eco.cockpit.redditSettings': {
+        const scheduler = deps && deps.redditScheduler;
+        if (!scheduler) throw new Error('Reddit publishing scheduler is not configured.');
+        const result = scheduler.setSettings(requirePayload(message.payload));
+        return [{ type: 'eco.cockpit.redditState', payload: result }, actionResult(true, 'Reddit publishing settings saved.', false)];
+      }
+
       case 'eco.cockpit.invokeProviderCommand': {
         const commandId = require1(message.commandId, 'commandId');
         const result = await bridge({
