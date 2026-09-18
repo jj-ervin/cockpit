@@ -85,14 +85,6 @@
     // approval step lives in Cockpit's own confirm+approval mechanism,
     // not in a second in-process prompt -- see scripts/provider.py's
     // module docstring in the cairn repo for why.
-    reddit: {
-      configured: false,
-      configuration_error: '',
-      paused: true,
-      min_minutes: 120,
-      max_minutes: 240,
-      queue: [],
-    },
     sealdex: {
       plan: { activeCommand: '', error: '', proposeResult: null },
       entry: { activeCommand: '', error: '', tables: {}, selectedTable: '', lastResult: '' },
@@ -311,46 +303,46 @@
     lassoClear: byId('lasso-clear'),
     lassoOutput: byId('lasso-output'),
     redditConfigStatus: byId('reddit-config-status'),
-    redditSchedulerStatus: byId('reddit-scheduler-status'),
-    redditQueueCount: byId('reddit-queue-count'),
-    redditNextPost: byId('reddit-next-post'),
-    redditWindow: byId('reddit-window'),
-    redditResume: byId('reddit-resume'),
-    redditPause: byId('reddit-pause'),
-    redditRefresh: byId('reddit-refresh'),
-    redditDraftForm: byId('reddit-draft-form'),
-    redditSubreddit: byId('reddit-subreddit'),
-    redditKind: byId('reddit-kind'),
-    redditTitle: byId('reddit-title'),
-    redditText: byId('reddit-text'),
-    redditTextField: byId('reddit-text-field'),
-    redditUrl: byId('reddit-url'),
-    redditUrlField: byId('reddit-url-field'),
-    redditMinMinutes: byId('reddit-min-minutes'),
-    redditMaxMinutes: byId('reddit-max-minutes'),
-    redditApprovalRequired: byId('reddit-approval-required'),
-    redditQueueStatus: byId('reddit-queue-status'),
-    redditQueueTable: byId('reddit-queue-table'),
+    : byId('reddit-scheduler-status'),
+    : byId('reddit-queue-count'),
+    : byId('reddit-next-post'),
+    : byId('reddit-window'),
+    : byId('reddit-resume'),
+    : byId('reddit-pause'),
+    : byId('reddit-refresh'),
+    : byId('reddit-draft-form'),
+    : byId('reddit-subreddit'),
+    : byId('reddit-kind'),
+    : byId('reddit-title'),
+    : byId('reddit-text'),
+    Field: byId('reddit-text-field'),
+    : byId('reddit-url'),
+    Field: byId('reddit-url-field'),
+    : byId('reddit-min-minutes'),
+    : byId('reddit-max-minutes'),
+    : byId('reddit-approval-required'),
+    : byId('reddit-queue-status'),
+    
   };
 
   elements.refresh.addEventListener('click', function () {
     post({ type: 'eco.cockpit.refresh' });
   });
 
-  elements.redditResume.addEventListener('click', function () {
-    post({ type: 'eco.cockpit.redditPause', paused: false });
+  elements..addEventListener('click', function () {
+    post({ type: 'eco.cockpit.', paused: false });
   });
-  elements.redditPause.addEventListener('click', function () {
-    post({ type: 'eco.cockpit.redditPause', paused: true });
+  elements..addEventListener('click', function () {
+    post({ type: 'eco.cockpit.', paused: true });
   });
-  elements.redditRefresh.addEventListener('click', function () {
+  elements..addEventListener('click', function () {
     post({ type: 'eco.cockpit.redditState' });
   });
-  elements.redditKind.addEventListener('change', renderRedditPublishing);
-  elements.redditDraftForm.addEventListener('submit', function (event) {
+  elements..addEventListener('change', renderRedditPublishing);
+  elements..addEventListener('submit', function (event) {
     event.preventDefault();
-    const min = Number(elements.redditMinMinutes.value);
-    const max = Number(elements.redditMaxMinutes.value);
+    const min = Number(elements..value);
+    const max = Number(elements..value);
     if (!Number.isFinite(min) || !Number.isFinite(max) || min < 1 || max < min) {
       showNotice('Reddit interval must be valid and maximum must be at least minimum.', true);
       return;
@@ -362,18 +354,18 @@
     post({
       type: 'eco.cockpit.redditQueueAdd',
       payload: {
-        subreddit: elements.redditSubreddit.value.trim(),
-        title: elements.redditTitle.value.trim(),
-        kind: elements.redditKind.value,
-        text: elements.redditText.value,
-        url: elements.redditUrl.value.trim(),
-        approval_required: elements.redditApprovalRequired.checked,
+        subreddit: elements..value.trim(),
+        title: elements..value.trim(),
+        kind: elements..value,
+        text: elements..value,
+        url: elements..value.trim(),
+        approval_required: elements..checked,
       },
     });
-    elements.redditDraftForm.reset();
-    elements.redditApprovalRequired.checked = true;
-    elements.redditMinMinutes.value = String(min);
-    elements.redditMaxMinutes.value = String(max);
+    elements..reset();
+    elements..checked = true;
+    elements..value = String(min);
+    elements..value = String(max);
   });
 
   elements.tabs.forEach(function (tab) {
@@ -680,11 +672,6 @@
       return;
     }
 
-    if (message.type === 'eco.cockpit.redditState') {
-      state.reddit = message.payload || state.reddit;
-      renderRedditPublishing();
-      return;
-    }
     if (message.type === 'eco.cockpit.actionResult') {
       const payload = message.payload || {};
       if (state.audit.activeCommand && payload.ok === false) {
@@ -782,8 +769,6 @@
   renderNijiProof();
   renderSealdexPlan();
   renderSealdexEntry();
-  renderRedditPublishing();
-  post({ type: 'eco.cockpit.redditState' });
 
   function renderSnapshot(payload) {
     state.snapshot = normalizeSnapshot(payload);
@@ -2760,428 +2745,4 @@
     showNotice('Lasso selected lanes merged into composed output.', false);
   }
 
-  function renderRedditPublishing() {
-    const reddit = state.reddit || {};
-    const queue = Array.isArray(reddit.queue) ? reddit.queue : [];
-    const pending = queue.filter(function (item) {
-      return item.status === 'queued' || item.status === 'pending-approval' || item.status === 'posting';
-    });
-    elements.redditConfigStatus.textContent = reddit.configured ? 'Configured' : (reddit.configuration_error || 'Not configured');
-    elements.redditSchedulerStatus.textContent = reddit.paused ? 'Paused' : 'Running';
-    elements.redditQueueCount.textContent = String(pending.length);
-    elements.redditWindow.textContent = String(reddit.min_minutes || 120) + 'm–' + String(reddit.max_minutes || 240) + 'm';
-    const next = queue
-      .filter(function (item) { return item.status === 'queued' && item.next_at; })
-      .sort(function (a, b) { return Date.parse(a.next_at) - Date.parse(b.next_at); })[0];
-    elements.redditNextPost.textContent = next ? new Date(next.next_at).toLocaleString() : '-';
-    elements.redditResume.disabled = !reddit.paused;
-    elements.redditPause.disabled = Boolean(reddit.paused);
-    elements.redditMinMinutes.value = String(reddit.min_minutes || 120);
-    elements.redditMaxMinutes.value = String(reddit.max_minutes || 240);
 
-    elements.redditTextField.hidden = elements.redditKind.value === 'link';
-    elements.redditUrlField.hidden = elements.redditKind.value !== 'link';
-    elements.redditText.required = elements.redditKind.value !== 'link';
-    elements.redditUrl.required = elements.redditKind.value === 'link';
-
-    clear(elements.redditQueueTable);
-    if (!queue.length) {
-      elements.redditQueueTable.appendChild(emptyTableRow(5, 'No Reddit posts in the queue.'));
-      elements.redditQueueStatus.textContent = 'No posts';
-      return;
-    }
-    elements.redditQueueStatus.textContent = queue.length + ' post(s)';
-    queue.forEach(function (item) {
-      const row = document.createElement('tr');
-      row.appendChild(cell('r/' + (item.subreddit || '-')));
-      row.appendChild(cell(item.title || '-'));
-      const status = cell(item.status || '-');
-      status.className = 'reddit-status-' + (item.status || 'unknown');
-      row.appendChild(status);
-      row.appendChild(cell(item.next_at ? new Date(item.next_at).toLocaleString() : (item.posted_at ? new Date(item.posted_at).toLocaleString() : '-')));
-      const action = document.createElement('td');
-      if (item.status === 'pending-approval') {
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.textContent = 'Approve';
-        button.addEventListener('click', function () {
-          post({ type: 'eco.cockpit.redditApprove', id: item.id });
-        });
-        action.appendChild(button);
-      } else if (['queued', 'failed'].includes(item.status)) {
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.textContent = 'Post now';
-        button.addEventListener('click', function () {
-          if (!window.confirm('Post this item to Reddit now?')) return;
-          post({ type: 'eco.cockpit.redditPostNow', id: item.id, confirm: true });
-        });
-        action.appendChild(button);
-      } else if (item.status === 'posted') {
-        const link = item.result && (item.result.permalink || item.result.url);
-        if (link) {
-          const anchor = document.createElement('a');
-          anchor.href = link.startsWith('http') ? link : 'https://www.reddit.com' + link;
-          anchor.target = '_blank';
-          anchor.rel = 'noreferrer';
-          anchor.textContent = 'Open';
-          action.appendChild(anchor);
-        }
-      }
-      if (item.error) {
-        const detail = document.createElement('span');
-        detail.className = 'panel-note is-error';
-        detail.textContent = item.error;
-        action.appendChild(detail);
-      }
-      row.appendChild(action);
-      elements.redditQueueTable.appendChild(row);
-    });
-  }
-
-  function syncRunFilterOptions(runs) {
-    const states = Array.from(new Set(runs.map(function (run) {
-      return run.state || run.status || '';
-    }).filter(Boolean))).sort();
-    const current = state.runFilter;
-    clear(elements.runFilter);
-    elements.runFilter.appendChild(option('all', 'All'));
-    states.forEach(function (item) {
-      elements.runFilter.appendChild(option(item, item));
-    });
-    state.runFilter = states.indexOf(current) >= 0 ? current : 'all';
-    elements.runFilter.value = state.runFilter;
-  }
-
-  function filteredRuns() {
-    const runs = state.snapshot.records.runs || [];
-    if (state.runFilter === 'all') {
-      return runs;
-    }
-    return runs.filter(function (run) {
-      return (run.state || run.status || '') === state.runFilter;
-    });
-  }
-
-  function parsePolicy() {
-    try {
-      const value = JSON.parse(elements.policyEditor.value || '{}');
-      showNotice('Policy JSON is valid.', false);
-      return { ok: true, value: value };
-    } catch (error) {
-      showNotice(error instanceof Error ? error.message : String(error), true);
-      return { ok: false, value: null };
-    }
-  }
-
-  function setActiveTab(id) {
-    elements.tabs.forEach(function (tab) {
-      tab.classList.toggle('is-active', tab.dataset.tab === id);
-    });
-    elements.panels.forEach(function (panel) {
-      panel.classList.toggle('is-active', panel.id === id);
-    });
-  }
-
-  function renderList(container, items) {
-    clear(container);
-    if (!items.length) {
-      const empty = document.createElement('div');
-      empty.className = 'item';
-      empty.textContent = 'No records found.';
-      container.appendChild(empty);
-      return;
-    }
-
-    items.forEach(function (item) {
-      const row = document.createElement('div');
-      const title = document.createElement('strong');
-      const detail = document.createElement('span');
-
-      row.className = 'item';
-      title.textContent = item.title;
-      detail.textContent = item.detail;
-
-      row.appendChild(title);
-      if (item.detail) {
-        row.appendChild(detail);
-      }
-      container.appendChild(row);
-    });
-  }
-
-  function showNotice(message, isError, persist) {
-    elements.notice.textContent = message;
-    elements.notice.classList.toggle('is-error', Boolean(isError));
-    if (state.noticeTimer) {
-      window.clearTimeout(state.noticeTimer);
-      state.noticeTimer = null;
-    }
-    if (!persist) {
-      state.noticeTimer = window.setTimeout(clearNotice, 5000);
-    }
-  }
-
-  function clearNotice() {
-    if (state.noticeTimer) {
-      window.clearTimeout(state.noticeTimer);
-      state.noticeTimer = null;
-    }
-    elements.notice.textContent = '';
-    elements.notice.classList.remove('is-error');
-  }
-
-  function post(message) {
-    host.postMessage(message);
-  }
-
-  function normalizeSnapshot(payload) {
-    const snapshot = payload || {};
-    return {
-      state: snapshot.state || {},
-      health: snapshot.health || {},
-      development: snapshot.development || {},
-      workspace: snapshot.workspace || {},
-      marlin: snapshot.marlin || {},
-      records: Object.assign(emptyRecords(), snapshot.records || {}),
-      governance: snapshot.governance || null,
-      mode: snapshot.mode || null,
-      niji: snapshot.niji || {},
-      diagnostics: snapshot.diagnostics || {},
-      installIntent: snapshot.installIntent || null,
-    };
-  }
-
-  function emptySnapshot() {
-    return {
-      state: {},
-      health: {},
-      development: {},
-      workspace: {},
-      marlin: {},
-      records: emptyRecords(),
-      governance: null,
-      mode: null,
-      niji: {},
-      diagnostics: {},
-      installIntent: null,
-    };
-  }
-
-  function staticPreviewSnapshot() {
-    return {
-      state: {
-        detected: false,
-        statusLabel: 'Preview',
-        workspaceRoot: '',
-        refreshedAt: new Date().toISOString(),
-        backendState: {
-          total_runs: 3,
-          escalation_queue_depth: 1,
-          run_counts: {
-            queued: 1,
-            running: 1,
-            closed: 1,
-          },
-        },
-        bridgeError: 'Static preview mode - no Cockpit host connected.',
-        adapter: {
-          backend: 'static',
-          workspaceId: 'static-preview',
-          nodeId: null,
-        },
-      },
-      health: {
-        status: 'preview',
-        eco_root_present: false,
-      },
-      development: {
-        installReadiness: {
-          id: 'development-readiness',
-          status: 'ready',
-          mode: 'preview',
-          requires_human_apply: true,
-          preview_steps: [
-            { name: 'Cockpit Python package', command: ['python', '-m', 'pip', 'install', '-e', 'C:\\dev\\cockpit'] },
-            { name: 'Host bridge smoke', command: ['python', '-m', 'cockpit.host_bridge'] },
-            { name: 'Explicit apply approval', command: ['python', '-m', 'cockpit.install_phase1', '--workspace', 'C:\\dev\\eco', '--apply'] },
-          ],
-          apply_command: ['python', '-m', 'cockpit.install_phase1', '--workspace', 'C:\\dev\\eco', '--apply'],
-        },
-      },
-      workspace: {
-        workspaceTree: {
-          id: 'static-root',
-          root: 'C:/dev',
-          truncated: false,
-          nodes: [
-            { id: '.', name: 'dev', path: '.', kind: 'directory', depth: 0, skipped: false },
-            { id: 'cockpit', name: 'cockpit', path: 'cockpit', kind: 'directory', depth: 1, skipped: false },
-            { id: 'cockpit/web', name: 'web', path: 'cockpit/web', kind: 'directory', depth: 2, skipped: false },
-            { id: 'cockpit/web/cockpit.html', name: 'cockpit.html', path: 'cockpit/web/cockpit.html', kind: 'file', depth: 3, skipped: false },
-            { id: 'marlin', name: 'marlin', path: 'marlin', kind: 'directory', depth: 1, skipped: false },
-            { id: 'eco-vscode', name: 'eco-vscode', path: 'eco-vscode', kind: 'directory', depth: 1, skipped: false },
-            { id: 'node_modules', name: 'node_modules', path: 'node_modules', kind: 'directory', depth: 1, skipped: true },
-          ],
-        },
-        repoStatus: [
-          { name: 'cockpit', path: 'cockpit', git: 'clean', registered: true },
-          { name: 'marlin', path: 'marlin', git: 'clean', registered: true },
-          { name: 'eco-vscode', path: 'eco-vscode', git: 'clean', registered: true },
-        ],
-        error: null,
-      },
-      marlin: {
-        health: { reachable: true, status: 'preview', provider_id: 'marlin' },
-        error: null,
-      },
-      records: {
-        runs: [
-          { id: 'preview-run-1', state: 'running', updated_at: '2026-07-05T20:55:00Z', pass_name_or_id: 'CKP.09.05' },
-          { id: 'preview-run-2', state: 'queued', updated_at: '2026-07-05T20:45:00Z', pass_name_or_id: 'CKP.09.06' },
-          { id: 'preview-run-3', state: 'closed', updated_at: '2026-07-05T20:20:00Z', pass_name_or_id: 'CKP.08.09' },
-        ],
-        escalations: [
-          { id: 'preview-escalation-1', reason: 'Confirm Marlin install before package mutation.' },
-        ],
-        artifacts: [
-          { artifact_path: 'C:/dev/cockpit/.eco/artifacts/preview-readiness.json', kind: 'readiness', updated_at: '2026-07-05T20:55:00Z' },
-        ],
-        policies: [
-          { id: 'preview-policy', mode: 'read-only-preview', rules: ['host-mediated-writes', 'path-containment'] },
-        ],
-      },
-      governance: {
-        diagnostics_present: true,
-        governance_mode: 'preview',
-        health_score: 0,
-        hash_match: null,
-        issues: [
-          { severity: 'INFO', rule: 'preview-mode', message: 'Static browser preview is read-only.', file: 'cockpit/web/cockpit.html' },
-        ],
-      },
-      mode: {
-        current_mode: 'Navigator',
-        available_modes: ['Navigator', 'Builder', 'Analyst', 'Historian', 'Operator'],
-        history: [
-          {
-            previous_mode: null,
-            current_mode: 'Navigator',
-            time_loc: { version: 'time.loc/1.2', 'stamp.utc': '2026-07-05T20:00:00Z', 'geo.source': 'unavailable', sig: 'unsigned' },
-          },
-        ],
-      },
-      niji: {
-        health: { status: 'preview' },
-        state: { scheme_count: 3, default_base_hex: '#2f7d68' },
-        palettePreview: {
-          scheme: 'triadic',
-          swatches: [
-            { name: 'Base', role: 'primary', hex: '#2f7d68' },
-            { name: 'Signal', role: 'accent', hex: '#b85c38' },
-            { name: 'Focus', role: 'support', hex: '#5b6fb8' },
-          ],
-        },
-        error: null,
-      },
-      diagnostics: {
-        integrations: {
-          eco: { status: 'preview', reachable: false },
-          marlin: { status: 'ok', reachable: true },
-          niji: { status: 'preview', reachable: true },
-        },
-        environment: {
-          python: { version: '3.14.3', cockpit_version: '0.1.0' },
-          node: { available: true, version: 'v24.14.1' },
-        },
-        agentPipeline: {
-          source_present: true,
-          total_entries: 2,
-          agents: [
-            { agent: 'claude', pass_count: 1, last_play_id: 'ckp-play-preview-001', last_status: 'closed', last_declared_at: '2026-07-05T20:55:00Z' },
-            { agent: 'codex', pass_count: 1, last_play_id: 'ckp-play-preview-002', last_status: 'closed', last_declared_at: '2026-07-05T20:45:00Z' },
-          ],
-        },
-      },
-    };
-  }
-
-  function emptyRecords() {
-    return {
-      runs: [],
-      escalations: [],
-      artifacts: [],
-      policies: [],
-    };
-  }
-
-  function recordId(record) {
-    if (!record) {
-      return '';
-    }
-    return String(record.id || record.run_id || record.record_id || record.path || record.file || 'record');
-  }
-
-  function emptyTableRow(colspan, text) {
-    const row = document.createElement('tr');
-    const td = document.createElement('td');
-    td.colSpan = colspan;
-    td.textContent = text;
-    row.appendChild(td);
-    return row;
-  }
-
-  function emptyDiv(text) {
-    const div = document.createElement('div');
-    div.className = 'item';
-    div.textContent = text;
-    return div;
-  }
-
-  function emptyMetadata(label, text) {
-    return metadataRow(label, text);
-  }
-
-  function metadataRow(label, value) {
-    const row = document.createElement('div');
-    const dt = document.createElement('dt');
-    const dd = document.createElement('dd');
-    dt.textContent = label;
-    dd.textContent = String(value);
-    row.appendChild(dt);
-    row.appendChild(dd);
-    return row;
-  }
-
-  function cell(text) {
-    const td = document.createElement('td');
-    td.textContent = String(text);
-    return td;
-  }
-
-  function option(value, text) {
-    const item = document.createElement('option');
-    item.value = value;
-    item.textContent = text;
-    return item;
-  }
-
-  function clear(element) {
-    element.textContent = '';
-  }
-
-  function byId(id) {
-    return document.getElementById(id);
-  }
-
-  function workspaceId() {
-    const workspace = state.snapshot.state || {};
-    return workspace.adapter && workspace.adapter.workspaceId
-      ? workspace.adapter.workspaceId
-      : '';
-  }
-
-  function yesNo(value) {
-    return value ? 'yes' : 'no';
-  }
-}());
