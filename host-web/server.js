@@ -113,7 +113,6 @@ function createApp({ workspaceRoot, pythonExecutable, bridgeExecutable, installI
     }
   });
 
-  app.on?.('close', () => redditScheduler.stop());
   return app;
 }
 
