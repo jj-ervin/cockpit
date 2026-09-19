@@ -184,7 +184,7 @@ async function dispatch(type, message, { workspaceRoot, pythonExecutable, bridge
       }
 
       case 'eco.cockpit.invokeProviderCommand': {
-        validateProviderCommandIntent(message);
+        validateProviderCommandIntent({ ...message, type });
         const commandId = message.commandId;
         const result = await bridge({
           backend: require1(message.providerId, 'providerId'),
