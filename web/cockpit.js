@@ -40,6 +40,7 @@
   });
 
   const STATE_UI_KEYS = new Set(['selectedRunId', 'runFilter', 'wizardStep']);
+  const STATE_SNAPSHOT_KEY = 'snapshot';
 
   function cloneStateValue(value) {
     if (value === undefined) return undefined;
@@ -47,9 +48,14 @@
   }
 
   function setSnapshotPath(path, value) {
+    if (path.length === 1 && path[0] === STATE_SNAPSHOT_KEY) {
+      cockpitState.replaceSnapshot({});
+      return;
+    }
+    const effectivePath = path[0] === STATE_SNAPSHOT_KEY ? path.slice(1) : path;
     const snapshot = cloneStateValue(cockpitState.get().snapshot || {});
     let target = snapshot;
-    for (let i = 0; i < path.length - 1; i += 1) {
+    for (let i = 0; i < effectivePath.length - 1; i += 1) {
       const key = path[i];
       if (!target[key] || typeof target[key] !== 'object') {
         target[key] = {};
@@ -100,9 +106,10 @@
       return undefined;
     }
     let value = cockpitState.get().snapshot;
-    for (let i = 0; i < path.length; i += 1) {
+    const effectivePath = path[0] === STATE_SNAPSHOT_KEY ? path.slice(1) : path;
+    for (let i = 0; i < effectivePath.length; i += 1) {
       if (value == null) return undefined;
-      value = value[path[i]];
+      value = value[effectivePath[i]];
     }
     if (value && typeof value === 'object') {
       const key = path.join('.');
@@ -117,7 +124,11 @@
       cockpitState.setUi({ [path[0]]: value });
       return;
     }
-    setSnapshotPath(path, value);
+    if (path.length === 1 && path[0] === STATE_SNAPSHOT_KEY) {
+      cockpitState.replaceSnapshot(value || {});
+      return;
+    }
+    setSnapshotPath(path[0] === STATE_SNAPSHOT_KEY ? path.slice(1) : path, value);
   }
 
   function deleteStatePath(path) {
@@ -131,7 +142,7 @@
       if (!target || typeof target !== 'object') return;
       target = target[path[i]];
     }
-    if (target && typeof target === 'object') delete target[path[path.length - 1]];
+    if (target && typeof target === 'object') delete target[effectivePath[effectivePath.length - 1]];
     cockpitState.replaceSnapshot(snapshot);
   }
 
