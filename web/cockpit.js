@@ -31,7 +31,73 @@
   // compatibility facade: GUI behavior stays intact while the store becomes the
   // single authority.
   const cockpitState = window.CockpitState.create({
+    snapshot: {
     snapshot: emptySnapshot(),
+    selectedRunId: '',
+    runFilter: 'all',
+    policyOriginal: '{}',
+    lastDeletedArtifact: null,
+    wizardStep: 0,
+    marlinSearchResults: [],
+    marlinSearchError: '',
+    marlinInstallResult: null,
+    // INIT.19.06 install-approval flow: clicking "Install" on a search
+    // result no longer installs directly. It resolves real metadata first
+    // (status 'resolving' -> 'ready'), and only marlinInstallPackage's own
+    // confirm:true gate (host-web/actions.js) is satisfied once the human
+    // clicks Confirm Install on the resolved metadata (status 'installing').
+    marlinPackageApproval: { packageName: '', status: 'idle', resolved: null, error: '' },
+    selectedWorkspacePath: '',
+    audit: {
+      target: '',
+      activeCommand: '',
+      error: '',
+      approval: null,
+      results: { validate: null, preview: null, apply: null, verify: null },
+    },
+    doctor: {
+      target: '',
+      activeCommand: '',
+      error: '',
+      lastResult: null,
+      assessment: null,
+      operations: [],
+      operationInputs: {},
+      registryDigest: '',
+      approval: null,
+    },
+    agents: {
+      activeCommand: '',
+      error: '',
+      lastResult: null,
+      templates: [],
+      detections: {},
+      rosterDigest: '',
+      approval: null,
+    },
+    // Mode 4 proof: dispatches to the real Marlin-discovered `niji` provider
+    // over its actual cockpit-provider-v1 stdio protocol, via the same
+    // generic invoke_provider_command path Marlin's own panels use. Kept
+    // entirely separate from `state.snapshot.niji` (the older in-process
+    // adapter rendered by renderNiji) so the two are never conflated.
+    nijiProof: {
+      activeCommand: '',
+      error: '',
+      lastResult: null,
+    },
+    // Sealdex's two UI surfaces (Plan, Entry), dispatched through the same
+    // generic invoke_provider_command path as niji/marlin above. Plan is
+    // split across two commands (propose / apply) because the human
+    // approval step lives in Cockpit's own confirm+approval mechanism,
+    // not in a second in-process prompt -- see scripts/provider.py's
+    // module docstring in the cairn repo for why.
+    sealdex: {
+      plan: { activeCommand: '', error: '', proposeResult: null },
+      entry: { activeCommand: '', error: '', tables: {}, selectedTable: '', lastResult: '' },
+      pendingApproval: null,
+    },
+    noticeTimer: null,
+  };
     ui: {
       selectedRunId: '',
       runFilter: 'all',
