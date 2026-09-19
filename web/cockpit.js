@@ -58,6 +58,12 @@
     return command && command.title ? command.title : fallback || commandId;
   }
 
+  function providerCommandRequiresConfirmation(providerId, commandId, fallback) {
+    const command = findProviderCommand(providerId, commandId);
+    if (!command) return Boolean(fallback);
+    return command.requires_confirmation === true || command.mutation === true || Boolean(fallback);
+  }
+
   const featureState = {
     marlin: {
       searchResults: [],
@@ -1573,7 +1579,7 @@
       'marlin',
       commandId,
       { target: featureState.audit.target },
-      stage === 'apply',
+      providerCommandRequiresConfirmation('marlin', commandId, stage === 'apply'),
       approval
     );
   }
@@ -1731,7 +1737,7 @@
       return;
     }
     const payload = Object.assign({ target: featureState.doctor.target }, input || {});
-    const mutates = Boolean(DOCTOR_MUTATING_STAGES[stage]);
+    const mutates = providerCommandRequiresConfirmation('marlin', commandId, DOCTOR_MUTATING_STAGES[stage]);
     if (mutates && !approval) {
       // Mutating stages must go through openDoctorApproval -> confirmDoctorApproval
       // first; this function only sends the request once a human has approved it.
@@ -2086,7 +2092,7 @@
       return;
     }
     const payload = input || {};
-    const mutates = Boolean(AGENT_MUTATING_STAGES[stage]);
+    const mutates = providerCommandRequiresConfirmation('marlin', commandId, AGENT_MUTATING_STAGES[stage]);
     if (mutates && !approval) {
       return;
     }
