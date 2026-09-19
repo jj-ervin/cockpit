@@ -6,7 +6,7 @@ const assert = require('node:assert/strict');
 const { dispatch, timeoutMsForProviderCommand } = require('../actions');
 const { DEFAULT_TIMEOUT_MS } = require('../bridgeClient');
 
-const WORKSPACE = 'C:\\fake\\workspace';
+const WORKSPACE = require('path').resolve('fake-workspace');
 
 function makeDeps(overrides = {}) {
   return {
@@ -333,7 +333,7 @@ test('invokeProviderCommand passes a long timeoutMs to the bridge for marlin.doc
   const deps = makeDeps({ callBridge: async (req, opts) => { capturedOpts = opts; return { status: 'succeeded' }; } });
   await dispatch(
     'eco.cockpit.invokeProviderCommand',
-    { providerId: 'marlin', commandId: 'marlin.doctor.agents.run.execute', input: { run_id: 'r1', plan_digest: 'sha256:x' } },
+    { providerId: 'marlin', commandId: 'marlin.doctor.agents.run.execute', input: { run_id: 'r1', plan_digest: 'sha256:x' }, confirm: false },
     { workspaceRoot: WORKSPACE, deps },
   );
   assert.equal(capturedOpts.timeoutMs, 11 * 60 * 1000);
@@ -344,7 +344,7 @@ test('invokeProviderCommand keeps the bridge default timeout for ordinary comman
   const deps = makeDeps({ callBridge: async (req, opts) => { capturedOpts = opts; return { status: 'succeeded' }; } });
   await dispatch(
     'eco.cockpit.invokeProviderCommand',
-    { providerId: 'marlin', commandId: 'marlin.audit.validate', input: {} },
+    { providerId: 'marlin', commandId: 'marlin.audit.validate', input: {}, confirm: false },
     { workspaceRoot: WORKSPACE, deps },
   );
   assert.equal(capturedOpts.timeoutMs, DEFAULT_TIMEOUT_MS);
