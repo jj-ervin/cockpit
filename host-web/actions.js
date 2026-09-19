@@ -179,7 +179,8 @@ async function dispatch(type, message, { workspaceRoot, pythonExecutable, bridge
       }
 
       case 'eco.cockpit.invokeProviderCommand': {
-        const commandId = require1(message.commandId, 'commandId');
+        validateProviderCommandIntent(message);
+        const commandId = message.commandId;
         const result = await bridge({
           backend: require1(message.providerId, 'providerId'),
           workspace_id: workspaceRoot,
@@ -219,6 +220,31 @@ async function dispatch(type, message, { workspaceRoot, pythonExecutable, bridge
 
 function actionResult(ok, message, refresh = true) {
   return { type: 'eco.cockpit.actionResult', payload: { ok, message, refresh } };
+}
+
+function validateProviderCommandIntent(message) {
+  if (!message || typeof message !== 'object' || Array.isArray(message)) {
+    throw new Error('provider command intent must be an object');
+  }
+  if (message.type !== 'eco.cockpit.invokeProviderCommand') {
+    throw new Error('provider command intent type is invalid');
+  }
+  require1(message.providerId, 'providerId');
+  require1(message.commandId, 'commandId');
+  if (message.input === null || (typeof message.input !== 'object' && typeof message.input !== 'undefined')) {
+    throw new Error('input must be an object when provided');
+  }
+  if (typeof message.confirm !== 'boolean') {
+    throw new Error('confirm must be a boolean');
+  }
+  if (message.approval !== undefined) {
+    if (!message.approval || typeof message.approval !== 'object' || Array.isArray(message.approval)) {
+      throw new Error('approval must be an object when provided');
+    }
+    require1(message.approval.token, 'approval.token');
+    require1(message.approval.scope, 'approval.scope');
+  }
+  return true;
 }
 
 function require1(value, key) {
@@ -293,4 +319,4 @@ function canonicalStringify(value) {
   return JSON.stringify(value);
 }
 
-module.exports = { dispatch, actionResult, boundApproval, timeoutMsForProviderCommand };
+module.exports = { dispatch, actionResult, boundApproval, timeoutMsForProviderCommand, validateProviderCommandIntent };
