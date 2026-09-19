@@ -31,23 +31,26 @@
   // compatibility facade: GUI behavior stays intact while the store becomes the
   // single authority.
   const cockpitState = window.CockpitState.create({
-    snapshot: {
     snapshot: emptySnapshot(),
     selectedRunId: '',
     runFilter: 'all',
-    policyOriginal: '{}',
-    lastDeletedArtifact: null,
-    wizardStep: 0,
-    marlinSearchResults: [],
-    marlinSearchError: '',
-    marlinInstallResult: null,
-    // INIT.19.06 install-approval flow: clicking "Install" on a search
-    // result no longer installs directly. It resolves real metadata first
-    // (status 'resolving' -> 'ready'), and only marlinInstallPackage's own
-    // confirm:true gate (host-web/actions.js) is satisfied once the human
-    // clicks Confirm Install on the resolved metadata (status 'installing').
-    marlinPackageApproval: { packageName: '', status: 'idle', resolved: null, error: '' },
-    selectedWorkspacePath: '',
+    ui: {
+      selectedRunId: '',
+      runFilter: 'all',
+      wizardStep: 0,
+    },
+  });
+
+  // Feature-owned workflow state deliberately does not enter CockpitState.
+  // These objects contain transient provider/workflow details rather than
+  // Cockpit-wide operational state.
+  const featureState = {
+    marlin: {
+      searchResults: [],
+      searchError: '',
+      installResult: null,
+      packageApproval: { packageName: '', status: 'idle', resolved: null, error: '' },
+    },
     audit: {
       target: '',
       activeCommand: '',
@@ -75,35 +78,24 @@
       rosterDigest: '',
       approval: null,
     },
-    // Mode 4 proof: dispatches to the real Marlin-discovered `niji` provider
-    // over its actual cockpit-provider-v1 stdio protocol, via the same
-    // generic invoke_provider_command path Marlin's own panels use. Kept
-    // entirely separate from `state.snapshot.niji` (the older in-process
-    // adapter rendered by renderNiji) so the two are never conflated.
     nijiProof: {
       activeCommand: '',
       error: '',
       lastResult: null,
     },
-    // Sealdex's two UI surfaces (Plan, Entry), dispatched through the same
-    // generic invoke_provider_command path as niji/marlin above. Plan is
-    // split across two commands (propose / apply) because the human
-    // approval step lives in Cockpit's own confirm+approval mechanism,
-    // not in a second in-process prompt -- see scripts/provider.py's
-    // module docstring in the cairn repo for why.
     sealdex: {
       plan: { activeCommand: '', error: '', proposeResult: null },
       entry: { activeCommand: '', error: '', tables: {}, selectedTable: '', lastResult: '' },
       pendingApproval: null,
     },
-    noticeTimer: null,
   };
-    ui: {
-      selectedRunId: '',
-      runFilter: 'all',
-      wizardStep: 0,
-    },
-  });
+
+  // Presentation-only state: timers and editor/undo baselines are not
+  // operational state and must not become CockpitState fields.
+  let policyOriginal = '{}';
+  let lastDeletedArtifact = null;
+  let selectedWorkspacePath = '';
+  let noticeTimer = null;
 
   const STATE_UI_KEYS = new Set(['selectedRunId', 'runFilter', 'wizardStep']);
   const STATE_SNAPSHOT_KEY = 'snapshot';
@@ -483,7 +475,7 @@
   });
 
   elements.revertPolicy.addEventListener('click', function () {
-    elements.policyEditor.value = state.policyOriginal;
+    elements.policyEditor.value = policyOriginal;
     showNotice('Policy editor reverted to the latest loaded snapshot.', false);
   });
 
@@ -512,24 +504,24 @@
   });
 
   elements.undoDeleteArtifact.addEventListener('click', function () {
-    if (!state.lastDeletedArtifact) {
+    if (!lastDeletedArtifact) {
       return;
     }
     post({
       type: 'eco.cockpit.undoDeleteArtifact',
-      originalPath: state.lastDeletedArtifact.original_path,
-      trashPath: state.lastDeletedArtifact.trash_path,
+      originalPath: lastDeletedArtifact.original_path,
+      trashPath: lastDeletedArtifact.trash_path,
     });
-    state.lastDeletedArtifact = null;
+    lastDeletedArtifact = null;
     elements.undoDeleteArtifact.disabled = true;
   });
 
   elements.nijiProofRun.addEventListener('click', function () {
-    if (state.nijiProof.activeCommand) {
+    if (featureState.nijiProof.activeCommand) {
       return;
     }
-    state.nijiProof.error = '';
-    state.nijiProof.activeCommand = 'niji.palette.preview';
+    featureState.nijiProof.error = '';
+    featureState.nijiProof.activeCommand = 'niji.palette.preview';
     renderNijiProof();
     post({
       type: 'eco.cockpit.invokeProviderCommand',
@@ -544,21 +536,21 @@
   });
 
   elements.sealdexPlanPropose.addEventListener('click', function () {
-    if (state.sealdex.plan.activeCommand) {
+    if (featureState.sealdex.plan.activeCommand) {
       return;
     }
     const need = elements.sealdexPlanNeed.value.trim();
     if (!need) {
       return;
     }
-    state.sealdex.plan.error = '';
-    state.sealdex.plan.activeCommand = 'sealdex.schema.propose';
+    featureState.sealdex.plan.error = '';
+    featureState.sealdex.plan.activeCommand = 'sealdex.schema.propose';
     renderSealdexPlan();
     runSealdexCommand('sealdex.schema.propose', { need: need }, false, undefined);
   });
 
   elements.sealdexPlanApprove.addEventListener('click', function () {
-    const result = state.sealdex.plan.proposeResult;
+    const result = featureState.sealdex.plan.proposeResult;
     if (!result || result.status !== 'pending-approval' || !result.data || !result.data.plan) {
       return;
     }
@@ -570,28 +562,28 @@
   });
 
   elements.sealdexPlanDiscard.addEventListener('click', function () {
-    state.sealdex.plan.proposeResult = null;
-    state.sealdex.plan.error = '';
+    featureState.sealdex.plan.proposeResult = null;
+    featureState.sealdex.plan.error = '';
     renderSealdexPlan();
   });
 
   elements.sealdexEntryRefreshTables.addEventListener('click', function () {
-    if (state.sealdex.entry.activeCommand) {
+    if (featureState.sealdex.entry.activeCommand) {
       return;
     }
-    state.sealdex.entry.error = '';
-    state.sealdex.entry.activeCommand = 'sealdex.entry.tables';
+    featureState.sealdex.entry.error = '';
+    featureState.sealdex.entry.activeCommand = 'sealdex.entry.tables';
     renderSealdexEntry();
     runSealdexCommand('sealdex.entry.tables', {}, false, undefined);
   });
 
   elements.sealdexEntryTable.addEventListener('change', function () {
-    state.sealdex.entry.selectedTable = elements.sealdexEntryTable.value;
+    featureState.sealdex.entry.selectedTable = elements.sealdexEntryTable.value;
     renderSealdexEntryFields();
   });
 
   elements.sealdexEntryAdd.addEventListener('click', function () {
-    const table = state.sealdex.entry.selectedTable;
+    const table = featureState.sealdex.entry.selectedTable;
     if (!table) {
       return;
     }
@@ -603,7 +595,7 @@
   });
 
   elements.sealdexEntryImport.addEventListener('click', function () {
-    const table = state.sealdex.entry.selectedTable;
+    const table = featureState.sealdex.entry.selectedTable;
     const csvText = elements.sealdexEntryCsv.value;
     if (!table || !csvText.trim()) {
       return;
@@ -620,7 +612,7 @@
   });
 
   elements.sealdexConfirmApproval.addEventListener('click', function () {
-    const approval = state.sealdex.pendingApproval;
+    const approval = featureState.sealdex.pendingApproval;
     if (!elements.sealdexApprovalCheck.checked || !approval) {
       closeSealdexApproval();
       return;
@@ -630,37 +622,37 @@
     const bound = { token: approval.token, scope: approval.scope };
     closeSealdexApproval();
     if (commandId === 'sealdex.schema.apply') {
-      state.sealdex.plan.activeCommand = commandId;
+      featureState.sealdex.plan.activeCommand = commandId;
       renderSealdexPlan();
     } else {
-      state.sealdex.entry.activeCommand = commandId;
+      featureState.sealdex.entry.activeCommand = commandId;
       renderSealdexEntry();
     }
     runSealdexCommand(commandId, input, true, bound);
   });
 
   elements.workspaceReveal.addEventListener('click', function () {
-    if (state.selectedWorkspacePath) {
+    if (selectedWorkspacePath) {
       post({
         type: 'eco.cockpit.workspaceReveal',
         workspaceId: workspaceId(),
-        path: state.selectedWorkspacePath,
+        path: selectedWorkspacePath,
       });
     }
   });
 
   elements.workspaceStatusAction.addEventListener('click', function () {
-    if (state.selectedWorkspacePath) {
+    if (selectedWorkspacePath) {
       post({
         type: 'eco.cockpit.workspaceStatus',
         workspaceId: workspaceId(),
-        path: state.selectedWorkspacePath,
+        path: selectedWorkspacePath,
       });
     }
   });
 
   elements.auditRepository.addEventListener('change', function () {
-    state.audit.target = elements.auditRepository.value;
+    featureState.audit.target = elements.auditRepository.value;
     resetAuditResults();
     renderAuditWorkflow();
   });
@@ -676,19 +668,19 @@
   elements.auditConfirmApproval.addEventListener('click', confirmAuditApproval);
 
   elements.doctorRepository.addEventListener('change', function () {
-    state.doctor.target = elements.doctorRepository.value;
-    state.doctor.operations = [];
-    state.doctor.operationInputs = {};
-    state.doctor.registryDigest = '';
-    state.doctor.lastResult = null;
-    state.doctor.assessment = null;
+    featureState.doctor.target = elements.doctorRepository.value;
+    featureState.doctor.operations = [];
+    featureState.doctor.operationInputs = {};
+    featureState.doctor.registryDigest = '';
+    featureState.doctor.lastResult = null;
+    featureState.doctor.assessment = null;
     closeDoctorApproval();
     renderDoctorWorkflow();
   });
   elements.doctorRefresh.addEventListener('click', function () { runDoctorCommand('list', {}); });
   elements.doctorHealthRefresh.addEventListener('click', function () {
     runDoctorCommand('health', {
-      agent_detections: Object.keys(state.agents.detections).map(function (id) { return state.agents.detections[id]; }),
+      agent_detections: Object.keys(featureState.agents.detections).map(function (id) { return featureState.agents.detections[id]; }),
     });
   });
   elements.doctorAddForm.addEventListener('submit', function (event) {
@@ -703,7 +695,7 @@
 
   elements.agentRosterList.addEventListener('click', function () { runAgentCommand('list', {}); });
   elements.agentRosterDetect.addEventListener('click', function () {
-    openAgentApproval('detect', { roster_digest: state.agents.rosterDigest });
+    openAgentApproval('detect', { roster_digest: featureState.agents.rosterDigest });
   });
   elements.agentRosterAddForm.addEventListener('submit', function (event) {
     event.preventDefault();
@@ -740,29 +732,29 @@
     }
     if (message.type === 'eco.cockpit.actionResult') {
       const payload = message.payload || {};
-      if (state.audit.activeCommand && payload.ok === false) {
-        state.audit.error = payload.message || 'Provider command failed.';
-        state.audit.activeCommand = '';
+      if (featureState.audit.activeCommand && payload.ok === false) {
+        featureState.audit.error = payload.message || 'Provider command failed.';
+        featureState.audit.activeCommand = '';
         renderAuditWorkflow();
       }
-      if (state.doctor.activeCommand && payload.ok === false) {
-        state.doctor.error = payload.message || 'Provider command failed.';
-        state.doctor.activeCommand = '';
+      if (featureState.doctor.activeCommand && payload.ok === false) {
+        featureState.doctor.error = payload.message || 'Provider command failed.';
+        featureState.doctor.activeCommand = '';
         renderDoctorWorkflow();
       }
-      if (state.nijiProof.activeCommand && payload.ok === false) {
-        state.nijiProof.error = payload.message || 'Provider command failed.';
-        state.nijiProof.activeCommand = '';
+      if (featureState.nijiProof.activeCommand && payload.ok === false) {
+        featureState.nijiProof.error = payload.message || 'Provider command failed.';
+        featureState.nijiProof.activeCommand = '';
         renderNijiProof();
       }
-      if (state.sealdex.plan.activeCommand && payload.ok === false) {
-        state.sealdex.plan.error = payload.message || 'Provider command failed.';
-        state.sealdex.plan.activeCommand = '';
+      if (featureState.sealdex.plan.activeCommand && payload.ok === false) {
+        featureState.sealdex.plan.error = payload.message || 'Provider command failed.';
+        featureState.sealdex.plan.activeCommand = '';
         renderSealdexPlan();
       }
-      if (state.sealdex.entry.activeCommand && payload.ok === false) {
-        state.sealdex.entry.error = payload.message || 'Provider command failed.';
-        state.sealdex.entry.activeCommand = '';
+      if (featureState.sealdex.entry.activeCommand && payload.ok === false) {
+        featureState.sealdex.entry.error = payload.message || 'Provider command failed.';
+        featureState.sealdex.entry.activeCommand = '';
         renderSealdexEntry();
       }
       showNotice(payload.message || 'Action completed.', payload.ok === false, payload.persist === true);
@@ -772,40 +764,40 @@
       return;
     }
     if (message.type === 'eco.cockpit.artifactDeleted') {
-      state.lastDeletedArtifact = message.payload || null;
-      elements.undoDeleteArtifact.disabled = !state.lastDeletedArtifact;
+      lastDeletedArtifact = message.payload || null;
+      elements.undoDeleteArtifact.disabled = !lastDeletedArtifact;
       return;
     }
     if (message.type === 'eco.cockpit.marlinPackageSearchResult') {
       const payload = message.payload || {};
       if (payload.ok === false) {
-        state.marlinSearchResults = [];
-        state.marlinSearchError = payload.error || 'Marlin package search failed.';
-        showNotice(state.marlinSearchError, true);
+        featureState.marlin.searchResults = [];
+        featureState.marlin.searchError = payload.error || 'Marlin package search failed.';
+        showNotice(featureState.marlin.searchError, true);
       } else {
-        state.marlinSearchResults = Array.isArray(payload.packages) ? payload.packages : [];
-        state.marlinSearchError = '';
-        showNotice('Marlin package search returned ' + state.marlinSearchResults.length + ' result(s).', false);
+        featureState.marlin.searchResults = Array.isArray(payload.packages) ? payload.packages : [];
+        featureState.marlin.searchError = '';
+        showNotice('Marlin package search returned ' + featureState.marlin.searchResults.length + ' result(s).', false);
       }
       renderWizard();
       return;
     }
     if (message.type === 'eco.cockpit.marlinPackageResolveResult') {
       const payload = message.payload || {};
-      const packageName = state.marlinPackageApproval.packageName;
+      const packageName = featureState.marlin.packageApproval.packageName;
       if (payload.ok === false) {
-        state.marlinPackageApproval = { packageName: packageName, status: 'error', resolved: null, error: payload.error || 'Resolve failed.' };
+        featureState.marlin.packageApproval = { packageName: packageName, status: 'error', resolved: null, error: payload.error || 'Resolve failed.' };
       } else {
-        state.marlinPackageApproval = { packageName: packageName, status: 'ready', resolved: payload, error: '' };
+        featureState.marlin.packageApproval = { packageName: packageName, status: 'ready', resolved: payload, error: '' };
       }
       renderWizard();
       return;
     }
     if (message.type === 'eco.cockpit.marlinInstallResult') {
-      state.marlinInstallResult = message.payload || {};
-      state.marlinPackageApproval = { packageName: '', status: 'idle', resolved: null, error: '' };
-      const failed = state.marlinInstallResult.ok === false;
-      showNotice(failed ? (state.marlinInstallResult.error || 'Marlin install failed.') : 'Marlin install completed.', failed);
+      featureState.marlin.installResult = message.payload || {};
+      featureState.marlin.packageApproval = { packageName: '', status: 'idle', resolved: null, error: '' };
+      const failed = featureState.marlin.installResult.ok === false;
+      showNotice(failed ? (featureState.marlin.installResult.error || 'Marlin install failed.') : 'Marlin install completed.', failed);
       renderWizard();
       post({ type: 'eco.cockpit.refresh' });
       return;
@@ -1047,7 +1039,7 @@
     const policies = state.snapshot.records.policies || [];
     const policy = policies[0] || {};
     const nextValue = JSON.stringify(policy, null, 2);
-    state.policyOriginal = nextValue;
+    policyOriginal = nextValue;
     if (!elements.policyEditor.matches(':focus')) {
       elements.policyEditor.value = nextValue;
     }
@@ -1346,14 +1338,14 @@
 
   function renderMarlinPackageResults(container) {
     clear(container);
-    if (state.marlinSearchError) {
+    if (featureState.marlin.searchError) {
       const note = document.createElement('div');
       note.className = 'item is-error';
-      note.textContent = 'Search failed: ' + state.marlinSearchError;
+      note.textContent = 'Search failed: ' + featureState.marlin.searchError;
       container.appendChild(note);
       return;
     }
-    if (!state.marlinSearchResults.length) {
+    if (!featureState.marlin.searchResults.length) {
       const note = document.createElement('div');
       note.className = 'item';
       note.textContent = 'No package search results loaded.';
@@ -1361,9 +1353,9 @@
       return;
     }
 
-    const approvalPending = state.marlinPackageApproval.status !== 'idle' && state.marlinPackageApproval.status !== 'error';
+    const approvalPending = featureState.marlin.packageApproval.status !== 'idle' && featureState.marlin.packageApproval.status !== 'error';
 
-    state.marlinSearchResults.forEach(function (pkg) {
+    featureState.marlin.searchResults.forEach(function (pkg) {
       const row = document.createElement('div');
       const title = document.createElement('strong');
       const detail = document.createElement('span');
@@ -1376,7 +1368,7 @@
       action.disabled = approvalPending;
       action.addEventListener('click', function () {
         if (pkg.name) {
-          state.marlinPackageApproval = { packageName: pkg.name, status: 'resolving', resolved: null, error: '' };
+          featureState.marlin.packageApproval = { packageName: pkg.name, status: 'resolving', resolved: null, error: '' };
           renderWizard();
           post({ type: 'eco.cockpit.marlinResolvePackage', packageName: pkg.name });
         }
@@ -1396,7 +1388,7 @@
    */
   function renderMarlinPackageApproval(container) {
     clear(container);
-    const approval = state.marlinPackageApproval;
+    const approval = featureState.marlin.packageApproval;
     if (approval.status === 'idle') {
       return;
     }
@@ -1426,7 +1418,7 @@
       dismiss.type = 'button';
       dismiss.textContent = 'Dismiss';
       dismiss.addEventListener('click', function () {
-        state.marlinPackageApproval = { packageName: '', status: 'idle', resolved: null, error: '' };
+        featureState.marlin.packageApproval = { packageName: '', status: 'idle', resolved: null, error: '' };
         renderWizard();
       });
       container.appendChild(dismiss);
@@ -1468,7 +1460,7 @@
     confirmBtn.textContent = 'Confirm Install';
     confirmBtn.addEventListener('click', function () {
       const packageName = approval.packageName;
-      state.marlinPackageApproval = { packageName: packageName, status: 'installing', resolved: approval.resolved, error: '' };
+      featureState.marlin.packageApproval = { packageName: packageName, status: 'installing', resolved: approval.resolved, error: '' };
       renderWizard();
       post({ type: 'eco.cockpit.marlinInstallPackage', packageName: packageName, confirm: true });
     });
@@ -1477,7 +1469,7 @@
     cancelBtn.type = 'button';
     cancelBtn.textContent = 'Cancel';
     cancelBtn.addEventListener('click', function () {
-      state.marlinPackageApproval = { packageName: '', status: 'idle', resolved: null, error: '' };
+      featureState.marlin.packageApproval = { packageName: '', status: 'idle', resolved: null, error: '' };
       renderWizard();
     });
 
@@ -1487,12 +1479,12 @@
   }
 
   function renderMarlinInstallResult(container) {
-    if (!state.marlinInstallResult) {
+    if (!featureState.marlin.installResult) {
       return;
     }
     const block = document.createElement('pre');
     block.className = 'wizard-result';
-    block.textContent = JSON.stringify(state.marlinInstallResult, null, 2);
+    block.textContent = JSON.stringify(featureState.marlin.installResult, null, 2);
     container.appendChild(block);
   }
 
@@ -1516,14 +1508,14 @@
       choices.unshift({ label: 'Connected workspace', value: workspaceRoot });
     }
 
-    const previous = state.audit.target;
+    const previous = featureState.audit.target;
     clear(elements.auditRepository);
     if (!choices.length) {
       const option = document.createElement('option');
       option.value = '';
       option.textContent = 'No repository discovered';
       elements.auditRepository.appendChild(option);
-      state.audit.target = '';
+      featureState.audit.target = '';
       return;
     }
     choices.forEach(function (choice) {
@@ -1532,33 +1524,33 @@
       option.textContent = choice.label + ' — ' + choice.value;
       elements.auditRepository.appendChild(option);
     });
-    state.audit.target = choices.some(function (choice) { return choice.value === previous; })
+    featureState.audit.target = choices.some(function (choice) { return choice.value === previous; })
       ? previous
       : choices[0].value;
-    elements.auditRepository.value = state.audit.target;
+    elements.auditRepository.value = featureState.audit.target;
   }
 
   function resetAuditResults() {
-    state.audit.activeCommand = '';
-    state.audit.error = '';
-    state.audit.approval = null;
-    state.audit.results = { validate: null, preview: null, apply: null, verify: null };
+    featureState.audit.activeCommand = '';
+    featureState.audit.error = '';
+    featureState.audit.approval = null;
+    featureState.audit.results = { validate: null, preview: null, apply: null, verify: null };
     closeAuditApproval();
   }
 
   function runAuditCommand(stage, approval) {
     const commandId = AUDIT_COMMANDS[stage];
-    if (!commandId || !state.audit.target || state.audit.activeCommand) {
+    if (!commandId || !featureState.audit.target || featureState.audit.activeCommand) {
       return;
     }
-    state.audit.error = '';
-    state.audit.activeCommand = commandId;
+    featureState.audit.error = '';
+    featureState.audit.activeCommand = commandId;
     renderAuditWorkflow();
     post({
       type: 'eco.cockpit.invokeProviderCommand',
       providerId: 'marlin',
       commandId: commandId,
-      input: { target: state.audit.target },
+      input: { target: featureState.audit.target },
       confirm: stage === 'apply',
       approval: approval || undefined,
     });
@@ -1574,9 +1566,9 @@
     if (!stage) {
       return;
     }
-    state.audit.results[stage] = result;
-    state.audit.activeCommand = '';
-    state.audit.error = '';
+    featureState.audit.results[stage] = result;
+    featureState.audit.activeCommand = '';
+    featureState.audit.error = '';
     renderAuditWorkflow();
     if (stage === 'apply' && result.status === 'succeeded') {
       runAuditCommand('verify');
@@ -1584,12 +1576,12 @@
   }
 
   function openAuditApproval() {
-    const preview = state.audit.results.preview;
-    if (!preview || preview.status !== 'succeeded' || !state.audit.target) {
+    const preview = featureState.audit.results.preview;
+    if (!preview || preview.status !== 'succeeded' || !featureState.audit.target) {
       return;
     }
-    const input = { target: state.audit.target };
-    state.audit.approval = {
+    const input = { target: featureState.audit.target };
+    featureState.audit.approval = {
       providerId: 'marlin',
       commandId: AUDIT_COMMANDS.apply,
       input: input,
@@ -1599,10 +1591,10 @@
     };
     clear(elements.auditApprovalScope);
     [
-      ['Provider', state.audit.approval.providerId],
-      ['Command', state.audit.approval.commandId],
-      ['Repository', state.audit.target],
-      ['Preview operation', state.audit.approval.previewOperationId],
+      ['Provider', featureState.audit.approval.providerId],
+      ['Command', featureState.audit.approval.commandId],
+      ['Repository', featureState.audit.target],
+      ['Preview operation', featureState.audit.approval.previewOperationId],
     ].forEach(function (entry) {
       const dt = document.createElement('dt');
       const dd = document.createElement('dd');
@@ -1625,12 +1617,12 @@
   }
 
   function confirmAuditApproval() {
-    const approval = state.audit.approval;
-    const preview = state.audit.results.preview;
+    const approval = featureState.audit.approval;
+    const preview = featureState.audit.results.preview;
     if (!elements.auditApprovalCheck.checked || !approval || !preview ||
         approval.previewOperationId !== preview.operation_id ||
-        approval.input.target !== state.audit.target) {
-      state.audit.error = 'Approval expired because the preview or repository changed.';
+        approval.input.target !== featureState.audit.target) {
+      featureState.audit.error = 'Approval expired because the preview or repository changed.';
       closeAuditApproval();
       renderAuditWorkflow();
       return;
@@ -1685,14 +1677,14 @@
       choices.unshift({ label: 'Connected workspace', value: workspaceRoot });
     }
 
-    const previous = state.doctor.target;
+    const previous = featureState.doctor.target;
     clear(elements.doctorRepository);
     if (!choices.length) {
       const option = document.createElement('option');
       option.value = '';
       option.textContent = 'No repository discovered';
       elements.doctorRepository.appendChild(option);
-      state.doctor.target = '';
+      featureState.doctor.target = '';
       return;
     }
     choices.forEach(function (choice) {
@@ -1701,10 +1693,10 @@
       option.textContent = choice.label + ' — ' + choice.value;
       elements.doctorRepository.appendChild(option);
     });
-    state.doctor.target = choices.some(function (choice) { return choice.value === previous; })
+    featureState.doctor.target = choices.some(function (choice) { return choice.value === previous; })
       ? previous
       : choices[0].value;
-    elements.doctorRepository.value = state.doctor.target;
+    elements.doctorRepository.value = featureState.doctor.target;
   }
 
   // Every target-defined command requires approval, even when the registry
@@ -1713,18 +1705,18 @@
 
   function runDoctorCommand(stage, input, approval) {
     const commandId = DOCTOR_COMMANDS[stage];
-    if (!commandId || !state.doctor.target || state.doctor.activeCommand) {
+    if (!commandId || !featureState.doctor.target || featureState.doctor.activeCommand) {
       return;
     }
-    const payload = Object.assign({ target: state.doctor.target }, input || {});
+    const payload = Object.assign({ target: featureState.doctor.target }, input || {});
     const mutates = Boolean(DOCTOR_MUTATING_STAGES[stage]);
     if (mutates && !approval) {
       // Mutating stages must go through openDoctorApproval -> confirmDoctorApproval
       // first; this function only sends the request once a human has approved it.
       return;
     }
-    state.doctor.error = '';
-    state.doctor.activeCommand = commandId;
+    featureState.doctor.error = '';
+    featureState.doctor.activeCommand = commandId;
     renderDoctorWorkflow();
     post({
       type: 'eco.cockpit.invokeProviderCommand',
@@ -1738,11 +1730,11 @@
 
   function openDoctorApproval(stage, input) {
     const commandId = DOCTOR_COMMANDS[stage];
-    if (!commandId || !DOCTOR_MUTATING_STAGES[stage] || !state.doctor.target) {
+    if (!commandId || !DOCTOR_MUTATING_STAGES[stage] || !featureState.doctor.target) {
       return;
     }
-    const payload = Object.assign({ target: state.doctor.target }, input || {});
-    state.doctor.approval = {
+    const payload = Object.assign({ target: featureState.doctor.target }, input || {});
+    featureState.doctor.approval = {
       stage: stage,
       commandId: commandId,
       input: payload,
@@ -1780,9 +1772,9 @@
   }
 
   function confirmDoctorApproval() {
-    const approval = state.doctor.approval;
-    if (!elements.doctorApprovalCheck.checked || !approval || approval.input.target !== state.doctor.target) {
-      state.doctor.error = 'Approval expired because the target repository changed.';
+    const approval = featureState.doctor.approval;
+    if (!elements.doctorApprovalCheck.checked || !approval || approval.input.target !== featureState.doctor.target) {
+      featureState.doctor.error = 'Approval expired because the target repository changed.';
       closeDoctorApproval();
       renderDoctorWorkflow();
       return;
@@ -1853,55 +1845,55 @@
     if (!stage) {
       return;
     }
-    state.doctor.lastResult = result;
-    state.doctor.activeCommand = '';
+    featureState.doctor.lastResult = result;
+    featureState.doctor.activeCommand = '';
     if (result.status === 'succeeded' && result.data && Array.isArray(result.data.operations)) {
-      state.doctor.operations = result.data.operations;
+      featureState.doctor.operations = result.data.operations;
     }
     if (result.status === 'succeeded' && result.data && result.data.assessment) {
-      state.doctor.assessment = result.data.assessment;
+      featureState.doctor.assessment = result.data.assessment;
     }
     if (result.data && typeof result.data.registry_digest === 'string') {
-      state.doctor.registryDigest = result.data.registry_digest;
+      featureState.doctor.registryDigest = result.data.registry_digest;
     }
     if (result.status !== 'succeeded') {
-      state.doctor.error = (result.error && result.error.message) || 'Doctor provider command failed.';
+      featureState.doctor.error = (result.error && result.error.message) || 'Doctor provider command failed.';
     }
     renderDoctorWorkflow();
   }
 
   function renderDoctorWorkflow() {
-    const busy = Boolean(state.doctor.activeCommand);
+    const busy = Boolean(featureState.doctor.activeCommand);
     elements.doctorRepository.disabled = busy;
-    elements.doctorHealthRefresh.disabled = busy || !state.doctor.target;
-    elements.doctorRefresh.disabled = busy || !state.doctor.target;
+    elements.doctorHealthRefresh.disabled = busy || !featureState.doctor.target;
+    elements.doctorRefresh.disabled = busy || !featureState.doctor.target;
     elements.doctorAddForm.querySelectorAll('input, select, textarea, button').forEach(function (control) {
-      control.disabled = busy || !state.doctor.target;
+      control.disabled = busy || !featureState.doctor.target;
     });
     elements.doctorRegistryStatus.textContent = busy
       ? 'Running'
-      : state.doctor.lastResult
-        ? state.doctor.lastResult.status
+      : featureState.doctor.lastResult
+        ? featureState.doctor.lastResult.status
         : 'Not loaded';
-    elements.doctorOperationCount.textContent = String(state.doctor.operations.length) + ' operations';
+    elements.doctorOperationCount.textContent = String(featureState.doctor.operations.length) + ' operations';
     renderDoctorHealth();
     renderDoctorOperationsTable();
-    elements.doctorLastResult.textContent = state.doctor.lastResult
+    elements.doctorLastResult.textContent = featureState.doctor.lastResult
       ? JSON.stringify({
-          command_id: state.doctor.lastResult.command_id,
-          status: state.doctor.lastResult.status,
-          data: state.doctor.lastResult.data,
-          error: state.doctor.lastResult.error,
+          command_id: featureState.doctor.lastResult.command_id,
+          status: featureState.doctor.lastResult.status,
+          data: featureState.doctor.lastResult.data,
+          error: featureState.doctor.lastResult.error,
         }, null, 2)
       : '';
-    if (state.doctor.error) {
-      showNotice(state.doctor.error, true);
-      state.doctor.error = '';
+    if (featureState.doctor.error) {
+      showNotice(featureState.doctor.error, true);
+      featureState.doctor.error = '';
     }
   }
 
   function renderDoctorHealth() {
-    const assessment = state.doctor.assessment;
+    const assessment = featureState.doctor.assessment;
     elements.doctorHealthFlags.replaceChildren();
     elements.doctorHealthDetails.replaceChildren();
     if (!assessment) {
@@ -1948,11 +1940,11 @@
 
   function renderDoctorOperationsTable() {
     clear(elements.doctorOperationTable);
-    if (!state.doctor.operations.length) {
+    if (!featureState.doctor.operations.length) {
       elements.doctorOperationTable.appendChild(emptyTableRow(4, 'No Doctor operations registered.'));
       return;
     }
-    state.doctor.operations.forEach(function (operation) {
+    featureState.doctor.operations.forEach(function (operation) {
       const row = document.createElement('tr');
       const id = document.createElement('td');
       const mode = document.createElement('td');
@@ -1961,7 +1953,7 @@
       actions.className = 'doctor-operation-actions';
       const remove = document.createElement('button');
       const execute = document.createElement('button');
-      const operationInput = Object.assign({}, state.doctor.operationInputs[operation.id] || {});
+      const operationInput = Object.assign({}, featureState.doctor.operationInputs[operation.id] || {});
       id.textContent = operation.id || '-';
       mode.textContent = (operation.enabled === false ? 'disabled' : 'enabled') + ' / ' + (operation.mutates ? 'mutates' : 'read');
       command.textContent = Array.isArray(operation.command) ? operation.command.join(' ') : '-';
@@ -2003,7 +1995,7 @@
         inputControls.forEach(function (entry) {
           operationInput[entry.spec.id] = entry.control.value;
         });
-        state.doctor.operationInputs[operation.id] = Object.assign({}, operationInput);
+        featureState.doctor.operationInputs[operation.id] = Object.assign({}, operationInput);
         return operationInput;
       }
       function inputsComplete() {
@@ -2012,7 +2004,7 @@
         });
       }
       function updateExecutionButtons() {
-        const disabled = operation.enabled === false || !state.doctor.registryDigest || !inputsComplete();
+        const disabled = operation.enabled === false || !featureState.doctor.registryDigest || !inputsComplete();
         execute.disabled = disabled;
         if (previewButton) previewButton.disabled = disabled;
       }
@@ -2020,7 +2012,7 @@
       execute.addEventListener('click', function () {
         const payload = {
           operation_id: operation.id,
-          registry_digest: state.doctor.registryDigest,
+          registry_digest: featureState.doctor.registryDigest,
         };
         if (inputControls.length) payload.operation_input = collectOperationInput();
         openDoctorApproval('apply', payload);
@@ -2033,7 +2025,7 @@
         preview.addEventListener('click', function () {
           const payload = {
             operation_id: operation.id,
-            registry_digest: state.doctor.registryDigest,
+            registry_digest: featureState.doctor.registryDigest,
           };
           if (inputControls.length) payload.operation_input = collectOperationInput();
           openDoctorApproval('preview', payload);
@@ -2069,7 +2061,7 @@
 
   function runAgentCommand(stage, input, approval) {
     const commandId = AGENT_COMMANDS[stage];
-    if (!commandId || state.agents.activeCommand) {
+    if (!commandId || featureState.agents.activeCommand) {
       return;
     }
     const payload = input || {};
@@ -2077,8 +2069,8 @@
     if (mutates && !approval) {
       return;
     }
-    state.agents.error = '';
-    state.agents.activeCommand = commandId;
+    featureState.agents.error = '';
+    featureState.agents.activeCommand = commandId;
     renderAgentRosterWorkflow();
     post({
       type: 'eco.cockpit.invokeProviderCommand',
@@ -2096,7 +2088,7 @@
       return;
     }
     const payload = input || {};
-    state.agents.approval = {
+    featureState.agents.approval = {
       stage: stage,
       commandId: commandId,
       input: payload,
@@ -2110,7 +2102,7 @@
       // a read. Show exactly which commands are about to run, not a vague
       // "all known templates" placeholder, so approval means something.
       entries.push(['Roster digest', payload.roster_digest || '-']);
-      state.agents.templates.forEach(function (template) {
+      featureState.agents.templates.forEach(function (template) {
         const command = Array.isArray(template.detect && template.detect.command)
           ? template.detect.command.join(' ')
           : '-';
@@ -2144,9 +2136,9 @@
   }
 
   function confirmAgentApproval() {
-    const approval = state.agents.approval;
+    const approval = featureState.agents.approval;
     if (!elements.agentApprovalCheck.checked || !approval) {
-      state.agents.error = 'Approval was not confirmed.';
+      featureState.agents.error = 'Approval was not confirmed.';
       closeAgentApproval();
       renderAgentRosterWorkflow();
       return;
@@ -2202,64 +2194,64 @@
     if (!stage) {
       return;
     }
-    state.agents.lastResult = result;
-    state.agents.activeCommand = '';
+    featureState.agents.lastResult = result;
+    featureState.agents.activeCommand = '';
     if (result.status === 'succeeded' && result.data) {
       if (Array.isArray(result.data.templates)) {
-        state.agents.templates = result.data.templates;
+        featureState.agents.templates = result.data.templates;
       }
       if (Array.isArray(result.data.results)) {
         const next = {};
         result.data.results.forEach(function (item) { next[item.id] = item; });
-        state.agents.detections = next;
+        featureState.agents.detections = next;
       }
       if (typeof result.data.roster_digest === 'string') {
-        state.agents.rosterDigest = result.data.roster_digest;
+        featureState.agents.rosterDigest = result.data.roster_digest;
       }
     }
     if (result.status !== 'succeeded') {
-      state.agents.error = (result.error && result.error.message) || 'Agent roster provider command failed.';
+      featureState.agents.error = (result.error && result.error.message) || 'Agent roster provider command failed.';
     }
     renderAgentRosterWorkflow();
   }
 
   function renderAgentRosterWorkflow() {
-    const busy = Boolean(state.agents.activeCommand);
+    const busy = Boolean(featureState.agents.activeCommand);
     elements.agentRosterList.disabled = busy;
     // Detect binds its approval to the roster digest returned by list/
     // register/unregister; without one yet there is nothing to bind to.
-    elements.agentRosterDetect.disabled = busy || !state.agents.rosterDigest;
+    elements.agentRosterDetect.disabled = busy || !featureState.agents.rosterDigest;
     elements.agentRosterAddForm.querySelectorAll('input, textarea, button').forEach(function (control) {
       control.disabled = busy;
     });
     elements.agentRosterStatus.textContent = busy
       ? 'Running'
-      : state.agents.lastResult
-        ? state.agents.lastResult.status
+      : featureState.agents.lastResult
+        ? featureState.agents.lastResult.status
         : 'Not loaded';
-    elements.agentRosterCount.textContent = String(state.agents.templates.length) + ' templates';
+    elements.agentRosterCount.textContent = String(featureState.agents.templates.length) + ' templates';
     renderAgentRosterTable();
-    elements.agentRosterLastResult.textContent = state.agents.lastResult
+    elements.agentRosterLastResult.textContent = featureState.agents.lastResult
       ? JSON.stringify({
-          command_id: state.agents.lastResult.command_id,
-          status: state.agents.lastResult.status,
-          data: state.agents.lastResult.data,
-          error: state.agents.lastResult.error,
+          command_id: featureState.agents.lastResult.command_id,
+          status: featureState.agents.lastResult.status,
+          data: featureState.agents.lastResult.data,
+          error: featureState.agents.lastResult.error,
         }, null, 2)
       : '';
-    if (state.agents.error) {
-      showNotice(state.agents.error, true);
-      state.agents.error = '';
+    if (featureState.agents.error) {
+      showNotice(featureState.agents.error, true);
+      featureState.agents.error = '';
     }
   }
 
   function renderAgentRosterTable() {
     clear(elements.agentRosterTable);
-    if (!state.agents.templates.length) {
+    if (!featureState.agents.templates.length) {
       elements.agentRosterTable.appendChild(emptyTableRow(5, 'No agent templates loaded -- click "List templates".'));
       return;
     }
-    state.agents.templates.forEach(function (template) {
+    featureState.agents.templates.forEach(function (template) {
       const row = document.createElement('tr');
       const id = document.createElement('td');
       const name = document.createElement('td');
@@ -2269,7 +2261,7 @@
       id.textContent = template.id || '-';
       name.textContent = template.name || '-';
       capabilities.textContent = Array.isArray(template.capabilities) ? template.capabilities.join(', ') : '-';
-      const detection = state.agents.detections[template.id];
+      const detection = featureState.agents.detections[template.id];
       status.textContent = !detection
         ? 'not checked'
         : detection.detected
@@ -2295,26 +2287,26 @@
   }
 
   function renderAuditWorkflow() {
-    const results = state.audit.results;
-    const active = state.audit.activeCommand;
+    const results = featureState.audit.results;
+    const active = featureState.audit.activeCommand;
     const verifyBundle = evidenceBundle(results.verify);
-    elements.auditDiscoverStatus.textContent = state.audit.target || 'Choose a repository';
+    elements.auditDiscoverStatus.textContent = featureState.audit.target || 'Choose a repository';
     elements.auditValidateStatus.textContent = auditStageLabel('validate');
     elements.auditPreviewStatus.textContent = auditStageLabel('preview');
-    elements.auditApprovalStatus.textContent = state.audit.approval ? 'Bound to preview ' + state.audit.approval.previewOperationId : 'Not requested';
+    elements.auditApprovalStatus.textContent = featureState.audit.approval ? 'Bound to preview ' + featureState.audit.approval.previewOperationId : 'Not requested';
     elements.auditApplyStatus.textContent = auditStageLabel('apply');
     elements.auditVerifyStatus.textContent = auditStageLabel('verify');
     elements.auditEvidenceStatus.textContent = verifyBundle ? 'Ready to export' : 'Not available';
 
     elements.auditRepository.disabled = Boolean(active);
-    elements.auditValidate.disabled = !state.audit.target || Boolean(active);
+    elements.auditValidate.disabled = !featureState.audit.target || Boolean(active);
     elements.auditPreview.disabled = !results.validate || Boolean(active);
     elements.auditRequestApproval.disabled = !results.preview || results.preview.status !== 'succeeded' || Boolean(active);
     elements.auditExportEvidence.disabled = !verifyBundle || Boolean(active);
 
     renderAuditResult(elements.auditValidationResult, results.validate, 'Run validation to load findings.');
     renderAuditResult(elements.auditPreviewResult, results.preview, 'Preview has not run.');
-    renderAuditResult(elements.auditApplyResult, results.apply, state.audit.error || 'No remediation has executed.');
+    renderAuditResult(elements.auditApplyResult, results.apply, featureState.audit.error || 'No remediation has executed.');
     renderAuditResult(elements.auditVerifyResult, results.verify, 'Verification has not run.');
     elements.auditFindingsCount.textContent = String(auditFindings(results.validate).length) + ' findings';
     elements.auditPreviewOperation.textContent = results.preview ? results.preview.operation_id : '-';
@@ -2323,8 +2315,8 @@
   }
 
   function auditStageLabel(stage) {
-    if (state.audit.activeCommand === AUDIT_COMMANDS[stage]) return 'Running';
-    const result = state.audit.results[stage];
+    if (featureState.audit.activeCommand === AUDIT_COMMANDS[stage]) return 'Running';
+    const result = featureState.audit.results[stage];
     return result ? result.status : 'Not run';
   }
 
@@ -2377,7 +2369,7 @@
   }
 
   function exportAuditEvidence() {
-    const bundle = evidenceBundle(state.audit.results.verify);
+    const bundle = evidenceBundle(featureState.audit.results.verify);
     if (!bundle) return;
     const blob = new Blob([JSON.stringify(bundle, null, 2) + '\n'], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -2431,24 +2423,24 @@
     if (result.provider_id !== 'niji' || result.command_id !== 'niji.palette.preview') {
       return;
     }
-    state.nijiProof.lastResult = result;
-    state.nijiProof.activeCommand = '';
-    state.nijiProof.error = result.status === 'failed'
+    featureState.nijiProof.lastResult = result;
+    featureState.nijiProof.activeCommand = '';
+    featureState.nijiProof.error = result.status === 'failed'
       ? ((result.error && result.error.message) || 'Provider reported failure.')
       : '';
     renderNijiProof();
   }
 
   function renderNijiProof() {
-    const running = Boolean(state.nijiProof.activeCommand);
+    const running = Boolean(featureState.nijiProof.activeCommand);
     elements.nijiProofRun.disabled = running;
     elements.nijiProofRun.textContent = running ? 'Running...' : 'Run niji.palette.preview';
 
-    const result = state.nijiProof.lastResult;
+    const result = featureState.nijiProof.lastResult;
     if (running) {
       elements.nijiProofStatus.textContent = 'Running...';
-    } else if (state.nijiProof.error) {
-      elements.nijiProofStatus.textContent = 'Failed: ' + state.nijiProof.error;
+    } else if (featureState.nijiProof.error) {
+      elements.nijiProofStatus.textContent = 'Failed: ' + featureState.nijiProof.error;
     } else if (result) {
       elements.nijiProofStatus.textContent = result.status || 'unknown';
     } else {
@@ -2461,7 +2453,7 @@
     if (!swatches.length) {
       const note = document.createElement('div');
       note.className = 'item';
-      note.textContent = state.nijiProof.error || 'No result yet - click Run to invoke the real discovered provider.';
+      note.textContent = featureState.nijiProof.error || 'No result yet - click Run to invoke the real discovered provider.';
       elements.nijiProofSwatches.appendChild(note);
       return;
     }
@@ -2497,7 +2489,7 @@
   function openSealdexApproval(commandId, input) {
     const token = approvalToken();
     const scope = approvalScope('sealdex', commandId, input);
-    state.sealdex.pendingApproval = { commandId: commandId, input: input, token: token, scope: scope };
+    featureState.sealdex.pendingApproval = { commandId: commandId, input: input, token: token, scope: scope };
     clear(elements.sealdexApprovalScope);
     [
       ['Provider', 'sealdex'],
@@ -2521,7 +2513,7 @@
     elements.sealdexApprovalDialog.hidden = true;
     elements.sealdexApprovalCheck.checked = false;
     elements.sealdexConfirmApproval.disabled = true;
-    state.sealdex.pendingApproval = null;
+    featureState.sealdex.pendingApproval = null;
   }
 
   function handleSealdexPlanProviderResult(result) {
@@ -2531,18 +2523,18 @@
     if (result.command_id !== 'sealdex.schema.propose' && result.command_id !== 'sealdex.schema.apply') {
       return;
     }
-    state.sealdex.plan.activeCommand = '';
+    featureState.sealdex.plan.activeCommand = '';
     if (result.command_id === 'sealdex.schema.propose') {
-      state.sealdex.plan.proposeResult = result;
-      state.sealdex.plan.error = result.status === 'failed'
+      featureState.sealdex.plan.proposeResult = result;
+      featureState.sealdex.plan.error = result.status === 'failed'
         ? ((result.error && result.error.message) || 'Provider reported failure.')
         : '';
     } else {
-      state.sealdex.plan.error = result.status === 'failed'
+      featureState.sealdex.plan.error = result.status === 'failed'
         ? ((result.error && result.error.message) || 'Apply failed.')
         : '';
       if (result.status === 'succeeded') {
-        state.sealdex.plan.proposeResult = null;
+        featureState.sealdex.plan.proposeResult = null;
         elements.sealdexPlanNeed.value = '';
       }
     }
@@ -2550,18 +2542,18 @@
   }
 
   function renderSealdexPlan() {
-    const running = Boolean(state.sealdex.plan.activeCommand);
+    const running = Boolean(featureState.sealdex.plan.activeCommand);
     elements.sealdexPlanPropose.disabled = running;
 
-    const result = state.sealdex.plan.proposeResult;
+    const result = featureState.sealdex.plan.proposeResult;
     const hasPendingPlan = Boolean(result && result.status === 'pending-approval' && result.data && result.data.plan);
     elements.sealdexPlanApprove.disabled = running || !hasPendingPlan;
     elements.sealdexPlanDiscard.disabled = running || !hasPendingPlan;
 
     if (running) {
-      elements.sealdexPlanStatus.textContent = state.sealdex.plan.activeCommand === 'sealdex.schema.apply' ? 'Applying...' : 'Proposing...';
-    } else if (state.sealdex.plan.error) {
-      elements.sealdexPlanStatus.textContent = 'Failed: ' + state.sealdex.plan.error;
+      elements.sealdexPlanStatus.textContent = featureState.sealdex.plan.activeCommand === 'sealdex.schema.apply' ? 'Applying...' : 'Proposing...';
+    } else if (featureState.sealdex.plan.error) {
+      elements.sealdexPlanStatus.textContent = 'Failed: ' + featureState.sealdex.plan.error;
     } else if (hasPendingPlan) {
       elements.sealdexPlanStatus.textContent = 'Pending approval';
     } else {
@@ -2595,8 +2587,8 @@
   }
 
   function collectSealdexEntryFields() {
-    const table = state.sealdex.entry.selectedTable;
-    const columns = state.sealdex.entry.tables[table] || {};
+    const table = featureState.sealdex.entry.selectedTable;
+    const columns = featureState.sealdex.entry.tables[table] || {};
     const fields = {};
     Object.keys(columns).forEach(function (name) {
       if (columns[name].pk) {
@@ -2617,44 +2609,44 @@
     if (result.command_id !== 'sealdex.entry.tables' && result.command_id !== 'sealdex.entry.add' && result.command_id !== 'sealdex.entry.import') {
       return;
     }
-    state.sealdex.entry.activeCommand = '';
-    state.sealdex.entry.error = result.status === 'failed'
+    featureState.sealdex.entry.activeCommand = '';
+    featureState.sealdex.entry.error = result.status === 'failed'
       ? ((result.error && result.error.message) || 'Provider reported failure.')
       : '';
     if (result.command_id === 'sealdex.entry.tables' && result.status === 'succeeded') {
-      state.sealdex.entry.tables = (result.data && result.data.tables) || {};
-      if (!state.sealdex.entry.tables[state.sealdex.entry.selectedTable]) {
-        state.sealdex.entry.selectedTable = Object.keys(state.sealdex.entry.tables)[0] || '';
+      featureState.sealdex.entry.tables = (result.data && result.data.tables) || {};
+      if (!featureState.sealdex.entry.tables[featureState.sealdex.entry.selectedTable]) {
+        featureState.sealdex.entry.selectedTable = Object.keys(featureState.sealdex.entry.tables)[0] || '';
       }
     }
     if (result.command_id === 'sealdex.entry.add' && result.status === 'succeeded') {
-      state.sealdex.entry.lastResult = 'Inserted row id ' + (result.data && result.data.row_id) + ' into ' + (result.data && result.data.table) + '.';
+      featureState.sealdex.entry.lastResult = 'Inserted row id ' + (result.data && result.data.row_id) + ' into ' + (result.data && result.data.table) + '.';
     }
     if (result.command_id === 'sealdex.entry.import' && result.status === 'succeeded') {
-      state.sealdex.entry.lastResult = 'Imported ' + (result.data && result.data.inserted) + ' row(s) into ' + (result.data && result.data.table) + '.';
+      featureState.sealdex.entry.lastResult = 'Imported ' + (result.data && result.data.inserted) + ' row(s) into ' + (result.data && result.data.table) + '.';
       elements.sealdexEntryCsv.value = '';
     }
     renderSealdexEntry();
   }
 
   function renderSealdexEntry() {
-    const running = Boolean(state.sealdex.entry.activeCommand);
+    const running = Boolean(featureState.sealdex.entry.activeCommand);
     elements.sealdexEntryRefreshTables.disabled = running;
-    const table = state.sealdex.entry.selectedTable;
+    const table = featureState.sealdex.entry.selectedTable;
     elements.sealdexEntryAdd.disabled = running || !table;
     elements.sealdexEntryImport.disabled = running || !table;
 
     if (running) {
       elements.sealdexEntryStatus.textContent = 'Working...';
-    } else if (state.sealdex.entry.error) {
-      elements.sealdexEntryStatus.textContent = 'Failed: ' + state.sealdex.entry.error;
-    } else if (state.sealdex.entry.lastResult) {
-      elements.sealdexEntryStatus.textContent = state.sealdex.entry.lastResult;
+    } else if (featureState.sealdex.entry.error) {
+      elements.sealdexEntryStatus.textContent = 'Failed: ' + featureState.sealdex.entry.error;
+    } else if (featureState.sealdex.entry.lastResult) {
+      elements.sealdexEntryStatus.textContent = featureState.sealdex.entry.lastResult;
     } else {
       elements.sealdexEntryStatus.textContent = '-';
     }
 
-    const tableNames = Object.keys(state.sealdex.entry.tables);
+    const tableNames = Object.keys(featureState.sealdex.entry.tables);
     clear(elements.sealdexEntryTable);
     tableNames.forEach(function (name) {
       const option = document.createElement('option');
@@ -2670,8 +2662,8 @@
 
   function renderSealdexEntryFields() {
     clear(elements.sealdexEntryFields);
-    const table = state.sealdex.entry.selectedTable;
-    const columns = state.sealdex.entry.tables[table] || {};
+    const table = featureState.sealdex.entry.selectedTable;
+    const columns = featureState.sealdex.entry.tables[table] || {};
     Object.keys(columns).forEach(function (name) {
       if (columns[name].pk) {
         return;
@@ -2704,8 +2696,8 @@
       return;
     }
 
-    if (!state.selectedWorkspacePath || !tree.nodes.some(function (node) { return node.path === state.selectedWorkspacePath; })) {
-      state.selectedWorkspacePath = tree.nodes[0].path || '.';
+    if (!selectedWorkspacePath || !tree.nodes.some(function (node) { return node.path === selectedWorkspacePath; })) {
+      selectedWorkspacePath = tree.nodes[0].path || '.';
     }
 
     tree.nodes.forEach(function (node) {
@@ -2713,19 +2705,19 @@
       const icon = node.kind === 'directory' ? '[] ' : '- ';
       button.type = 'button';
       button.className = 'workspace-node';
-      button.classList.toggle('is-selected', node.path === state.selectedWorkspacePath);
+      button.classList.toggle('is-selected', node.path === selectedWorkspacePath);
       button.classList.toggle('is-skipped', Boolean(node.skipped));
       button.style.paddingLeft = String(8 + ((node.depth || 0) * 16)) + 'px';
       button.textContent = icon + (node.name || node.path || '.');
       button.addEventListener('click', function () {
-        state.selectedWorkspacePath = node.path || '.';
+        selectedWorkspacePath = node.path || '.';
         renderWorkspaceExplorer(workspace);
       });
       elements.workspaceTree.appendChild(button);
     });
 
     renderWorkspaceSelection(tree.nodes.find(function (node) {
-      return node.path === state.selectedWorkspacePath;
+      return node.path === selectedWorkspacePath;
     }) || tree.nodes[0]);
   }
 
@@ -2885,19 +2877,19 @@
   function showNotice(message, isError, persist) {
     elements.notice.textContent = message;
     elements.notice.classList.toggle('is-error', Boolean(isError));
-    if (state.noticeTimer) {
-      window.clearTimeout(state.noticeTimer);
-      state.noticeTimer = null;
+    if (noticeTimer) {
+      window.clearTimeout(noticeTimer);
+      noticeTimer = null;
     }
     if (!persist) {
-      state.noticeTimer = window.setTimeout(clearNotice, 5000);
+      noticeTimer = window.setTimeout(clearNotice, 5000);
     }
   }
 
   function clearNotice() {
-    if (state.noticeTimer) {
-      window.clearTimeout(state.noticeTimer);
-      state.noticeTimer = null;
+    if (noticeTimer) {
+      window.clearTimeout(noticeTimer);
+      noticeTimer = null;
     }
     elements.notice.textContent = '';
     elements.notice.classList.remove('is-error');
