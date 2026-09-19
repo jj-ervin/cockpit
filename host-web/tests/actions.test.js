@@ -107,7 +107,7 @@ test('openArtifact resolves a contained path and calls osOpen.openWithDefaultApp
   const deps = makeDeps({ osOpen: { openWithDefaultApp: async (p) => { openedPath = p; }, revealInFileManager: async () => {} } });
   const messages = await dispatch(
     'eco.cockpit.openArtifact',
-    { artifactPath: '.eco\\artifacts\\a.json' },
+    { artifactPath: require('path').join('.eco', 'artifacts', 'a.json') },
     { workspaceRoot: WORKSPACE, deps },
   );
   assert.ok(openedPath.startsWith(WORKSPACE));
@@ -118,7 +118,7 @@ test('openArtifact rejects a path that escapes the workspace root', async () => 
   const deps = makeDeps();
   const messages = await dispatch(
     'eco.cockpit.openArtifact',
-    { artifactPath: '..\\..\\etc\\passwd' },
+    { artifactPath: require('path').join('..', '..', 'etc', 'passwd') },
     { workspaceRoot: WORKSPACE, deps },
   );
   assert.equal(messages[0].payload.ok, false);
