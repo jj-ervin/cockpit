@@ -19,5 +19,5 @@ test('resolveContainedPath rejects a path that escapes the workspace via ..', ()
 
 test('resolveContainedPath rejects an absolute path outside the workspace', () => {
   const root = path.resolve('C:/fake/workspace');
-  assert.throws(() => resolveContainedPath(root, 'C:/other/place/file.txt'), /outside the active workspace/);
+  assert.throws(() => resolveContainedPath(root, path.resolve(root, '..', 'other', 'place', 'file.txt')), /outside the active workspace/);
 });
