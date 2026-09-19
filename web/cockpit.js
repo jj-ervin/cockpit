@@ -42,6 +42,22 @@
   // Feature-owned workflow state deliberately does not enter CockpitState.
   // These objects contain transient provider/workflow details rather than
   // Cockpit-wide operational state.
+  const providerCommandCatalog = {
+    schema_version: 'cockpit-provider-command-catalog-v1',
+    providers: [],
+  };
+
+  function findProviderCommand(providerId, commandId) {
+    const provider = providerCommandCatalog.providers.find(function (item) { return item && item.id === providerId; });
+    if (!provider || !Array.isArray(provider.commands)) return null;
+    return provider.commands.find(function (command) { return command && command.id === commandId; }) || null;
+  }
+
+  function providerCommandTitle(providerId, commandId, fallback) {
+    const command = findProviderCommand(providerId, commandId);
+    return command && command.title ? command.title : fallback || commandId;
+  }
+
   const featureState = {
     marlin: {
       searchResults: [],
@@ -727,6 +743,15 @@
       renderSnapshot(message.payload);
       return;
     }
+    if (message.type === 'eco.cockpit.providerCommandCatalog') {
+      const payload = message.payload || {};
+      if (payload.schema_version === 'cockpit-provider-command-catalog-v1' && Array.isArray(payload.providers)) {
+        providerCommandCatalog.schema_version = payload.schema_version;
+        providerCommandCatalog.providers = payload.providers;
+        renderNijiProof();
+      }
+      return;
+    }
     if (message.type === 'eco.cockpit.actionResult') {
       const payload = message.payload || {};
       if (featureState.audit.activeCommand && payload.ok === false) {
@@ -821,6 +846,7 @@
   });
 
   post({ type: 'eco.cockpit.ready' });
+  post({ type: 'eco.cockpit.listProviderCommands' });
   renderNijiProof();
   renderSealdexPlan();
   renderSealdexEntry();
@@ -2428,7 +2454,7 @@
   function renderNijiProof() {
     const running = Boolean(featureState.nijiProof.activeCommand);
     elements.nijiProofRun.disabled = running;
-    elements.nijiProofRun.textContent = running ? 'Running...' : 'Run niji.palette.preview';
+    elements.nijiProofRun.textContent = running ? 'Running...' : providerCommandTitle('niji', 'niji.palette.preview', 'Run niji.palette.preview');
 
     const result = featureState.nijiProof.lastResult;
     if (running) {
