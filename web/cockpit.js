@@ -150,7 +150,7 @@
 
   function makeStateProxy(path) {
     const rawValue = readRawStatePath(path);
-    const target = Array.isArray(rawValue) ? [] : {};
+    const target = Array.isArray(rawValue) ? rawValue.slice() : (rawValue && typeof rawValue === 'object' ? Object.assign({}, rawValue) : {});
     return new Proxy(target, {
       get: function (_target, property) {
         if (property === Symbol.toStringTag) return Array.isArray(readRawStatePath(path)) ? 'Array' : 'CockpitState';
