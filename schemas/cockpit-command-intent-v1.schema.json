@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cockpit.dev/schemas/cockpit-command-intent-v1.schema.json",
+  "title": "Cockpit Provider Command Intent v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "type",
+    "providerId",
+    "commandId",
+    "input",
+    "confirm"
+  ],
+  "properties": {
+    "type": {
+      "const": "eco.cockpit.invokeProviderCommand"
+    },
+    "providerId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "commandId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "input": {},
+    "confirm": {
+      "type": "boolean"
+    },
+    "approval": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "token",
+        "scope"
+      ],
+      "properties": {
+        "token": {
+          "type": "string",
+          "minLength": 1
+        },
+        "scope": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}
