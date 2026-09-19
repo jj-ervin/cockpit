@@ -25,73 +25,117 @@
         },
       };
 
-  const state = {
+  // Operational state is authoritative in CockpitState. The proxy below preserves
+  // the recovered GUI's existing `state.foo.bar` programming model while routing
+  // every read/write through the versioned state contract. This is intentionally a
+  // compatibility facade: GUI behavior stays intact while the store becomes the
+  // single authority.
+  const cockpitState = window.CockpitState.create({
     snapshot: emptySnapshot(),
-    selectedRunId: '',
-    runFilter: 'all',
-    policyOriginal: '{}',
-    lastDeletedArtifact: null,
-    wizardStep: 0,
-    marlinSearchResults: [],
-    marlinSearchError: '',
-    marlinInstallResult: null,
-    // INIT.19.06 install-approval flow: clicking "Install" on a search
-    // result no longer installs directly. It resolves real metadata first
-    // (status 'resolving' -> 'ready'), and only marlinInstallPackage's own
-    // confirm:true gate (host-web/actions.js) is satisfied once the human
-    // clicks Confirm Install on the resolved metadata (status 'installing').
-    marlinPackageApproval: { packageName: '', status: 'idle', resolved: null, error: '' },
-    selectedWorkspacePath: '',
-    audit: {
-      target: '',
-      activeCommand: '',
-      error: '',
-      approval: null,
-      results: { validate: null, preview: null, apply: null, verify: null },
+    ui: {
+      selectedRunId: '',
+      runFilter: 'all',
+      wizardStep: 0,
     },
-    doctor: {
-      target: '',
-      activeCommand: '',
-      error: '',
-      lastResult: null,
-      assessment: null,
-      operations: [],
-      operationInputs: {},
-      registryDigest: '',
-      approval: null,
-    },
-    agents: {
-      activeCommand: '',
-      error: '',
-      lastResult: null,
-      templates: [],
-      detections: {},
-      rosterDigest: '',
-      approval: null,
-    },
-    // Mode 4 proof: dispatches to the real Marlin-discovered `niji` provider
-    // over its actual cockpit-provider-v1 stdio protocol, via the same
-    // generic invoke_provider_command path Marlin's own panels use. Kept
-    // entirely separate from `state.snapshot.niji` (the older in-process
-    // adapter rendered by renderNiji) so the two are never conflated.
-    nijiProof: {
-      activeCommand: '',
-      error: '',
-      lastResult: null,
-    },
-    // Sealdex's two UI surfaces (Plan, Entry), dispatched through the same
-    // generic invoke_provider_command path as niji/marlin above. Plan is
-    // split across two commands (propose / apply) because the human
-    // approval step lives in Cockpit's own confirm+approval mechanism,
-    // not in a second in-process prompt -- see scripts/provider.py's
-    // module docstring in the cairn repo for why.
-    sealdex: {
-      plan: { activeCommand: '', error: '', proposeResult: null },
-      entry: { activeCommand: '', error: '', tables: {}, selectedTable: '', lastResult: '' },
-      pendingApproval: null,
-    },
-    noticeTimer: null,
-  };
+  });
+
+  const STATE_UI_KEYS = new Set(['selectedRunId', 'runFilter', 'wizardStep']);
+
+  function cloneStateValue(value) {
+    if (value === undefined) return undefined;
+    return JSON.parse(JSON.stringify(value));
+  }
+
+  function setSnapshotPath(path, value) {
+    const snapshot = cloneStateValue(cockpitState.get().snapshot || {});
+    let target = snapshot;
+    for (let i = 0; i < path.length - 1; i += 1) {
+      const key = path[i];
+      if (!target[key] || typeof target[key] !== 'object') {
+        target[key] = {};
+      }
+      target = target[key];
+    }
+    target[path[path.length - 1]] = cloneStateValue(value);
+    cockpitState.replaceSnapshot(snapshot);
+  }
+
+  function makeStateProxy(path) {
+    return new Proxy({}, {
+      get: function (_target, property) {
+        if (property === Symbol.toStringTag) return 'CockpitState';
+        if (property === 'toJSON') return function () { return cloneStateValue(readStatePath(path)); };
+        return readStatePath(path.concat(property));
+      },
+      set: function (_target, property, value) {
+        writeStatePath(path.concat(property), value);
+        return true;
+      },
+      deleteProperty: function (_target, property) {
+        deleteStatePath(path.concat(property));
+        return true;
+      },
+      ownKeys: function () {
+        const value = readStatePath(path);
+        return value && typeof value === 'object' ? Reflect.ownKeys(value) : [];
+      },
+      getOwnPropertyDescriptor: function (_target, property) {
+        const value = readStatePath(path);
+        if (value && Object.prototype.hasOwnProperty.call(value, property)) {
+          return { enumerable: true, configurable: true };
+        }
+        return undefined;
+      },
+    });
+  }
+
+  const proxyCache = new Map();
+
+  function readStatePath(path) {
+    if (!path.length) return cockpitState.get().snapshot;
+    const rootKey = path[0];
+    if (STATE_UI_KEYS.has(rootKey)) {
+      const ui = cockpitState.get().ui || {};
+      if (path.length === 1) return ui[rootKey];
+      return undefined;
+    }
+    let value = cockpitState.get().snapshot;
+    for (let i = 0; i < path.length; i += 1) {
+      if (value == null) return undefined;
+      value = value[path[i]];
+    }
+    if (value && typeof value === 'object') {
+      const key = path.join('.');
+      if (!proxyCache.has(key)) proxyCache.set(key, makeStateProxy(path));
+      return proxyCache.get(key);
+    }
+    return value;
+  }
+
+  function writeStatePath(path, value) {
+    if (path.length === 1 && STATE_UI_KEYS.has(path[0])) {
+      cockpitState.setUi({ [path[0]]: value });
+      return;
+    }
+    setSnapshotPath(path, value);
+  }
+
+  function deleteStatePath(path) {
+    if (path.length === 1 && STATE_UI_KEYS.has(path[0])) {
+      cockpitState.setUi({ [path[0]]: undefined });
+      return;
+    }
+    const snapshot = cloneStateValue(cockpitState.get().snapshot || {});
+    let target = snapshot;
+    for (let i = 0; i < path.length - 1; i += 1) {
+      if (!target || typeof target !== 'object') return;
+      target = target[path[i]];
+    }
+    if (target && typeof target === 'object') delete target[path[path.length - 1]];
+    cockpitState.replaceSnapshot(snapshot);
+  }
+
+  const state = makeStateProxy([]);
 
   // CKP.09.04 - environment setup wizard shell. Steps are generic (id, title,
   // render, isComplete); today only one real step exists (Marlin install
