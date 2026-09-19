@@ -4,7 +4,8 @@ const assert = require('node:assert/strict');
 function loadState() {
   delete global.window;
   global.window = {};
-  require('../web/cockpitState.js');
+  delete require.cache[require.resolve('../cockpitState.js')];
+  require('../cockpitState.js');
   return global.window.CockpitState;
 }
 
