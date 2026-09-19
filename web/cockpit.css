@@ -59,6 +59,52 @@ body {
   justify-content: flex-end;
 }
 
+.command-palette {
+  border: 1px solid var(--line);
+  background: var(--panel);
+  border-radius: 8px;
+  padding: 14px;
+}
+
+.command-palette-list {
+  display: grid;
+  gap: 6px;
+  max-height: 360px;
+  overflow: auto;
+}
+
+.command-palette-item {
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  display: grid;
+  gap: 2px 10px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  padding: 9px 10px;
+}
+
+.command-palette-item strong,
+.command-palette-item code,
+.command-palette-item small {
+  min-width: 0;
+}
+
+.command-palette-item code {
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.command-palette-item small {
+  grid-column: 1;
+  color: var(--muted);
+}
+
+.command-palette-badge {
+  grid-column: 2;
+  grid-row: 1 / span 3;
+  white-space: nowrap;
+}
+
 .wrap {
   flex-wrap: wrap;
 }
