@@ -45,7 +45,9 @@ DevXToolkit's command grammar remains independent. Its `title`, `description`, `
 
 ## Current migration
 
-The web bundle now requests the catalog during startup and consumes discovered command titles for provider-facing UI.
+The web bundle now requests the catalog during startup and consumes discovered command titles and confirmation metadata for provider-facing UI behavior.
+
+For confirmation-sensitive workflows, discovered `mutation` / `requires_confirmation` metadata is now additive to Cockpit's existing workflow safety policy: metadata can require confirmation, while existing workflow rules remain in force. This prevents the provider catalog from weakening an established approval boundary.
 
 Feature workflows retain their routing IDs while the catalog migration proceeds incrementally. This avoids a broad GUI rewrite and preserves existing behavior.
 
