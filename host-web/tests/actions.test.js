@@ -37,6 +37,29 @@ test('refresh includes installIntent on every response, not just the first (one-
   assert.equal(messages[0].payload.installIntent, 'sealdex');
 });
 
+test('listProviderCommands relays the discovered provider command catalog', async () => {
+  let captured;
+  const catalog = {
+    schema_version: 'cockpit-provider-command-catalog-v1',
+    providers: [{
+      id: 'fake',
+      name: 'Fake',
+      version: '1.0.0',
+      commands: [{ id: 'fake.read', title: 'Read', action: 'read', mutation: false }],
+    }],
+  };
+  const deps = makeDeps({ callBridge: async (request) => { captured = request; return { data: catalog }; } });
+  const messages = await dispatch('eco.cockpit.listProviderCommands', {}, { workspaceRoot: WORKSPACE, deps });
+  assert.deepEqual(captured, {
+    backend: 'cockpit',
+    workspace_id: WORKSPACE,
+    operation: 'list_provider_commands',
+  });
+  assert.equal(messages[0].type, 'eco.cockpit.providerCommandCatalog');
+  assert.deepEqual(messages[0].payload, catalog);
+});
+
+
 test('approveEscalation calls bridge approve and returns an actionResult', async () => {
   let captured;
   const deps = makeDeps({ callBridge: async (req) => { captured = req; return { data: {} }; } });
