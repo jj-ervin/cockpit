@@ -23,6 +23,15 @@ import pytest
 
 WEB_DIR = Path(__file__).resolve().parents[3] / "web"
 
+def _wait_for_js_condition(page, expression: str, timeout_ms: int = 5000) -> None:
+    deadline = time.monotonic() + (timeout_ms / 1000)
+    while time.monotonic() < deadline:
+        if page.evaluate(expression):
+            return
+        page.wait_for_timeout(50)
+    raise AssertionError(f"Timed out waiting for JavaScript condition: {expression}")
+
+
 
 def _sample_snapshot() -> dict:
     """Realistic-shaped `eco.cockpit.state` payload, matching the shape
