@@ -40,6 +40,7 @@ _OPERATIONS = frozenset(
         "activate",
         "close",
         "invoke_provider_command",
+        "list_provider_commands",
     }
 )
 
@@ -114,6 +115,9 @@ def execute(request: dict[str, Any]) -> dict[str, Any]:
 
     if operation not in _OPERATIONS:
         raise ValueError(f"unsupported bridge operation: {operation}")
+
+    if operation == "list_provider_commands":
+        return _list_provider_commands()
 
     if operation == "invoke_provider_command":
         return _execute_provider_command(request)
@@ -190,6 +194,33 @@ def _execute_batch(request: dict[str, Any]) -> dict[str, Any]:
         except Exception as exc:
             results.append({"ok": False, "error": {"type": exc.__class__.__name__, "message": str(exc)}})
     return {"results": results}
+
+
+def _list_provider_commands() -> dict[str, Any]:
+    """Return the discovered provider command catalog without execution authority.
+
+    The catalog is presentation/discovery data only. Command execution still
+    requires the separate invoke_provider_command path, including its normal
+    validation, authorization, approval, and integrity checks.
+    """
+    registry = _get_provider_registry()
+    providers: list[dict[str, Any]] = []
+    for provider in registry.list():
+        manifest = provider.manifest
+        providers.append({
+            "id": provider.provider_id,
+            "name": manifest.get("name", provider.provider_id),
+            "version": manifest.get("version", ""),
+            "description": manifest.get("description", ""),
+            "appearance": manifest.get("appearance", {}),
+            "commands": [dict(command) for command in manifest.get("commands", [])],
+            "views": [dict(view) for view in manifest.get("views", [])],
+            "capabilities": list(manifest.get("capabilities", [])),
+        })
+    return {
+        "schema_version": "cockpit-provider-command-catalog-v1",
+        "providers": providers,
+    }
 
 
 def _execute_provider_command(request: dict[str, Any]) -> dict[str, Any]:
