@@ -52,3 +52,10 @@ For confirmation-sensitive workflows, discovered `mutation` / `requires_confirma
 Feature workflows retain their routing IDs while the catalog migration proceeds incrementally. This avoids a broad GUI rewrite and preserves existing behavior.
 
 The next natural consumer is a generic command palette/Quick-Bar, which can enumerate commands from this catalog rather than introducing another hardcoded command list.
+
+
+## Command palette
+
+Cockpit now exposes a command-palette discovery surface backed directly by the provider command catalog. It enumerates discovered provider commands, titles, actions, and confirmation classification without maintaining a second command metadata list.
+
+The palette intentionally does not invoke commands blindly. Provider command input schemas are not currently part of `cockpit-provider-v1`, so command-specific workflows remain responsible for collecting input and obtaining approval before execution. This keeps discovery separate from execution authority while establishing the catalog as the reusable source for a future richer Quick-Bar.
