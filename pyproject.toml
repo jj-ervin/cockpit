@@ -10,7 +10,7 @@ requires-python = ">=3.11"
 dependencies = [
     "pyyaml>=6.0",
     "jsonschema>=4.23",
-    "time-loc @ git+https://github.com/governancecommons/time-loc.git",
+    "time-loc>=1.2.0",
 ]
 
 [project.optional-dependencies]
