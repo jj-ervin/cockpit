@@ -64,6 +64,65 @@
     return command.requires_confirmation === true || command.mutation === true || Boolean(fallback);
   }
 
+  function renderCommandPalette() {
+    const query = String(elements.commandPaletteFilter.value || '').trim().toLowerCase();
+    const commands = [];
+    providerCommandCatalog.providers.forEach(function (provider) {
+      (Array.isArray(provider.commands) ? provider.commands : []).forEach(function (command) {
+        const haystack = [
+          provider.id,
+          provider.name,
+          command.id,
+          command.title,
+          command.action,
+        ].join(' ').toLowerCase();
+        if (!query || haystack.indexOf(query) !== -1) {
+          commands.push({ provider: provider, command: command });
+        }
+      });
+    });
+
+    clear(elements.commandPaletteList);
+    if (!commands.length) {
+      elements.commandPaletteList.appendChild(emptyDiv(
+        providerCommandCatalog.providers.length
+          ? 'No discovered commands match the filter.'
+          : 'No provider commands have been discovered yet.'
+      ));
+      elements.commandPaletteNote.textContent = providerCommandCatalog.providers.length
+        ? 'Command metadata is live from the provider catalog. Input schemas are not currently part of the provider contract, so commands are not invoked blindly from this palette.'
+        : 'Waiting for the host to return the discovered provider command catalog.';
+      return;
+    }
+
+    commands.forEach(function (entry) {
+      const item = document.createElement('article');
+      const title = document.createElement('strong');
+      const commandId = document.createElement('code');
+      const action = document.createElement('small');
+      const badge = document.createElement('span');
+      item.className = 'command-palette-item';
+      title.textContent = entry.provider.name + ' — ' + entry.command.title;
+      commandId.textContent = entry.command.id;
+      action.textContent = 'Action: ' + entry.command.action;
+      badge.className = 'command-palette-badge';
+      badge.textContent = providerCommandRequiresConfirmation(
+        entry.provider.id,
+        entry.command.id,
+        false
+      ) ? 'Approval required' : 'Read-only';
+      item.appendChild(title);
+      item.appendChild(commandId);
+      item.appendChild(action);
+      item.appendChild(badge);
+      elements.commandPaletteList.appendChild(item);
+    });
+
+    elements.commandPaletteNote.textContent =
+      commands.length + ' discovered command' + (commands.length === 1 ? '' : 's') +
+      '. The palette is a discovery surface; provider workflows supply command-specific input and execution approval.';
+  }
+
   const featureState = {
     marlin: {
       searchResults: [],
@@ -253,6 +312,12 @@
 
   const elements = {
     refresh: byId('refresh'),
+    commandPaletteToggle: byId('command-palette-toggle'),
+    commandPalette: byId('command-palette'),
+    commandPaletteClose: byId('command-palette-close'),
+    commandPaletteFilter: byId('command-palette-filter'),
+    commandPaletteList: byId('command-palette-list'),
+    commandPaletteNote: byId('command-palette-note'),
     connectionBadge: byId('connection-badge'),
     status: byId('status'),
     totalRuns: byId('total-runs'),
@@ -449,6 +514,20 @@
   elements.refresh.addEventListener('click', function () {
     post({ type: 'eco.cockpit.refresh' });
   });
+
+  elements.commandPaletteToggle.addEventListener('click', function () {
+    elements.commandPalette.hidden = !elements.commandPalette.hidden;
+    if (!elements.commandPalette.hidden) {
+      renderCommandPalette();
+      elements.commandPaletteFilter.focus();
+    }
+  });
+
+  elements.commandPaletteClose.addEventListener('click', function () {
+    elements.commandPalette.hidden = true;
+  });
+
+  elements.commandPaletteFilter.addEventListener('input', renderCommandPalette);
 
   elements.tabs.forEach(function (tab) {
     tab.addEventListener('click', function () {
