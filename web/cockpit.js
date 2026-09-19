@@ -524,16 +524,12 @@
     featureState.nijiProof.error = '';
     featureState.nijiProof.activeCommand = 'niji.palette.preview';
     renderNijiProof();
-    post({
-      type: 'eco.cockpit.invokeProviderCommand',
-      providerId: 'niji',
-      commandId: 'niji.palette.preview',
-      // Defaults matching the real niji-provider.exe's minimum required
-      // input (base_hex is mandatory) — this is a real command invocation,
-      // not a display-only stub, so it needs a real, valid payload.
-      input: { base_hex: '#3366CC', scheme_key: 'complementary', naming_mode: 'natural', swatch_count: 5 },
-      confirm: false,
-    });
+    invokeProviderCommand(
+      'niji',
+      'niji.palette.preview',
+      { base_hex: '#3366CC', scheme_key: 'complementary', naming_mode: 'natural', swatch_count: 5 },
+      false
+    );
   });
 
   elements.sealdexPlanPropose.addEventListener('click', function () {
@@ -1547,14 +1543,13 @@
     featureState.audit.error = '';
     featureState.audit.activeCommand = commandId;
     renderAuditWorkflow();
-    post({
-      type: 'eco.cockpit.invokeProviderCommand',
-      providerId: 'marlin',
-      commandId: commandId,
-      input: { target: featureState.audit.target },
-      confirm: stage === 'apply',
-      approval: approval || undefined,
-    });
+    invokeProviderCommand(
+      'marlin',
+      commandId,
+      { target: featureState.audit.target },
+      stage === 'apply',
+      approval
+    );
   }
 
   function handleAuditProviderResult(result) {
@@ -1719,14 +1714,13 @@
     featureState.doctor.error = '';
     featureState.doctor.activeCommand = commandId;
     renderDoctorWorkflow();
-    post({
-      type: 'eco.cockpit.invokeProviderCommand',
-      providerId: 'marlin',
-      commandId: commandId,
-      input: payload,
-      confirm: mutates,
-      approval: mutates ? { token: approval.token, scope: approval.scope } : undefined,
-    });
+    invokeProviderCommand(
+      'marlin',
+      commandId,
+      payload,
+      mutates,
+      mutates ? { token: approval.token, scope: approval.scope } : undefined
+    );
   }
 
   function openDoctorApproval(stage, input) {
@@ -2073,14 +2067,13 @@
     featureState.agents.error = '';
     featureState.agents.activeCommand = commandId;
     renderAgentRosterWorkflow();
-    post({
-      type: 'eco.cockpit.invokeProviderCommand',
-      providerId: 'marlin',
-      commandId: commandId,
-      input: payload,
-      confirm: mutates,
-      approval: mutates ? { token: approval.token, scope: approval.scope } : undefined,
-    });
+    invokeProviderCommand(
+      'marlin',
+      commandId,
+      payload,
+      mutates,
+      mutates ? { token: approval.token, scope: approval.scope } : undefined
+    );
   }
 
   function openAgentApproval(stage, input) {
@@ -2477,14 +2470,7 @@
   }
 
   function runSealdexCommand(commandId, input, confirm, approval) {
-    post({
-      type: 'eco.cockpit.invokeProviderCommand',
-      providerId: 'sealdex',
-      commandId: commandId,
-      input: input,
-      confirm: Boolean(confirm),
-      approval: approval || undefined,
-    });
+    invokeProviderCommand('sealdex', commandId, input, confirm, approval);
   }
 
   function openSealdexApproval(commandId, input) {
@@ -2898,6 +2884,23 @@
 
   function post(message) {
     host.postMessage(message);
+  }
+
+  // Provider command intent is the Cockpit operational boundary. GUI handlers
+  // construct this neutral request; the host owns command discovery,
+  // authorization, execution, and provider implementation.
+  function invokeProviderCommand(providerId, commandId, input, confirm, approval) {
+    const message = {
+      type: 'eco.cockpit.invokeProviderCommand',
+      providerId: providerId,
+      commandId: commandId,
+      input: input,
+      confirm: Boolean(confirm),
+    };
+    if (approval !== undefined) {
+      message.approval = approval;
+    }
+    post(message);
   }
 
   function normalizeSnapshot(payload) {
