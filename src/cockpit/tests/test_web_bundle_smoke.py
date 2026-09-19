@@ -387,6 +387,9 @@ def _send_provider_result(page, result: dict) -> None:
         "(payload) => window.postMessage({ type: 'eco.cockpit.providerCommandResult', payload }, '*')",
         result,
     )
+    # `window.postMessage()` dispatches asynchronously. Give the browser event
+    # loop a turn before assertions inspect the rendered provider state.
+    page.wait_for_timeout(25)
 
 
 def test_marlin_audit_ui_binds_approval_executes_verifies_and_exports(cockpit_page):
