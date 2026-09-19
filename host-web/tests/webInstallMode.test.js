@@ -18,6 +18,7 @@ const { JSDOM } = require('jsdom');
 
 const WEB_DIR = path.join(__dirname, '..', '..', 'web');
 const HTML_SOURCE = fs.readFileSync(path.join(WEB_DIR, 'install.html'), 'utf-8');
+const STATE_SOURCE = fs.readFileSync(path.join(WEB_DIR, 'cockpitState.js'), 'utf-8');
 const SCRIPT_SOURCE = fs.readFileSync(path.join(WEB_DIR, 'install.js'), 'utf-8');
 
 async function tick() {
@@ -61,6 +62,7 @@ function mountInstall({ installIntent = 'sealdex', responses = {} } = {}) {
     openCockpit: function () { controlCalls.openCockpit += 1; },
   };
 
+  window.eval(STATE_SOURCE);
   window.eval(SCRIPT_SOURCE);
 
   return { window, document: window.document, posted, controlCalls };
