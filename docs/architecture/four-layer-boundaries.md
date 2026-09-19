@@ -76,3 +76,38 @@ An application may independently consume DevXToolkit. It must not need Cockpit m
 ## Enforcement
 
 These rules are architectural constraints, not suggestions. New cross-layer imports or domain-specific shell primitives should be treated as boundary violations and reviewed before merging.
+
+## Cockpit state ownership
+
+The state contract is intentionally narrower than the recovered GUI state bag.
+
+### CockpitState owns
+- snapshot: host/backend-derived Cockpit operational snapshot.
+- ui.selectedRunId: selected operational record.
+- ui.runFilter: current run-view filter.
+- ui.wizardStep: Cockpit setup-wizard position.
+
+### Cockpit feature state owns
+Feature workflows keep transient command/result state outside the core CockpitState contract:
+- Marlin: package search results/errors, install result, package-resolution/approval workflow details.
+- Audit: target, active audit stage, approval, errors, and stage results.
+- Doctor: target, active command, assessment, operation definitions/inputs, registry digest, approval, and result.
+- Agents: active command, templates, detections, roster digest, approval, and result.
+- Niji proof: active command, error, and last provider result.
+- Sealdex: plan/entry workflow state and pending provider approval.
+
+These are feature-owned because their shape and lifecycle are specific to the feature/provider workflow. They must not be added to the versioned CockpitState schema merely because the Cockpit GUI renders them.
+
+### Presentation-only state
+The GUI may keep ephemeral presentation state locally:
+- policy editor baseline (policyOriginal)
+- artifact-delete undo payload (lastDeletedArtifact)
+- selected workspace-tree path (selectedWorkspacePath)
+- notice timeout handle (noticeTimer)
+
+These values are interaction mechanics, not Cockpit operational state.
+
+### Ownership rule
+A field belongs in CockpitState only when Cockpit itself needs the field as shared operational context or as part of the host/backend snapshot contract. A provider-specific result, workflow-local command status, editor baseline, timer, or view-only selection stays outside the core state contract.
+
+This is an ownership rule, not a recommendation. A new field should be classified before it is added to CockpitState.
