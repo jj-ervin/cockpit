@@ -178,6 +178,11 @@ async function dispatch(type, message, { workspaceRoot, pythonExecutable, bridge
         return [{ type: 'eco.cockpit.marlinPackageResolveResult', payload: providerResultPayload(result) }];
       }
 
+      case 'eco.cockpit.listProviderCommands': {
+        const result = await bridge({ backend: 'cockpit', workspace_id: workspaceRoot, operation: 'list_provider_commands' }, opts);
+        return [{ type: 'eco.cockpit.providerCommandCatalog', payload: result.data || result }];
+      }
+
       case 'eco.cockpit.invokeProviderCommand': {
         validateProviderCommandIntent(message);
         const commandId = message.commandId;
