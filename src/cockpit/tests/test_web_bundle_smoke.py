@@ -146,7 +146,7 @@ def cockpit_page(page, tmp_path: Path):
     page.on("pageerror", lambda exc: errors.append(str(exc)))
 
     page.goto((tmp_path / "cockpit.html").as_uri())
-    page.wait_for_function(lambda: page.evaluate("Boolean(window.__posted && window.__posted.length > 0)"))
+    _wait_for_js_condition(page, "Boolean(window.__posted && window.__posted.length > 0)")
 
     page.cockpit_errors = errors  # type: ignore[attr-defined]
     return page
@@ -157,7 +157,7 @@ def _send_state(page, snapshot: dict) -> None:
         "(payload) => window.postMessage({ type: 'eco.cockpit.state', payload }, '*')",
         snapshot,
     )
-    page.wait_for_function(lambda: page.evaluate("document.getElementById('status').textContent !== '-'"))
+    _wait_for_js_condition(page, "document.getElementById('status').textContent !== '-'")
 
 
 def test_bundle_loads_without_console_errors_and_sends_ready(cockpit_page):
@@ -263,7 +263,7 @@ def test_providers_tile_reflects_marlin_and_niji_reachability(cockpit_page):
         "(payload) => window.postMessage({ type: 'eco.cockpit.state', payload }, '*')",
         snapshot,
     )
-    cockpit_page.wait_for_function(lambda: cockpit_page.evaluate("document.getElementById('providers-status').textContent === '1/2 ok'"))
+    _wait_for_js_condition(cockpit_page, "document.getElementById('providers-status').textContent === '1/2 ok'")
     assert cockpit_page.locator("#providers-status").inner_text() == "1/2 ok"
 
 
