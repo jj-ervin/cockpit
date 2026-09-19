@@ -19,8 +19,25 @@
       </div>
       <div class="topbar-actions">
         <strong class="connection-badge" id="connection-badge">Connecting</strong>
+        <button id="command-palette-toggle" type="button">Command Palette</button>
         <button id="refresh" type="button">Refresh</button>
       </div>
+    </header>
+
+    <section class="command-palette" id="command-palette" hidden aria-label="Provider command discovery">
+      <div class="panel-header wrap">
+        <div>
+          <p class="eyebrow">Discovered commands</p>
+          <h2>Provider Command Palette</h2>
+        </div>
+        <button id="command-palette-close" type="button">Close</button>
+      </div>
+      <label class="full">Filter commands
+        <input id="command-palette-filter" type="search" autocomplete="off" placeholder="Search provider, command, or title">
+      </label>
+      <div class="command-palette-list" id="command-palette-list"></div>
+      <p class="panel-note" id="command-palette-note">Commands are discovered from installed provider manifests. Execution still requires the normal provider workflow and host approval boundary.</p>
+    </section>
     </header>
 
     <section class="status-grid" aria-label="Workspace status">
