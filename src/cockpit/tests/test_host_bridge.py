@@ -350,6 +350,36 @@ def fake_provider(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     return script
 
 
+def test_list_provider_commands_returns_manifest_metadata_without_execution(fake_provider: Path) -> None:
+    catalog = execute({
+        "backend": "cockpit",
+        "workspace_id": "ws-1",
+        "operation": "list_provider_commands",
+    })
+    assert catalog["schema_version"] == "cockpit-provider-command-catalog-v1"
+    assert len(catalog["providers"]) == 1
+    provider = catalog["providers"][0]
+    assert provider["id"] == "fake"
+    assert provider["name"] == "Fake"
+    assert provider["commands"] == [
+        {
+            "id": "fake.read",
+            "title": "Read",
+            "action": "read",
+            "mutation": False,
+            "placements": ["command-palette"],
+        },
+        {
+            "id": "fake.mutate",
+            "title": "Mutate",
+            "action": "mutate",
+            "mutation": True,
+            "requires_confirmation": True,
+            "placements": ["command-palette"],
+        },
+    ]
+
+
 def test_invoke_provider_command_round_trips_through_real_stdio_spawn(fake_provider: Path) -> None:
     result = execute({
         "backend": "fake",
