@@ -137,6 +137,7 @@ def cockpit_page(page, tmp_path: Path):
     Console errors and uncaught JS exceptions are collected onto `page.cockpit_errors`.
     """
     shutil.copy(WEB_DIR / "cockpit.css", tmp_path / "cockpit.css")
+    shutil.copy(WEB_DIR / "cockpitState.js", tmp_path / "cockpitState.js")
     shutil.copy(WEB_DIR / "cockpit.js", tmp_path / "cockpit.js")
 
     html = (WEB_DIR / "cockpit.html").read_text(encoding="utf-8")
