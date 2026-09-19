@@ -222,6 +222,53 @@ test('unhandled message types return an eco.cockpit.error message', async () => 
   assert.match(messages[0].payload.message, /Unhandled message type/);
 });
 
+test('invokeProviderCommand rejects a missing providerId before bridge execution', async () => {
+  let called = false;
+  const deps = makeDeps({ callBridge: async () => { called = true; } });
+  const messages = await dispatch('eco.cockpit.invokeProviderCommand', {
+    commandId: 'marlin.audit.validate', input: {}, confirm: false,
+  }, { workspaceRoot: WORKSPACE, deps });
+  assert.equal(called, false);
+  assert.equal(messages[0].type, 'eco.cockpit.actionResult');
+  assert.equal(messages[0].payload.ok, false);
+  assert.match(messages[0].payload.message, /providerId/);
+});
+
+test('invokeProviderCommand rejects a non-boolean confirm before bridge execution', async () => {
+  let called = false;
+  const deps = makeDeps({ callBridge: async () => { called = true; } });
+  const messages = await dispatch('eco.cockpit.invokeProviderCommand', {
+    providerId: 'marlin', commandId: 'marlin.audit.validate', input: {}, confirm: 'false',
+  }, { workspaceRoot: WORKSPACE, deps });
+  assert.equal(called, false);
+  assert.equal(messages[0].payload.ok, false);
+  assert.match(messages[0].payload.message, /confirm must be a boolean/);
+});
+
+test('invokeProviderCommand rejects malformed approval before bridge execution', async () => {
+  let called = false;
+  const deps = makeDeps({ callBridge: async () => { called = true; } });
+  const messages = await dispatch('eco.cockpit.invokeProviderCommand', {
+    providerId: 'marlin', commandId: 'marlin.audit.apply', input: {}, confirm: true,
+    approval: { token: 'a1' },
+  }, { workspaceRoot: WORKSPACE, deps });
+  assert.equal(called, false);
+  assert.equal(messages[0].payload.ok, false);
+  assert.match(messages[0].payload.message, /approval\.scope/);
+});
+
+test('invokeProviderCommand accepts a valid intent and forwards its approval unchanged', async () => {
+  let captured;
+  const deps = makeDeps({ callBridge: async (request) => { captured = request; return { status: 'succeeded' }; } });
+  const messages = await dispatch('eco.cockpit.invokeProviderCommand', {
+    providerId: 'marlin', commandId: 'marlin.audit.apply', input: { target: 'x' }, confirm: true,
+    approval: { token: 'a1', scope: 'scope-1' },
+  }, { workspaceRoot: WORKSPACE, deps });
+  assert.equal(captured.backend, 'marlin');
+  assert.deepEqual(captured.approval, { token: 'a1', scope: 'scope-1' });
+  assert.equal(messages[0].payload.status, 'succeeded');
+});
+
 test('invokeProviderCommand maps providerId/commandId/input/confirm onto the bridge request', async () => {
   let captured;
   const deps = makeDeps({ callBridge: async (req) => { captured = req; return { status: 'succeeded' }; } });
