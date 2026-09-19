@@ -32,8 +32,6 @@
   // single authority.
   const cockpitState = window.CockpitState.create({
     snapshot: emptySnapshot(),
-    selectedRunId: '',
-    runFilter: 'all',
     ui: {
       selectedRunId: '',
       runFilter: 'all',
@@ -114,13 +112,13 @@
     const snapshot = cloneStateValue(cockpitState.get().snapshot || {});
     let target = snapshot;
     for (let i = 0; i < effectivePath.length - 1; i += 1) {
-      const key = path[i];
+      const key = effectivePath[i];
       if (!target[key] || typeof target[key] !== 'object') {
         target[key] = {};
       }
       target = target[key];
     }
-    target[path[path.length - 1]] = cloneStateValue(value);
+    target[effectivePath[effectivePath.length - 1]] = cloneStateValue(value);
     cockpitState.replaceSnapshot(snapshot);
   }
 
@@ -201,12 +199,15 @@
       return;
     }
     const snapshot = cloneStateValue(cockpitState.get().snapshot || {});
+    const effectivePath = path[0] === STATE_SNAPSHOT_KEY ? path.slice(1) : path;
     let target = snapshot;
-    for (let i = 0; i < path.length - 1; i += 1) {
+    for (let i = 0; i < effectivePath.length - 1; i += 1) {
       if (!target || typeof target !== 'object') return;
-      target = target[path[i]];
+      target = target[effectivePath[i]];
     }
-    if (target && typeof target === 'object') delete target[effectivePath[effectivePath.length - 1]];
+    if (target && typeof target === 'object' && effectivePath.length) {
+      delete target[effectivePath[effectivePath.length - 1]];
+    }
     cockpitState.replaceSnapshot(snapshot);
   }
 
