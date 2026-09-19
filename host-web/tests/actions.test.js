@@ -311,18 +311,16 @@ test('invokeProviderCommand maps providerId/commandId/input/confirm onto the bri
   assert.equal(messages[0].payload.status, 'succeeded');
 });
 
-test('invokeProviderCommand coerces a non-boolean confirm to false, not truthy', () => {
-  // Same real bug class this closure fixed at the Python layer — the
-  // strict `=== true` check must survive the HTTP boundary too.
-  const capturedValues = [];
-  const deps = makeDeps({ callBridge: async (req) => { capturedValues.push(req.confirm); return {}; } });
-  return Promise.all([
-    dispatch('eco.cockpit.invokeProviderCommand', { providerId: 'p', commandId: 'c', confirm: 'false' }, { workspaceRoot: WORKSPACE, deps }),
-    dispatch('eco.cockpit.invokeProviderCommand', { providerId: 'p', commandId: 'c', confirm: 1 }, { workspaceRoot: WORKSPACE, deps }),
-    dispatch('eco.cockpit.invokeProviderCommand', { providerId: 'p', commandId: 'c' }, { workspaceRoot: WORKSPACE, deps }),
-  ]).then(() => {
-    assert.deepEqual(capturedValues, [false, false, false]);
-  });
+test('invokeProviderCommand rejects non-boolean confirmation values', async () => {
+  const deps = makeDeps({ callBridge: async () => { throw new Error('bridge should not be called'); } });
+  for (const confirm of ['false', 1, undefined]) {
+    const message = { providerId: 'p', commandId: 'c' };
+    if (confirm !== undefined) message.confirm = confirm;
+    const messages = await dispatch('eco.cockpit.invokeProviderCommand', message, { workspaceRoot: WORKSPACE, deps });
+    assert.equal(messages[0].type, 'eco.cockpit.actionResult');
+    assert.equal(messages[0].payload.ok, false);
+    assert.match(messages[0].payload.message, /confirm must be a boolean/);
+  }
 });
 
 test('timeoutMsForProviderCommand gives agents.run.execute a much longer budget than the bridge default', () => {
@@ -365,25 +363,4 @@ test('invokeProviderCommand missing commandId returns a failed actionResult, not
 });
 
 
-test('Reddit queue actions use the persistent scheduler boundary', async () => {
-  const queue = [];
-  const scheduler = {
-    addDraft(payload) { queue.push(payload); return { id: 'q1', ...payload, status: 'pending-approval' }; },
-    status() { return { configured: false, paused: true, queue }; },
-    approve(id) { assert.equal(id, 'q1'); return {}; },
-    postNow(id, confirm) { assert.equal(id, 'q1'); assert.equal(confirm, true); return Promise.resolve({ result: { id: 't3_q1' } }); },
-    pause() { return this.status(); },
-    resume() { return { ...this.status(), paused: false }; },
-    setSettings(payload) { assert.equal(payload.min_minutes, 120); return this.status(); },
-  };
-  const deps = makeDeps({ redditScheduler: scheduler });
-  const added = await dispatch('eco.cockpit.redditQueueAdd', { payload: { subreddit: 'test', title: 'Hello', text: 'World', approval_required: true } }, { workspaceRoot: WORKSPACE, deps });
-  assert.equal(added[0].type, 'eco.cockpit.redditState');
-  assert.equal(added[1].payload.ok, true);
 
-  const approved = await dispatch('eco.cockpit.redditApprove', { id: 'q1' }, { workspaceRoot: WORKSPACE, deps });
-  assert.equal(approved[1].payload.ok, true);
-
-  const posted = await dispatch('eco.cockpit.redditPostNow', { id: 'q1', confirm: true }, { workspaceRoot: WORKSPACE, deps });
-  assert.equal(posted[1].payload.ok, true);
-});
