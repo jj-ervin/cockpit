@@ -132,11 +132,29 @@
     cockpitState.replaceSnapshot(snapshot);
   }
 
+  function readRawStatePath(path) {
+    if (!path.length) return cockpitState.get().snapshot;
+    const rootKey = path[0];
+    if (STATE_UI_KEYS.has(rootKey)) {
+      const ui = cockpitState.get().ui || {};
+      return path.length === 1 ? ui[rootKey] : undefined;
+    }
+    let value = cockpitState.get().snapshot;
+    const effectivePath = rootKey === STATE_SNAPSHOT_KEY ? path.slice(1) : path;
+    for (let i = 0; i < effectivePath.length; i += 1) {
+      if (value == null) return undefined;
+      value = value[effectivePath[i]];
+    }
+    return value;
+  }
+
   function makeStateProxy(path) {
-    return new Proxy({}, {
+    const rawValue = readRawStatePath(path);
+    const target = Array.isArray(rawValue) ? [] : {};
+    return new Proxy(target, {
       get: function (_target, property) {
-        if (property === Symbol.toStringTag) return 'CockpitState';
-        if (property === 'toJSON') return function () { return cloneStateValue(readStatePath(path)); };
+        if (property === Symbol.toStringTag) return Array.isArray(readRawStatePath(path)) ? 'Array' : 'CockpitState';
+        if (property === 'toJSON') return function () { return cloneStateValue(readRawStatePath(path)); };
         return readStatePath(path.concat(property));
       },
       set: function (_target, property, value) {
@@ -148,11 +166,11 @@
         return true;
       },
       ownKeys: function () {
-        const value = readStatePath(path);
+        const value = readRawStatePath(path);
         return value && typeof value === 'object' ? Reflect.ownKeys(value) : [];
       },
       getOwnPropertyDescriptor: function (_target, property) {
-        const value = readStatePath(path);
+        const value = readRawStatePath(path);
         if (value && Object.prototype.hasOwnProperty.call(value, property)) {
           return { enumerable: true, configurable: true };
         }
@@ -164,19 +182,7 @@
   const proxyCache = new Map();
 
   function readStatePath(path) {
-    if (!path.length) return cockpitState.get().snapshot;
-    const rootKey = path[0];
-    if (STATE_UI_KEYS.has(rootKey)) {
-      const ui = cockpitState.get().ui || {};
-      if (path.length === 1) return ui[rootKey];
-      return undefined;
-    }
-    let value = cockpitState.get().snapshot;
-    const effectivePath = path[0] === STATE_SNAPSHOT_KEY ? path.slice(1) : path;
-    for (let i = 0; i < effectivePath.length; i += 1) {
-      if (value == null) return undefined;
-      value = value[effectivePath[i]];
-    }
+    const value = readRawStatePath(path);
     if (value && typeof value === 'object') {
       const key = path.join('.');
       if (!proxyCache.has(key)) proxyCache.set(key, makeStateProxy(path));
