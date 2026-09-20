@@ -379,6 +379,35 @@ def test_list_provider_commands_returns_manifest_metadata_without_execution(fake
         },
     ]
 
+def test_list_provider_commands_v1_1_propagates_structured_input_metadata(fake_provider: Path) -> None:
+    provider = host_bridge_module._get_provider_registry().get("fake")
+    provider.manifest["schema_version"] = "cockpit-provider-v1.1"
+    provider.manifest["commands"][0]["input"] = {
+        "mode": "object",
+        "fields": [{
+            "name": "hello", "label": "Hello",
+            "description": "Value to echo.", "type": "string", "required": True,
+        }],
+    }
+    catalog = execute({
+        "backend": "cockpit", "workspace_id": "ws-1",
+        "operation": "list_provider_commands", "catalog_version": "v1.1",
+    })
+    command = catalog["providers"][0]["commands"][0]
+    assert catalog["schema_version"] == "cockpit-provider-command-catalog-v1.1"
+    assert command["input"]["fields"][0]["name"] == "hello"
+
+def test_list_provider_commands_v1_downgrades_v1_1_input_metadata(fake_provider: Path) -> None:
+    provider = host_bridge_module._get_provider_registry().get("fake")
+    provider.manifest["schema_version"] = "cockpit-provider-v1.1"
+    provider.manifest["commands"][0]["input"] = {"mode": "object", "fields": []}
+    catalog = execute({
+        "backend": "cockpit", "workspace_id": "ws-1",
+        "operation": "list_provider_commands",
+    })
+    assert catalog["schema_version"] == "cockpit-provider-command-catalog-v1"
+    assert "input" not in catalog["providers"][0]["commands"][0]
+
 
 def test_invoke_provider_command_round_trips_through_real_stdio_spawn(fake_provider: Path) -> None:
     result = execute({
