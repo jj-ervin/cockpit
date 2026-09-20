@@ -92,10 +92,16 @@ class ProviderRegistry:
             schema_version = manifest.get("schema_version")
             validator = self._manifest_validators.get(schema_version)
             if validator is None:
-                raise ProviderRegistrationError(
-                    f"unsupported provider manifest schema_version: {schema_version!r}"
-                )
-            validator.validate(manifest)
+                if schema_version is None:
+                    validator = self._manifest_validators["cockpit-provider-v1"]
+                else:
+                    raise ProviderRegistrationError(
+                        f"unsupported provider manifest schema_version: {schema_version!r}"
+                    )
+            try:
+                validator.validate(manifest)
+            except Exception as exc:
+                raise ProviderRegistrationError(f"schema validation failed: {exc}") from exc
             self._attestation_validator.validate(attestation)
         except JsonSchemaValidationError as exc:
             raise ProviderRegistrationError(f"schema validation failed: {exc.message}") from exc
