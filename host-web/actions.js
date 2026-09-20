@@ -179,7 +179,7 @@ async function dispatch(type, message, { workspaceRoot, pythonExecutable, bridge
       }
 
       case 'eco.cockpit.listProviderCommands': {
-        const result = await bridge({ backend: 'cockpit', workspace_id: workspaceRoot, operation: 'list_provider_commands' }, opts);
+        const result = await bridge({ backend: 'cockpit', workspace_id: workspaceRoot, operation: 'list_provider_commands', catalog_version: message.catalogVersion || 'v1' }, opts);
         return [{ type: 'eco.cockpit.providerCommandCatalog', payload: result.data || result }];
       }
 
