@@ -76,7 +76,11 @@ class ProviderRegistry:
     """Validated provider registrations keyed by stable manifest ID."""
 
     def __init__(self, schema_root: Path = SCHEMA_ROOT) -> None:
-        self._manifest_validator = _validator(schema_root / "cockpit-provider-v1.schema.json")
+        self._schema_root = schema_root
+        self._manifest_validators = {
+            "cockpit-provider-v1": _validator(schema_root / "cockpit-provider-v1.schema.json"),
+            "cockpit-provider-v1.1": _validator(schema_root / "cockpit-provider-v1.1.schema.json"),
+        }
         self._attestation_validator = _validator(schema_root / "cockpit-provider-attestation-v1.schema.json")
         self._providers: dict[str, RegisteredProvider] = {}
 
@@ -85,7 +89,13 @@ class ProviderRegistry:
         manifest = _json_object(manifest_bytes, "provider manifest")
         attestation = _json_object(attestation_path.read_bytes(), "provider attestation")
         try:
-            self._manifest_validator.validate(manifest)
+            schema_version = manifest.get("schema_version")
+            validator = self._manifest_validators.get(schema_version)
+            if validator is None:
+                raise ProviderRegistrationError(
+                    f"unsupported provider manifest schema_version: {schema_version!r}"
+                )
+            validator.validate(manifest)
             self._attestation_validator.validate(attestation)
         except JsonSchemaValidationError as exc:
             raise ProviderRegistrationError(f"schema validation failed: {exc.message}") from exc
