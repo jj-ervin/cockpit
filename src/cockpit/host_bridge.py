@@ -117,7 +117,7 @@ def execute(request: dict[str, Any]) -> dict[str, Any]:
         raise ValueError(f"unsupported bridge operation: {operation}")
 
     if operation == "list_provider_commands":
-        return _list_provider_commands()
+        return _list_provider_commands(str(request.get("catalog_version") or "v1"))
 
     if operation == "invoke_provider_command":
         return _execute_provider_command(request)
@@ -196,13 +196,15 @@ def _execute_batch(request: dict[str, Any]) -> dict[str, Any]:
     return {"results": results}
 
 
-def _list_provider_commands() -> dict[str, Any]:
+def _list_provider_commands(catalog_version: str = "v1") -> dict[str, Any]:
     """Return the discovered provider command catalog without execution authority.
 
     The catalog is presentation/discovery data only. Command execution still
     requires the separate invoke_provider_command path, including its normal
     validation, authorization, approval, and integrity checks.
     """
+    if catalog_version not in {"v1", "v1.1"}:
+        raise ValueError(f"unsupported provider command catalog version: {catalog_version!r}")
     registry = _get_provider_registry()
     providers: list[dict[str, Any]] = []
     for provider in registry.list():
@@ -213,12 +215,16 @@ def _list_provider_commands() -> dict[str, Any]:
             "version": manifest.get("version", ""),
             "description": manifest.get("description", ""),
             "appearance": manifest.get("appearance", {}),
-            "commands": [dict(command) for command in manifest.get("commands", [])],
+            "commands": [
+                {key: value for key, value in dict(command).items()
+                 if catalog_version == "v1.1" or key != "input"}
+                for command in manifest.get("commands", [])
+            ],
             "views": [dict(view) for view in manifest.get("views", [])],
             "capabilities": list(manifest.get("capabilities", [])),
         })
     return {
-        "schema_version": "cockpit-provider-command-catalog-v1",
+        "schema_version": f"cockpit-provider-command-catalog-{catalog_version}",
         "providers": providers,
     }
 
