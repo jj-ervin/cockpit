@@ -9,6 +9,7 @@ import subprocess
 from pathlib import Path
 
 import pytest
+from jsonschema import Draft202012Validator
 
 from cockpit.provider_registry import ProviderRegistrationError, ProviderRegistry
 
@@ -47,6 +48,42 @@ def test_registers_attested_provider_and_resolves_declared_command(tmp_path: Pat
     assert provider.executable == executable.resolve()
     assert provider.command("niji.palette.preview")["mutation"] is False
     assert registry.get("niji") is provider
+
+def test_registers_provider_manifest_v1_1_with_structured_input(tmp_path: Path) -> None:
+    manifest, attestation, _ = write_registration(tmp_path)
+    payload = json.loads(manifest.read_text(encoding="utf-8"))
+    payload["schema_version"] = "cockpit-provider-v1.1"
+    payload["transport"]["protocol"] = "cockpit-provider-v1.1"
+    payload["commands"][0]["input"] = {
+        "mode": "object",
+        "fields": [{
+            "name": "base_hex", "label": "Base color",
+            "description": "Hex color used as the palette base.",
+            "type": "string", "required": True, "default": "#3366CC",
+        }],
+    }
+    manifest.write_text(json.dumps(payload), encoding="utf-8")
+    att = json.loads(attestation.read_text(encoding="utf-8"))
+    att["manifest_digest"] = "sha256:" + hashlib.sha256(manifest.read_bytes()).hexdigest()
+    attestation.write_text(json.dumps(att), encoding="utf-8")
+    provider = ProviderRegistry(ROOT / "schemas").register(manifest, attestation)
+    assert provider.manifest["schema_version"] == "cockpit-provider-v1.1"
+    assert provider.command("niji.palette.preview")["input"]["mode"] == "object"
+
+def test_v1_1_rejects_executable_like_input_metadata() -> None:
+    schema = json.loads((ROOT / "schemas" / "cockpit-provider-v1.1.schema.json").read_text(encoding="utf-8"))
+    validator = Draft202012Validator(schema)
+    manifest = {
+        "schema_version": "cockpit-provider-v1.1", "id": "fake", "name": "Fake", "version": "1.0.0",
+        "transport": {"kind": "stdio-json", "protocol": "cockpit-provider-v1.1"},
+        "commands": [{"id": "fake.run", "title": "Run", "action": "run", "mutation": False,
+          "input": {"mode": "object", "fields": [{"name": "command", "label": "Command",
+            "description": "Attempted executable metadata.", "type": "string", "required": True,
+            "executable": "/bin/sh"}]}}],
+        "views": [], "capabilities": ["read"],
+    }
+    with pytest.raises(Exception):
+        validator.validate(manifest)
 
 
 def test_schema_invalid_manifest_raises_registration_error_not_jsonschema_error(
