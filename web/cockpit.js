@@ -58,6 +58,18 @@
     return command && command.title ? command.title : fallback || commandId;
   }
 
+  function providerCommandInputSummary(command) {
+    if (!Object.prototype.hasOwnProperty.call(command || {}, 'input')) {
+      return 'Input: unavailable (v1 catalog)';
+    }
+    const input = command.input;
+    if (!input || input.mode === 'none') return 'Input: none';
+    if (input.mode !== 'object' || !Array.isArray(input.fields)) {
+      return 'Input: unavailable (invalid metadata)';
+    }
+    return 'Input: ' + input.fields.length + ' field' + (input.fields.length === 1 ? '' : 's');
+  }
+
   function providerCommandRequiresConfirmation(providerId, commandId, fallback) {
     const command = findProviderCommand(providerId, commandId);
     if (!command) return Boolean(fallback);
@@ -105,6 +117,7 @@
       title.textContent = entry.provider.name + ' — ' + entry.command.title;
       commandId.textContent = entry.command.id;
       action.textContent = 'Action: ' + entry.command.action;
+      input.textContent = providerCommandInputSummary(entry.command);
       badge.className = 'command-palette-badge';
       badge.textContent = providerCommandRequiresConfirmation(
         entry.provider.id,
@@ -114,6 +127,7 @@
       item.appendChild(title);
       item.appendChild(commandId);
       item.appendChild(action);
+      item.appendChild(input);
       item.appendChild(badge);
       elements.commandPaletteList.appendChild(item);
     });
@@ -830,9 +844,10 @@
     }
     if (message.type === 'eco.cockpit.providerCommandCatalog') {
       const payload = message.payload || {};
-      if (payload.schema_version === 'cockpit-provider-command-catalog-v1' && Array.isArray(payload.providers)) {
+      if ((payload.schema_version === 'cockpit-provider-command-catalog-v1' || payload.schema_version === 'cockpit-provider-command-catalog-v1.1') && Array.isArray(payload.providers)) {
         providerCommandCatalog.schema_version = payload.schema_version;
         providerCommandCatalog.providers = payload.providers;
+        renderCommandPalette();
         renderNijiProof();
       }
       return;
