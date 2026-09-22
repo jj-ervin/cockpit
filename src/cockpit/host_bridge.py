@@ -81,6 +81,7 @@ def _get_provider_registry() -> ProviderRegistry:
 
 _operation_request_validator: Draft202012Validator | None = None
 _operation_result_validator: Draft202012Validator | None = None
+_catalog_validators: dict[str, Draft202012Validator] = {}
 
 
 def _load_validator(schema_name: str) -> Draft202012Validator:
@@ -101,6 +102,14 @@ def _operation_result_schema() -> Draft202012Validator:
     if _operation_result_validator is None:
         _operation_result_validator = _load_validator("cockpit-operation-result-v1.schema.json")
     return _operation_result_validator
+
+
+def _catalog_schema(catalog_version: str) -> Draft202012Validator:
+    validator = _catalog_validators.get(catalog_version)
+    if validator is None:
+        validator = _load_validator(f"cockpit-provider-command-catalog-{catalog_version}.schema.json")
+        _catalog_validators[catalog_version] = validator
+    return validator
 
 
 def execute(request: dict[str, Any]) -> dict[str, Any]:
@@ -223,10 +232,17 @@ def _list_provider_commands(catalog_version: str = "v1") -> dict[str, Any]:
             "views": [dict(view) for view in manifest.get("views", [])],
             "capabilities": list(manifest.get("capabilities", [])),
         })
-    return {
+    catalog = {
         "schema_version": f"cockpit-provider-command-catalog-{catalog_version}",
         "providers": providers,
     }
+    try:
+        _catalog_schema(catalog_version).validate(catalog)
+    except JsonSchemaValidationError as exc:
+        raise AssertionError(
+            f"constructed provider command catalog failed schema validation: {exc.message}"
+        ) from exc
+    return catalog
 
 
 def _execute_provider_command(request: dict[str, Any]) -> dict[str, Any]:
