@@ -179,7 +179,8 @@ async function dispatch(type, message, { workspaceRoot, pythonExecutable, bridge
       }
 
       case 'eco.cockpit.listProviderCommands': {
-        const request = { backend: 'cockpit', workspace_id: workspaceRoot, operation: 'list_provider_commands' };\n        if (message.catalogVersion) request.catalog_version = message.catalogVersion;\n        const result = await bridge(request, opts);
+        const request = { backend: 'cockpit', workspace_id: workspaceRoot, operation: 'list_provider_commands' };
+        if (message.catalogVersion) request.catalog_version = message.catalogVersion;\n        const result = await bridge(request, opts);
         return [{ type: 'eco.cockpit.providerCommandCatalog', payload: result.data || result }];
       }
 
