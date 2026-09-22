@@ -55,7 +55,30 @@ def _write_fixture_provider(home: Path) -> None:
     version_dir.mkdir(parents=True)
 
     manifest_source = COCKPIT_ROOT / "examples" / "providers" / "niji.provider.json"
-    manifest_bytes = manifest_source.read_bytes()
+    manifest = json.loads(manifest_source.read_text(encoding="utf-8"))
+    manifest["schema_version"] = "cockpit-provider-v1.1"
+    manifest["transport"]["protocol"] = "cockpit-provider-v1.1"
+    manifest["commands"][0]["input"] = {
+        "mode": "object",
+        "fields": [
+            {
+                "name": "base_hex",
+                "label": "Base color",
+                "description": "Hex color used as the palette base.",
+                "type": "string",
+                "required": True,
+            },
+            {
+                "name": "scheme_key",
+                "label": "Scheme",
+                "description": "Palette relationship to generate.",
+                "type": "enum",
+                "required": True,
+                "enum": ["complementary", "analogous"],
+            },
+        ],
+    }
+    manifest_bytes = json.dumps(manifest, separators=(",", ":")).encode("utf-8")
     manifest_path = version_dir / "manifest.json"
     manifest_path.write_bytes(manifest_bytes)
 
@@ -159,6 +182,7 @@ def _run_host_and_click_niji_proof(page, tmp_path: Path, marlin_home: Path):
         expect(page.locator("#command-palette-list")).to_contain_text("niji.palette.preview")
         expect(page.locator("#command-palette-list")).to_contain_text("Action: palette.preview")
         expect(page.locator("#command-palette-list")).to_contain_text("Read-only")
+        expect(page.locator("#command-palette-list")).to_contain_text("Input: 2 fields")
         page.locator("#command-palette-filter").fill("niji.palette.preview")
         expect(page.locator("#command-palette-list")).to_contain_text("Niji — Preview palette")
         page.locator("#command-palette-filter").fill("does-not-exist")
