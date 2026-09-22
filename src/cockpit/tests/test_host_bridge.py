@@ -384,10 +384,17 @@ def test_list_provider_commands_v1_1_propagates_structured_input_metadata(fake_p
     provider.manifest["schema_version"] = "cockpit-provider-v1.1"
     provider.manifest["commands"][0]["input"] = {
         "mode": "object",
-        "fields": [{
-            "name": "hello", "label": "Hello",
-            "description": "Value to echo.", "type": "string", "required": True,
-        }],
+        "fields": [
+            {
+                "name": "hello", "label": "Hello",
+                "description": "Value to echo.", "type": "string", "required": True,
+            },
+            {
+                "name": "scheme", "label": "Scheme",
+                "description": "Palette relationship.", "type": "enum", "required": True,
+                "enum": ["complementary", "analogous"],
+            },
+        ],
     }
     catalog = execute({
         "backend": "cockpit", "workspace_id": "ws-1",
@@ -396,6 +403,7 @@ def test_list_provider_commands_v1_1_propagates_structured_input_metadata(fake_p
     command = catalog["providers"][0]["commands"][0]
     assert catalog["schema_version"] == "cockpit-provider-command-catalog-v1.1"
     assert command["input"]["fields"][0]["name"] == "hello"
+    assert command["input"]["fields"][1]["enum"] == ["complementary", "analogous"]
 
 def test_list_provider_commands_v1_downgrades_v1_1_input_metadata(fake_provider: Path) -> None:
     provider = host_bridge_module._get_provider_registry().get("fake")
