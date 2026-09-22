@@ -176,6 +176,11 @@ def _run_host_and_click_niji_proof(page, tmp_path: Path, marlin_home: Path):
             raise AssertionError("host-web did not become ready")
 
         page.goto(url)
+        page.evaluate("""() => window.cockpitHost.postMessage({
+            type: 'eco.cockpit.listProviderCommands',
+            catalogVersion: 'v1.1',
+        })""")
+        page.wait_for_timeout(100)
         page.click("#command-palette-toggle")
         expect(page.locator("#command-palette")).to_be_visible()
         expect(page.locator("#command-palette-list")).to_contain_text("Niji — Preview palette")
