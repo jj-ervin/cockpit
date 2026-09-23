@@ -1917,3 +1917,19 @@ in `marlin/DEV-PLAN.md`'s matching entry.
 
 ---
 
+## CKP.19.00 Closure — Post-CKP.18 Architecture Hardening
+
+**Closed:** 2026-09-23. CKP.19.00 reconciles the architecture-hardening work landed after CKP.18.04 but not yet represented in the PASS registry.
+
+The closure covers provider command catalog v1.1 and CockpitState boundary enforcement. The command catalog work adds versioned discovery/catalog contracts, structured input metadata, explicit compatibility behavior, host-side schema validation, and browser/host regression coverage while keeping discovery non-authoritative and non-executable. The state work makes core/UI ownership explicit, rejects unknown fields, preserves the existing GUI compatibility facade, and keeps feature-owned workflow state outside the core CockpitState contract.
+
+Both slices were already implemented and CI-verified before this reconciliation. CKP.19.00 is therefore a standards/reconciliation PASS, not a new feature PASS.
+
+### Post-CKP.19 backlog state
+
+The current release ladder's v1.1.0 **Second-Provider Proof** condition is already met. Niji's real external-provider proof was closed on 2026-08-21, and the later Sealdex provider work provides an additional proof through the same generic provider channel. The older unchecked v1.1.0 condition in DEV-RELEASE.md is stale and is reconciled below.
+
+There is currently **no queued, unstarted single Cockpit implementation PASS** after CKP.19.00 in the governed planning documents. The explicit remaining implementation gap in the recent planning history is the Marlin Package Search update/remove mutation UI, which belongs to Marlin INIT.19.06 and is not itself a Cockpit release gate. Do not invent a new CKP PASS for it without a separate scope decision.
+
+**Next state:** architecture hardening is reconciled; the v1.1 provider-proof condition is satisfied; Cockpit has no new governed implementation PASS queued. The next implementation must be explicitly selected from the product/backlog scope rather than inferred from the stale v1.1 release checkbox.
+
