@@ -1,7 +1,8 @@
 # DEV-PLAN — Cockpit
 
 **AUTHORITY LEVEL: AL:1**
-**Status:** SCAFFOLD / ACTIVE PRODUCT DIRECTION
+**Status:** ACTIVE PRODUCT DIRECTION / RECONCILED PLAN
+**Current-state authority:** `docs/architecture/cockpit-current-state.md`
 **Updated:** 2026-08-12
 **Authority:** CK.00, CK.01, CK.02 in `C:\dev\eco`
 
