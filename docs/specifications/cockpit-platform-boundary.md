@@ -176,12 +176,16 @@ occupants, don't let it go stale.
   explicitly out of scope for this slice.
 - **Kinjuu** — named as a future domain-UI example (budget/deadline
   model); no Cockpit integration work has started.
-- No app exists yet in mode 2 (Cockpit-derived standalone app) — i.e.
-  there is currently zero proof that Cockpit's shell/components can be
-  reused to ship a separately-branded app. That proof, and proof that a
-  genuinely external, non-portfolio tool can onboard as a mode-4 simple
-  provider, are the two actual open gaps this boundary exists to
-  eventually close.
+- No separately branded app has yet been proven from the reusable Cockpit
+  shell/component boundary. This remains a **future reusable App Shell proof**,
+  aligned with the current product direction, but it is not current
+  implementation backlog and does not imply that Cockpit itself must become
+  the app.
+- A genuinely external, non-portfolio mode-4 provider remains a useful future
+  provider-contract validation exercise. It is separate from the reusable App
+  Shell proof and must not introduce Cockpit-owned domain logic.
+- Sealdex hosted release proof is a release/publication concern and is tracked
+  separately from Cockpit implementation.
 
 ## Niji as a real mode-4 provider — proven 2026-08-21
 
