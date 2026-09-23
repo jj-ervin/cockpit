@@ -56,3 +56,33 @@ test('replaceSnapshot preserves UI state while advancing revision', () => {
   assert.equal(store.get().ui.selectedRunId, 'run-7');
   assert.deepEqual(store.get().snapshot, { status: 'healthy' });
 });
+
+
+test('rejects unknown core fields instead of promoting them into operational state', () => {
+  const CockpitState = loadState();
+  assert.throws(
+    () => CockpitState.create({ snapshot: {}, accidentalField: true }),
+    /Unknown Cockpit state field: state\.accidentalField/
+  );
+
+  const store = CockpitState.create();
+  assert.throws(
+    () => store.set({ accidentalField: true }),
+    /Unknown Cockpit state field: state\.accidentalField/
+  );
+});
+
+test('rejects unknown UI fields while leaving the versioned UI contract explicit', () => {
+  const CockpitState = loadState();
+  const store = CockpitState.create();
+
+  assert.throws(
+    () => store.setUi({ accidentalField: true }),
+    /Unknown Cockpit state field: state\.ui\.accidentalField/
+  );
+  assert.deepEqual(store.get().ui, {
+    selectedRunId: '',
+    runFilter: 'all',
+    wizardStep: 0,
+  });
+});
