@@ -48,7 +48,7 @@ The durable boundary, verbatim from `CKP.v1.0-scoping.md`:
 | --- | --- | --- | --- |
 | v0.1.0 | Foundation | VS Code WebviewPanel host, five CK.01 surfaces, workspace-local governance | ✅ Done 2026-07-02 (`CKP.05`-`CKP.08.10`) |
 | v1.0.0 | Marlin Provider Slice | Portable provider registration/commands/views/capabilities/lifecycle; Marlin as first conforming provider; repo discovery → governance status → remediation approval → evidence export | ✅ Entry gates closed through MarlinSetup 2026-08-05; publication pending |
-| v1.1.0 | Second-Provider Proof | A second, smaller provider (e.g. Niji status/launch/export) proves the provider contract is generic, not Marlin-specific | ⬜ |
+| v1.1.0 | Second-Provider Proof | A second, smaller provider proves the provider contract is generic, not Marlin-specific | ✅ Proof satisfied 2026-08-21 (Niji); additional Sealdex proof 2026-08-21; publication/release packaging remains separate |
 | v2.0.0 | Developer OS Controls | Multi-agent orchestration console display, workspace graph, profile management | ⬜ |
 
 ---
@@ -170,10 +170,9 @@ claimed by this closure.
 
 ## v1.1.0 Entry Conditions
 
-- [ ] A second, smaller provider (candidate: Niji status/launch/export)
-      implements `cockpit-provider-v1` with no Cockpit-side special-casing
-- [ ] Confirms the provider contract genuinely generalizes before any third
-      provider (CXP, Lasso) is attempted
+- [x] A second, smaller provider (Niji) implements `cockpit-provider-v1` with no Cockpit-side special-casing — real provider proof closed 2026-08-21
+- [x] The provider contract generalizes beyond Marlin — Sealdex provides an additional real external-provider proof through the same generic path
+- [ ] v1.1.0 publication/release packaging and external artifact publication remain separate release operations
 
 ---
 
@@ -218,3 +217,8 @@ installed MarlinSetup, Cockpit, and bridge PE types were `0xAA64` for ARM64 and
 `0x8664` for x64. The outer NSIS launcher remains a thin x86 extraction stub.
 This addendum proves local release candidates; publication remains a separate
 release operation.
+
+## 2026-09-23 — Post-CKP.18 Release Reconciliation
+
+CKP.19.00 reconciles the command-catalog v1.1 and CockpitState boundary-hardening work landed after CKP.18.04. The v1.1.0 second-provider proof condition is already satisfied by the real Niji provider proof, with Sealdex providing an additional generic-provider proof. No new Cockpit implementation PASS is currently queued by the governed release/backlog documents. Publication and artifact-release operations remain separate from implementation closure.
+
