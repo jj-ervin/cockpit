@@ -1,7 +1,11 @@
 # CKP.08.04 Feature-Parity Audit
 
-Status: active audit
-Updated: 2026-07-02
+Status: HISTORICAL AUDIT / CLOSED BY LATER PASSes
+Updated: 2026-09-23
+
+**Current-state authority:** `docs/architecture/cockpit-current-state.md`
+
+This audit is retained for lineage. Its earlier "recommended next step" and open-gap language predates CKP.08.05–CKP.08.10 and later hardening. Do not use those historical recommendations as current work without reconciliation against the PASS registry and current code.
 
 ## Scope
 
