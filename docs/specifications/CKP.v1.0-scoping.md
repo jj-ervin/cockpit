@@ -1,7 +1,14 @@
 # Cockpit v1.0 Scoping
 
-Status: scoping (no implementation yet)
-Updated: 2026-07-02
+Status: HISTORICAL SCOPING / CURRENT BOUNDARY REFERENCE
+Updated: 2026-09-23
+Updated: 2026-09-23
+
+## Historical-status notice — 2026-09-23
+
+This document remains the durable v1.0 scoping and boundary record, but its implementation-status statements are historical unless later reconciled. Do not use older `proposed`, `blocked`, or `not yet implemented` language to select current work without checking current code, verified evidence, the PASS registry, and later corrections.
+
+Current execution authority: `docs/architecture/cockpit-current-state.md`.
 
 ## Purpose
 
