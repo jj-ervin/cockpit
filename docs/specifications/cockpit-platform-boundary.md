@@ -1,8 +1,9 @@
 # cockpit-platform-boundary
 
-Status: positioning decision, locked 2026-08-20; mode-4 Niji proof closed
-2026-08-21; Sealdex mode-1 local/artifact proof closed 2026-08-21 (hosted
-release proof still open — see below)
+Status: positioning decision, locked 2026-08-20; reconciled 2026-09-23.
+Mode-4 Niji proof and Sealdex mode-1 local/artifact proof are closed. Sealdex hosted release proof remains a release/publication gap; it does not create a Cockpit implementation PASS by itself.
+
+**Current-state authority:** `docs/architecture/cockpit-current-state.md`
 
 **2026-08-21 addendum:** the provider referenced throughout this document
 was renamed Cairn → Sealdex the same day the proof below was closed. The
