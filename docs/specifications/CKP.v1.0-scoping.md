@@ -2,7 +2,6 @@
 
 Status: HISTORICAL SCOPING / CURRENT BOUNDARY REFERENCE
 Updated: 2026-09-23
-Updated: 2026-09-23
 
 ## Historical-status notice — 2026-09-23
 
