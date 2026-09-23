@@ -1587,3 +1587,30 @@ Validation: `node --check web/cockpit.js` passed; web bundle smoke passed
 18/18, unaffected in count but materially rewritten; `host-web` passed
 33/33, unaffected. No agent execution semantics changed — detection only,
 same as `.05`.
+
+## Phase 20 — Post-CKP.18 Architecture Hardening Reconciliation (CKP.19.00)
+
+**Recorded:** 2026-09-23  
+**Source:** CKP.19.00 in passes/passes.registry.json
+
+### Decision
+
+The post-CKP.18 work landed after the v1.0.0 provider/distribution closure is now reconciled as a governed standards PASS rather than left as unregistered implementation drift.
+
+Two completed hardening slices are covered:
+
+- **Provider command catalog v1.1:** versioned provider/catalog schemas, explicit catalog-version negotiation, v1/v1.1 compatibility behavior, structured input metadata, schema validation at the host boundary, and browser/host regression coverage. Discovery remains metadata-only and does not acquire generic execution authority.
+- **CockpitState boundary enforcement:** explicit core/UI field ownership, rejection of unknown top-level fields, regression coverage, and documentation reconciliation. The existing GUI state.foo.bar model remains only as a compatibility facade over the versioned state store; feature-owned workflow state and approval authority remain outside the core contract.
+
+Both slices were implemented and CI-verified before this reconciliation. No new runtime feature is introduced by CKP.19.00 and no generic command execution authority is granted.
+
+### Backlog reconciliation
+
+The current governed release documentation names **v1.1.0 Second-Provider Proof** as the next release target. That condition is already satisfied by the real Niji provider proof (2026-08-21), with the later Sealdex provider work providing an additional generic-provider proof through the same external-provider contract.
+
+Therefore the old v1.1.0 entry-condition checkbox is stale and should not be treated as an open implementation PASS.
+
+The current Cockpit documentation does **not** contain a queued, unstarted single implementation PASS after CKP.19.00. The remaining explicit implementation gap found in the current planning history is the Marlin Package Search **update/remove** mutation UI, which belongs to Marlin's INIT.19.06 scope and is not a Cockpit release gate. It should not be promoted into a Cockpit PASS without a separate scope decision.
+
+**Current next state:** architecture hardening reconciled; v1.1 provider-proof condition met; no new Cockpit implementation PASS is presently queued. The next actionable work is either the separately-scoped Marlin package-management mutation UI or a new Cockpit PASS explicitly selected from the product ladder/backlog.
+
