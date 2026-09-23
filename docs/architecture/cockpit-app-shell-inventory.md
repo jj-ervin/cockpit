@@ -248,3 +248,170 @@ while allowing a future architecture of:
 > **App Shell, applications as guests.**
 
 No implementation PASS is created by this inventory alone.
+
+
+## Phase 1 — cockpit.js function/render/event-handler classification
+
+**Status:** COMPLETED / EXTRACTION MAP (2026-09-23)
+
+The function-level pass confirms the architectural problem: cockpit.js is a composition bundle, not a clean shell module. Reusable pieces are interleaved with Cockpit product behavior and provider workflows. This classification is an extraction map; it does not authorize extracting everything marked reusable.
+
+### Classification rules
+
+- **Shell infrastructure** — lifecycle, host transport, shell state plumbing, navigation/lifecycle orchestration, and composition mechanisms that can survive independently of Cockpit product content.
+- **Generic UI primitive** — presentation or interaction building blocks reusable by another application without importing Cockpit/provider semantics.
+- **Cockpit core** — functionality belonging to Cockpit as the universal operational host/control surface.
+- **Provider feature** — Marlin, Niji, Sealdex, Audit/Doctor, agent/provider, or LASSO/domain behavior currently mounted by Cockpit.
+- **Compatibility code** — migration/proxy behavior retained for the existing GUI programming model rather than forming the future shell API.
+
+### Function map
+
+| Function | Class | Extraction disposition |
+|---|---|---|
+| findProviderCommand | Provider feature | Provider catalog adapter. |
+| providerCommandTitle | Provider feature | Provider metadata helper. |
+| providerCommandInputSummary | Generic UI + provider integration | Generic display; provider metadata supplies model. |
+| providerCommandRequiresConfirmation | Provider feature | Provider-contract interpretation stays outside shell. |
+| renderCommandPalette | Generic UI + provider integration | Extract palette UI; inject command model. |
+| cloneStateValue | Shell infrastructure | Reusable state utility. |
+| setSnapshotPath | Shell infrastructure | State plumbing. |
+| readRawStatePath | Shell infrastructure | State plumbing. |
+| makeStateProxy | Compatibility code | Do not expose in App Shell API. |
+| readStatePath | Compatibility code | Legacy state facade. |
+| writeStatePath | Compatibility code | Legacy state facade. |
+| deleteStatePath | Compatibility code | Legacy state facade. |
+| renderSnapshot | Cockpit core | Split composition before extraction. |
+| renderRuns | Cockpit core | Run semantics stay Cockpit; table primitive reusable. |
+| renderSelectedRun | Cockpit core | Generic detail presentation can be extracted. |
+| renderEscalations | Cockpit core | Generic approval/action presentation can be extracted; escalation semantics stay out. |
+| renderArtifacts | Cockpit core | Generic table/action UI reusable; artifact semantics stay out. |
+| renderPolicy | Cockpit core | Policy surface; editor primitive reusable. |
+| renderDevelopmentReadiness | Provider feature | Marlin/setup surface. |
+| renderGovernance | Cockpit core | Governance surface; generic issue-table UI reusable. |
+| statusLabel | Generic UI primitive | Generic status helper. |
+| renderDiagnostics | Cockpit core / embedded feature | Currently embedded; not permanent shell ownership. |
+| computeGovernanceState | Cockpit core | Cockpit governance semantics. |
+| renderProviderSummary | Shell infrastructure / provider integration | Generic provider-status presentation. |
+| renderEditorPlaneBar | Cockpit core | Cockpit operational summary. |
+| formatTimeLoc | Generic UI primitive | Generic time presentation helper. |
+| renderHelmMode | Cockpit core | Mode semantics stay Cockpit/HELM; selector/history UI reusable. |
+| renderWizard | Shell infrastructure | Generic wizard composition; inject steps. |
+| renderWizardMarlinStep | Provider feature | Marlin feature. |
+| renderMarlinPackageResults | Provider feature | Marlin workflow. |
+| renderMarlinPackageApproval | Provider feature | Marlin workflow; generic approval UI reusable. |
+| renderMarlinInstallResult | Provider feature | Marlin workflow. |
+| syncAuditRepositories | Provider feature | Audit integration. |
+| resetAuditResults | Provider feature | Audit workflow state. |
+| runAuditCommand | Provider feature | Audit invocation. |
+| handleAuditProviderResult | Provider feature | Audit result handling. |
+| openAuditApproval | Provider feature | Audit workflow; generic dialog reusable. |
+| closeAuditApproval | Provider feature | Audit workflow. |
+| confirmAuditApproval | Provider feature | Audit approval workflow. |
+| approvalScope | Provider/authority boundary | Keep authority logic outside shell. |
+| canonicalStringify | Shell infrastructure | Generic deterministic serialization utility if still required. |
+| approvalToken | Provider/authority boundary | Do not extract; token authority remains host/provider/backend-owned. |
+| syncDoctorRepositories | Provider feature | Doctor integration. |
+| runDoctorCommand | Provider feature | Doctor invocation. |
+| openDoctorApproval | Provider feature | Doctor approval workflow. |
+| closeDoctorApproval | Provider feature | Doctor workflow. |
+| confirmDoctorApproval | Provider feature | Doctor workflow. |
+| registerDoctorOperationFromForm | Provider feature | Doctor form semantics. |
+| handleDoctorProviderResult | Provider feature | Doctor result handling. |
+| renderDoctorWorkflow | Provider feature | Doctor surface. |
+| renderDoctorHealth | Provider feature | Doctor surface. |
+| renderDoctorOperationsTable | Provider feature + generic table UI | Feature semantics stay out; table UI reusable. |
+| collectOperationInput | Provider feature | Doctor input semantics. |
+| inputsComplete | Generic UI + provider integration | Generalize only after separating provider rules. |
+| updateExecutionButtons | Generic UI + provider integration | Generalize form-state behavior. |
+| runAgentCommand | Provider feature | Agent workflow. |
+| openAgentApproval | Provider feature | Agent approval workflow. |
+| closeAgentApproval | Provider feature | Agent workflow. |
+| confirmAgentApproval | Provider feature | Agent workflow. |
+| registerAgentTemplateFromForm | Provider feature | Agent workflow. |
+| handleAgentProviderResult | Provider feature | Agent result handling. |
+| renderAgentRosterWorkflow | Provider feature | Agent surface. |
+| renderAgentRosterTable | Provider feature + generic table UI | Feature semantics stay out. |
+| renderAuditWorkflow | Provider feature | Audit is a guest surface despite current Cockpit placement. |
+| auditStageLabel | Provider feature | Audit semantics. |
+| renderAuditResult | Provider feature + generic result UI | Result presentation reusable. |
+| evidenceBundle | Provider feature | Audit evidence semantics. |
+| auditFindings | Provider feature | Audit semantics. |
+| exportAuditEvidence | Provider feature | Audit evidence export. |
+| renderNiji | Provider feature | Niji surface. |
+| handleNijiProofProviderResult | Provider feature | Niji workflow. |
+| renderNijiProof | Provider feature | Niji proof workflow. |
+| renderSealdexPlan | Provider feature | Sealdex surface. |
+| collectSealdexEntryFields | Provider feature | Sealdex data-entry semantics. |
+| handleSealdexEntryProviderResult | Provider feature | Sealdex workflow. |
+| renderSealdexEntry | Provider feature | Sealdex surface. |
+| renderSealdexEntryFields | Provider feature + generic form UI | Field renderer reusable after schema injection. |
+| renderWorkspaceExplorer | Cockpit core | Workspace composition is Cockpit infrastructure; tree UI reusable. |
+| renderWorkspaceSelection | Generic UI primitive | Generic selected-item metadata presentation. |
+| renderWorkspaceRepos | Cockpit core + generic list UI | Repository semantics stay out; list UI reusable. |
+| mergeLassoLanes | Provider/domain feature | LASSO/Compose semantics are guest functionality. |
+| syncRunFilterOptions | Cockpit core + generic control | Generic select behavior reusable; run semantics stay out. |
+| filteredRuns | Cockpit core | Run model semantics. |
+| parsePolicy | Cockpit core + generic editor | JSON editor validation pattern reusable; policy semantics stay out. |
+| setActiveTab | Shell infrastructure | Strong extraction candidate; inject tab definitions. |
+| renderList | Generic UI primitive | Strong extraction candidate. |
+| showNotice | Generic UI primitive | Strong extraction candidate. |
+| clearNotice | Generic UI primitive | Strong extraction candidate. |
+| post | Shell infrastructure | Host adapter seam. |
+| invokeProviderCommand | Shell infrastructure / provider integration | Neutral intent construction; authority stays host/provider. |
+| normalizeSnapshot | Shell infrastructure / Cockpit adapter | Generalize through injected state adapter. |
+| emptySnapshot | Cockpit core | Current snapshot is Cockpit-shaped; do not freeze in shell. |
+| staticPreviewSnapshot | Cockpit core / preview | Product-specific preview data; not shell. |
+| emptyRecords | Cockpit core | Cockpit record model. |
+| recordId | Generic UI primitive | Generic record identity helper. |
+| emptyTableRow | Generic UI primitive | Strong extraction candidate. |
+| emptyDiv | Generic UI primitive | Strong extraction candidate. |
+| emptyMetadata | Generic UI primitive | Strong extraction candidate. |
+| metadataRow | Generic UI primitive | Strong extraction candidate. |
+| cell | Generic UI primitive | Strong extraction candidate. |
+| option | Generic UI primitive | Strong extraction candidate. |
+| clear | Generic UI primitive | DOM helper. |
+| byId | Generic UI primitive | DOM lookup helper. |
+| workspaceId | Cockpit core | Current workspace identity model. |
+| yesNo | Generic UI primitive | Generic display helper. |
+
+### Event-handler map
+
+**Shell / generic candidates:** refresh, command-palette open/close/filter, tab selection, wizard back/next, host message delivery, generic notice/timer behavior, workspace-tree selection, and generic run-table selection.
+
+**Cockpit-core handlers:** run copy/rerun, launcher submission, policy validate/save/revert/open, artifact undo/open/delete, mode activation, workspace reveal/status actions, and escalation decision presentation.
+
+**Provider-feature handlers:** Marlin package search/resolve/approval/install; Audit validate/preview/approval/evidence; Doctor refresh/health/add-operation/approval; Agent roster/detect/add-template/approval; Niji proof; Sealdex plan/entry/approval; LASSO merge/clear.
+
+### Concrete extraction map
+
+cockpit.js
+├── APP SHELL CANDIDATES
+│   ├── host adapter / post()
+│   ├── lifecycle + message delivery
+│   ├── navigation / setActiveTab()
+│   ├── wizard composition
+│   ├── state infrastructure
+│   └── generic UI primitives
+├── COCKPIT CORE
+│   ├── operational snapshot composition
+│   ├── runs / escalations / artifacts
+│   ├── governance
+│   ├── HELM mode integration
+│   └── workspace operational composition
+├── GUEST / PROVIDER SURFACES
+│   ├── Marlin
+│   ├── Audit / Doctor
+│   ├── Agents
+│   ├── Niji
+│   ├── Sealdex
+│   └── LASSO
+└── COMPATIBILITY
+    └── legacy state proxy
+
+### Phase 1 finding
+
+The extraction seam is now concrete enough to proceed to Phase 2 without redesigning Cockpit itself. Shell primitives should be extracted from the bottom of the dependency tree upward; provider surfaces should be detached from the shell rather than rewritten as shell features.
+
+The first extraction targets are the lowest-risk, highest-reuse pieces: DOM/presentation helpers, notice handling, navigation, host adapter, state infrastructure, and generic workflow primitives. Large render/composition functions should be split only after those seams exist.
+
+No CKP.20.00 implementation PASS is created by this classification alone. The next architectural step is **Phase 2 — define the minimal App Shell interfaces/contracts from this map**.
