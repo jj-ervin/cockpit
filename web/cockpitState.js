@@ -13,8 +13,24 @@
     return JSON.parse(JSON.stringify(value));
   }
 
+  const CORE_KEYS = new Set(['schema_version', 'revision', 'snapshot', 'ui']);
+  const UI_KEYS = new Set(['selectedRunId', 'runFilter', 'wizardStep']);
+
+  function assertKnownKeys(value, allowed, label) {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      throw new TypeError(label + ' must be an object');
+    }
+    Object.keys(value).forEach((key) => {
+      if (!allowed.has(key)) {
+        throw new TypeError('Unknown Cockpit state field: ' + label + '.' + key);
+      }
+    });
+  }
+
   function createCockpitState(initial) {
     const seed = initial || {};
+    assertKnownKeys(seed, CORE_KEYS, 'state');
+    assertKnownKeys(seed.ui || {}, UI_KEYS, 'state.ui');
     let revision = Number.isInteger(seed.revision) && seed.revision >= 0 ? seed.revision : 0;
     let current = {
       schema_version: 'cockpit-state-v1',
@@ -42,6 +58,8 @@
 
       set(patch) {
         const next = patch || {};
+        assertKnownKeys(next, CORE_KEYS, 'state');
+        assertKnownKeys(next.ui || {}, UI_KEYS, 'state.ui');
         revision += 1;
         current = {
           ...current,
@@ -66,7 +84,9 @@
       },
 
       setUi(patch) {
-        return this.set({ ui: patch || {} });
+        const next = patch || {};
+        assertKnownKeys(next, UI_KEYS, 'state.ui');
+        return this.set({ ui: next });
       },
 
       subscribe(listener) {
