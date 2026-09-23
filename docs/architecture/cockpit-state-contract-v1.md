@@ -8,15 +8,13 @@ The GUI is a **consumer and renderer** of that state. It may issue intents, but 
 
 ## State categories
 
-Core-owned state includes:
+Contract-owned state includes:
 
 - provider/host snapshot
 - selected run and run filter
-- approval state and approval scope
 - wizard progress
-- workspace selection/context
-- provider operation lifecycle state
-- operation errors/results
+
+Feature-owned workflow state remains outside the core contract when its shape and lifecycle are specific to a provider or workflow, including approval dialogs, command status, operation inputs/results, and provider-specific errors.
 
 Pure presentation state may remain local to the GUI when it has no operational meaning.
 
@@ -45,7 +43,7 @@ The existing snapshot payload may evolve independently behind the envelope; fiel
 
 ## Approval rule
 
-An approval is operational state, not a dialog-only UI flag. The state must identify the action being approved and its scope. Closing a dialog without approval must not silently mutate or authorize anything.
+Approval workflow details may remain feature-owned and transient, but approval authority is never owned by the GUI. The host/core validates the exact provider, command, input, confirmation, and approval scope before execution. Closing a dialog without approval must not silently authorize anything.
 
 ## Dependency rule
 
