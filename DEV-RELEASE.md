@@ -2,7 +2,7 @@
 
 **AUTHORITY LEVEL: AL:1**
 **Status:** Active
-**Created:** 2026-07-11
+**Updated:** 2026-09-23
 
 Relationship to other docs:
 `DEV-PLAN.md` owns what is being built and in what order.
