@@ -1,6 +1,8 @@
 # Cockpit Command Surface — Consideration Note
 
-**Status:** Consideration only. No PASS assigned, nothing scheduled to build.
+**Status:** Consideration only. No PASS assigned; not currently scheduled.
+**Current-state authority:** `docs/architecture/cockpit-current-state.md`
+**Reconciled:** 2026-09-23
 **Recorded:** 2026-07-08
 **Origin:** Cross-checked against a three-way Claude/ChatGPT design discussion about
 Cockpit becoming a unified command plane over DevX/Niji/GC/eco.ai/LASSO. This note
