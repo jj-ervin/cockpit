@@ -545,7 +545,7 @@
 
   elements.tabs.forEach(function (tab) {
     tab.addEventListener('click', function () {
-      setActiveTab(tab.dataset.tab);
+      window.AppShell.setActiveTab(elements.tabs, elements.panels, tab.dataset.tab);
       clearNotice();
     });
   });
@@ -2949,15 +2949,6 @@
       showNotice(error instanceof Error ? error.message : String(error), true);
       return { ok: false, value: null };
     }
-  }
-
-  function setActiveTab(id) {
-    elements.tabs.forEach(function (tab) {
-      tab.classList.toggle('is-active', tab.dataset.tab === id);
-    });
-    elements.panels.forEach(function (panel) {
-      panel.classList.toggle('is-active', panel.id === id);
-    });
   }
 
   function renderList(container, items) {
