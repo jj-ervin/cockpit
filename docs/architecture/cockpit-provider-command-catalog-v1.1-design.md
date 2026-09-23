@@ -1,6 +1,6 @@
 # Cockpit Provider Command Catalog v1.1 Design
 
-**Status:** DESIGN / NOT IMPLEMENTED  
+**Status:** IMPLEMENTED / CI VERIFIED  
 **Scope:** Cockpit provider command discovery only  
 **Baseline:** `cockpit-provider-command-catalog-v1` + `cockpit-provider-v1`
 
@@ -159,8 +159,21 @@ It must still be unable to answer:
 
 That remains owned by the host execution and authorization boundary.
 
-## 12. Next implementation slice
+## 12. Implementation reconciliation
 
-**Schema-first:** create the two v1.1 schemas, add compatibility tests, add one structured-input fixture, prove host propagation, then run the full Cockpit test/CI suite.
+The v1.1 slice is implemented and CI-verified.
 
-No Quick-Bar implementation and no unrelated eco work are part of this slice.
+Completed:
+- Phase A — dedicated v1.1 provider and command-catalog schemas; v1 remains frozen.
+- Phase B — Niji browser fixture upgraded to a v1.1 provider with required structured input and enum metadata.
+- Phase C — host propagation supports v1.1 input metadata and validates constructed catalog output against the dedicated schema; v1 requests remain downgraded to the v1 subset.
+- Phase D — command discovery consumes structured input metadata generically for discovery presentation and distinguishes unavailable v1 input from declared v1.1 input. The discovery surface does not execute commands from catalog metadata.
+- Phase E — existing workflows retain explicit command-specific routing and execution/approval paths; no unsafe generic execution path was introduced.
+
+Validation:
+- Full Cockpit CI runs for the implementation sequence completed successfully.
+- Schema validation, registry rejection of executable-looking metadata, host propagation, structured-input/enum handling, and browser command-palette acceptance are covered.
+- Secret-field support remains deferred because no real provider use case currently requires it.
+- Quick-Bar remains deferred and was not reopened by this work.
+
+No unrelated eco work is part of this slice.
