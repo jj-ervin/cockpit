@@ -48,16 +48,53 @@ Relevant existing boundary:
 | Approvals | Generic human-approval UX, current actions are provider-specific | Yes, presentation only | Extract approval dialog/state interface; authority and approval token generation remain host/provider/backend-owned. |
 | Wizard frame/progress | Generic multi-step interaction pattern | Yes | Extract stepper/wizard primitive; current Marlin setup flow remains a feature/provider module. |
 | Run filtering/selection | Generic interaction primitive, current run model is Cockpit-specific | Conditional | Extract filter/selection components, not Cockpit run semantics. |
-| Diagnostics | Product-specific current content | No | Remain Cockpit feature/provider surface. |
-| Marlin Audit | Marlin/provider surface | No | Guest feature. |
-| Marlin Doctor | Marlin/provider surface | No | Guest feature. |
+| Diagnostics | Currently embedded in the historical tabbed Cockpit GUI | No | Treat as an embedded product/feature surface for now; this does **not** establish permanent Cockpit ownership. |
+| Marlin Audit | Currently embedded Marlin provider surface in the Cockpit tabbed GUI | No | Guest feature; composition in Cockpit is not architectural ownership. |
+| Marlin Doctor | Currently embedded Marlin provider surface in the Cockpit tabbed GUI | No | Guest feature; composition in Cockpit is not architectural ownership. |
 | Setup Wizard content | Current implementation contains Marlin setup assumptions | No | Keep as provider/product feature; only reuse generic wizard frame. |
-| Niji | Provider/product surface | No | Guest feature. |
-| Sealdex | Provider/product surface | No | Guest feature. |
-| LASSO scratchpad | Domain/product surface | No | Guest feature. |
-| Eco status/run/escalation/artifact metrics | Cockpit/eco product surface | No | Keep out of reusable shell; expose extension slots/data adapters if needed. |
+| Niji | Currently embedded Niji provider/product surface in the Cockpit tabbed GUI | No | Guest feature; composition in Cockpit is not architectural ownership. |
+| Sealdex | Currently embedded Sealdex provider/product surface in the Cockpit tabbed GUI | No | Guest feature; composition in Cockpit is not architectural ownership. |
+| LASSO scratchpad | Currently embedded domain/workspace surface in the Cockpit tabbed GUI | No | Guest feature; composition in Cockpit is not architectural ownership. |
+| Eco status/run/escalation/artifact metrics | Currently embedded operational surface in the Cockpit tabbed GUI | No | Keep out of reusable shell; historical placement does not establish permanent Cockpit ownership. |
 | Marlin/Sealdex assets | Product branding | No | Brand assets stay outside App Shell core. |
 | `web/install.*` | Separate constrained installer template | Not the same shell | Keep separate. It is an installer/application template, not evidence that the main Cockpit shell is reusable. |
+
+## Ownership clarification: composition is not ownership
+
+The historical tabbed Cockpit implementation combined two different concerns:
+
+1. **Cockpit-owned shell/infrastructure** — navigation, layout, host integration, state infrastructure, and generic interaction primitives.
+2. **Guest application/provider surfaces** — Marlin, Niji, Sealdex, LASSO, diagnostics, and operational/eco views that happened to be mounted inside Cockpit tabs.
+
+That composition is why those surfaces still appear in the current GUI inventory. **They are not being designated as permanent Cockpit responsibilities.** The tabbed implementation made *where a surface was rendered* look like *who owns the surface*. The App Shell work is intended to separate those concepts.
+
+- **Cockpit tabs are a Cockpit navigation mechanism.**
+- **The contents of those tabs are not automatically Cockpit-owned.**
+- A provider or application surface may be rendered as a Cockpit tab while remaining owned by that provider/application.
+- When the App Shell is extracted, those surfaces should enter through the application-definition/feature boundary rather than being baked into the reusable shell.
+
+### Target composition
+
+```text
+                 APP SHELL
+                     │
+             ┌───────┴────────┐
+             │                │
+          COCKPIT          OTHER APP
+             │                │
+       ┌─────┼──────┐         └── its own features
+       │     │      │
+    Marlin  Niji  Sealdex
+    surface surface surface
+       │
+    LASSO / other guest surfaces
+```
+
+The key distinction is:
+
+> **Cockpit can host a surface without owning its domain semantics.**
+
+This is the intended reconciliation of the current tabbed GUI with the newer reusable App Shell direction.
 
 ## What is genuinely reusable
 
@@ -107,7 +144,7 @@ These are the strongest candidates for a reusable **App Shell**.
 
 ## What must remain outside the App Shell
 
-The following are Cockpit/product or provider concerns:
+The following are **currently embedded product/provider concerns**, not a declaration that Cockpit should own them permanently:
 
 - Cockpit-specific status metrics and terminology
 - provider/domain workflows
