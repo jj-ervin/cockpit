@@ -7,6 +7,31 @@
 
 ---
 
+## Current-state authority rule — 2026-09-23
+
+**Read first:** `docs/architecture/cockpit-current-state.md`.
+
+This document contains both live planning and historical closure entries. Do not treat an older
+`Next`, `Planned`, blocker, or product-ladder statement as an active task when later verified
+implementation or an explicit later decision supersedes it.
+
+For current execution, use this order:
+
+1. current code + verified tests/CI;
+2. latest explicit architecture/product decisions;
+3. current architecture contracts;
+4. PASS registry;
+5. reconciled planning/history in this file and `DEV-PATH.md`.
+
+A later dated correction/closure supersedes conflicting earlier planning language without deleting
+the historical entry. Release/publication gaps do not create implementation PASSes by themselves.
+
+**Current reconciliation (2026-09-23):** CKP.19.00 closed the post-CKP.18 architecture-hardening
+documentation/registry gap. There is currently no queued, unstarted single Cockpit implementation
+PASS. Do not infer CKP.20.00 from stale release or planning text.
+
+---
+
 ## Canonical Doc Rule
 
 `DEV-PLAN.md` owns the current product scope, active milestones, and release targets
