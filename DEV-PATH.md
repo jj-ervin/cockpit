@@ -7,6 +7,22 @@
 
 ---
 
+## Current-state authority — 2026-09-23
+
+**Read first:** `docs/architecture/cockpit-current-state.md`.
+
+DEV-PATH is lineage and decision history, not a live task queue. Older phase notes may contain
+"next" statements that were subsequently completed, deferred, or superseded. Current execution
+follows verified code/evidence and the latest explicit architecture/product decisions.
+
+When a later decision conflicts with an earlier path entry, preserve the earlier entry for history
+and use a dated correction/reconciliation rather than resurrecting the old task.
+
+**Current status:** post-CKP.18 architecture hardening is reconciled as CKP.19.00; v1.1 second-
+provider proof is satisfied; no new unstarted Cockpit implementation PASS is currently selected.
+
+---
+
 ## Purpose
 
 This file preserves Cockpit's recovered scope so the project does not drift into
