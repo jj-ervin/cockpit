@@ -124,13 +124,23 @@ These were reconciled as **CKP.19.00 — Post-CKP.18 Architecture Hardening**. C
 
 An open release/publication condition does not create an implementation task by itself.
 
-## Backlog state
+## Reconciled future gaps — 2026-09-23
 
-There is currently **no authoritative queued, unstarted single Cockpit implementation PASS**.
+The platform-boundary record still names three useful proof/release gaps, but they are **not one backlog** and do not currently authorize a CKP implementation PASS:
+
+1. **Reusable App Shell / derived-app proof** — strategically aligned with the current product direction that the reusable shell/component architecture should be extractable for separately branded applications. This is an architecture/product decision area, not a claim that Mode 2 is already implemented. Any implementation should first inventory the existing GUI shell and identify the minimal reusable boundary before creating a PASS.
+2. **Genuinely external, non-portfolio provider proof** — a useful future validation of the provider contract, distinct from Niji/Sealdex portfolio proofs. It is a proof exercise, not a reason to add Cockpit-specific provider/domain logic.
+3. **Sealdex hosted release proof** — belongs to release/publication operations. It is not Cockpit implementation backlog unless an explicit release decision scopes Cockpit work required to support it.
+
+These items therefore remain **candidate future work**, with different owners and decision surfaces. None is currently selected as CKP.20.00.
 
 The recent Marlin Package Search update/remove mutation UI gap belongs to **Marlin INIT.19.06**, not automatically to a new Cockpit PASS.
 
-Therefore the next Cockpit implementation must come from an explicit product/architecture scope decision. Do not invent CKP.20.00 from an old checkbox.
+### Current backlog status
+
+There is currently **no authoritative queued, unstarted single Cockpit implementation PASS**.
+
+The next Cockpit implementation must come from an explicit product/architecture scope decision. Do not invent CKP.20.00 from an old checkbox.
 
 ## Planning-document rules
 
