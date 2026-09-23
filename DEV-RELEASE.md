@@ -12,6 +12,21 @@ Relationship to other docs:
 
 ---
 
+## Current-state authority — 2026-09-23
+
+Release gates answer **whether a release can ship**; they do not define the implementation
+backlog. An unchecked publication, packaging, or release condition must not be converted into a
+new Cockpit implementation PASS unless an explicit product decision makes it one.
+
+For implementation sequencing, use `docs/architecture/cockpit-current-state.md` and the PASS
+registry, then reconcile release conditions separately.
+
+**Current reconciliation:** v1.1.0 second-provider proof is satisfied (Niji, with additional
+Sealdex proof). Remaining publication/release-packaging work is a release operation, not an
+implicit CKP implementation task.
+
+---
+
 ## Product identity and v1 release slice (read this before scoping any release)
 
 These two statements are locked together and must never be separated:
