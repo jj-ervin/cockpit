@@ -561,6 +561,8 @@
         elements.tabs,
         elements.panels,
         window.AppShell.createApplicationDefinition({
+          id: 'cockpit',
+          title: 'Cockpit',
           navigation: { activeId: tab.dataset.tab },
         })
       );
