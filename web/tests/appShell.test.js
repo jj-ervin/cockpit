@@ -123,4 +123,9 @@ test('renderList delegates item rendering and does not interpret domain data', (
     return item;
   });
   assert.deepEqual(container.children.map((item) => item.textContent), ['a', 'b']);
+
+  shell.renderList(container, [], () => documentRef.createElement('div'), 'Nothing here');
+  assert.equal(container.children.length, 1);
+  assert.equal(container.children[0].className, 'empty-state');
+  assert.equal(container.children[0].textContent, 'Nothing here');
 });
