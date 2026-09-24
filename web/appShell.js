@@ -28,9 +28,20 @@
     return element;
   }
 
-  function setActiveTab(buttons, panels, navigation) {
-    const model = navigation || {};
-    const target = String(model.activeId || '');
+  function createApplicationDefinition(definition) {
+    const source = definition || {};
+    const navigation = source.navigation || {};
+    return Object.freeze({
+      navigation: Object.freeze({
+        activeId: String(navigation.activeId || ''),
+      }),
+    });
+  }
+
+  function setActiveTab(buttons, panels, application) {
+    const definition = application || {};
+    const navigation = definition.navigation || {};
+    const target = String(navigation.activeId || '');
     buttons.forEach(function (button) {
       button.classList.toggle('is-active', button.getAttribute('data-tab') === target);
     });
@@ -142,6 +153,7 @@
     emptyDiv,
     showNotice,
     setActiveTab,
+    createApplicationDefinition,
     renderList,
     createPanel,
     createStatusBadge,
