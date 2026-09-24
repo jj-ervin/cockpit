@@ -61,3 +61,5 @@ jobs:
           node --check web/cockpit.js
       - name: Run App Shell tests
         run: node --test web/tests/appShell.test.js web/tests/cockpitApplication.test.js web/tests/cockpitState.test.js
+
+# CI trigger verification
