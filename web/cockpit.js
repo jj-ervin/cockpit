@@ -1046,7 +1046,7 @@
     const runs = filteredRuns();
     window.AppShell.clear(elements.runTable);
     if (!runs.length) {
-      elements.runTable.appendChild(emptyTableRow(4, 'No run records found.'));
+      elements.runTable.appendChild(window.AppShell.emptyTableRow(4, 'No run records found.'));
       renderSelectedRun(null);
       return;
     }
@@ -1157,7 +1157,7 @@
     elements.artifactCount.textContent = String(artifacts.length) + ' artifacts';
     window.AppShell.clear(elements.artifactTable);
     if (!artifacts.length) {
-      elements.artifactTable.appendChild(emptyTableRow(4, 'No artifacts found.'));
+      elements.artifactTable.appendChild(window.AppShell.emptyTableRow(4, 'No artifacts found.'));
       return;
     }
 
@@ -1260,7 +1260,7 @@
 
     window.AppShell.clear(elements.govIssueTable);
     if (!issues.length) {
-      elements.govIssueTable.appendChild(emptyTableRow(4, 'No governance issues found.'));
+      elements.govIssueTable.appendChild(window.AppShell.emptyTableRow(4, 'No governance issues found.'));
       return;
     }
     issues.forEach(function (issue) {
@@ -1306,7 +1306,7 @@
 
     window.AppShell.clear(elements.diagPipelineTable);
     if (!agents.length) {
-      elements.diagPipelineTable.appendChild(emptyTableRow(5, 'No agent pipeline activity found.'));
+      elements.diagPipelineTable.appendChild(window.AppShell.emptyTableRow(5, 'No agent pipeline activity found.'));
       return;
     }
     agents.forEach(function (agent) {
@@ -2133,7 +2133,7 @@
   function renderDoctorOperationsTable() {
     window.AppShell.clear(elements.doctorOperationTable);
     if (!featureState.doctor.operations.length) {
-      elements.doctorOperationTable.appendChild(emptyTableRow(4, 'No Doctor operations registered.'));
+      elements.doctorOperationTable.appendChild(window.AppShell.emptyTableRow(4, 'No Doctor operations registered.'));
       return;
     }
     featureState.doctor.operations.forEach(function (operation) {
@@ -2439,7 +2439,7 @@
   function renderAgentRosterTable() {
     window.AppShell.clear(elements.agentRosterTable);
     if (!featureState.agents.templates.length) {
-      elements.agentRosterTable.appendChild(emptyTableRow(5, 'No agent templates loaded -- click "List templates".'));
+      elements.agentRosterTable.appendChild(window.AppShell.emptyTableRow(5, 'No agent templates loaded -- click "List templates".'));
       return;
     }
     featureState.agents.templates.forEach(function (template) {
@@ -3253,10 +3253,6 @@
       return '';
     }
     return String(record.id || record.run_id || record.record_id || record.path || record.file || 'record');
-  }
-
-  function emptyTableRow(colspan, text) {
-    return window.AppShell.emptyTableRow(colspan, text);
   }
 
   function emptyDiv(text) {
