@@ -2979,8 +2979,9 @@
   }
 
   function showNotice(message, isError, persist) {
-    elements.notice.textContent = message;
-    elements.notice.classList.toggle('is-error', Boolean(isError));
+    window.AppShell.showNotice(elements.notice, message, {
+      kind: isError ? 'error' : 'info',
+    });
     if (noticeTimer) {
       window.clearTimeout(noticeTimer);
       noticeTimer = null;
