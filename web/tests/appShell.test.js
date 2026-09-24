@@ -129,3 +129,52 @@ test('renderList delegates item rendering and does not interpret domain data', (
   assert.equal(container.children[0].className, 'empty-state');
   assert.equal(container.children[0].textContent, 'Nothing here');
 });
+
+test('renderList default renderer is generic and does not interpret title/detail fields', () => {
+  const documentRef = makeDocument();
+  const shell = createAppShell(documentRef);
+  const container = documentRef.createElement('div');
+
+  shell.renderList(container, [{ title: 'Domain title', detail: 'Domain detail' }, 'plain']);
+  assert.equal(container.children.length, 2);
+  assert.equal(container.children[0].children[0].textContent, '{"title":"Domain title","detail":"Domain detail"}');
+  assert.equal(container.children[1].children[0].textContent, 'plain');
+});
+
+test('renderList passes item metadata unchanged to an explicit renderer', () => {
+  const documentRef = makeDocument();
+  const shell = createAppShell(documentRef);
+  const container = documentRef.createElement('div');
+  const metadata = { id: 'command.example', title: 'Example', parameters: { mode: 'safe' } };
+  let receivedItem;
+  let receivedIndex;
+
+  shell.renderList(container, [metadata], (item, index) => {
+    receivedItem = item;
+    receivedIndex = index;
+    return documentRef.createElement('div');
+  });
+
+  assert.equal(receivedItem, metadata);
+  assert.equal(receivedIndex, 0);
+});
+
+test('renderList ignores a renderer when the list is empty and uses the empty state when supplied', () => {
+  const documentRef = makeDocument();
+  const shell = createAppShell(documentRef);
+  const container = documentRef.createElement('div');
+  let rendererCalled = false;
+
+  shell.renderList(container, [], () => {
+    rendererCalled = true;
+    return documentRef.createElement('div');
+  }, 'No commands');
+
+  assert.equal(rendererCalled, false);
+  assert.equal(container.children.length, 1);
+  assert.equal(container.children[0].className, 'empty-state');
+  assert.equal(container.children[0].textContent, 'No commands');
+
+  shell.renderList(container, []);
+  assert.equal(container.children.length, 0);
+});
