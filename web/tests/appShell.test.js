@@ -105,10 +105,26 @@ test('application definition exposes navigation without owning tab inventory', (
     navigation: { activeId: 'runs' },
   });
 
-  assert.deepEqual(definition, { navigation: { activeId: 'runs' } });
+  assert.deepEqual(definition, {
+    id: '',
+    title: '',
+    navigation: { activeId: 'runs' },
+  });
   assert.equal(Object.isFrozen(definition), true);
   assert.equal(Object.isFrozen(definition.navigation), true);
   assert.equal('tabs' in definition, false);
+
+  const identified = shell.createApplicationDefinition({
+    id: 'cockpit',
+    title: 'Cockpit',
+    navigation: { activeId: 'runs' },
+  });
+  assert.deepEqual(identified, {
+    id: 'cockpit',
+    title: 'Cockpit',
+    navigation: { activeId: 'runs' },
+  });
+  assert.equal(Object.isFrozen(identified), true);
 });
 
 test('navigation primitive consumes an injected navigation model only', () => {
