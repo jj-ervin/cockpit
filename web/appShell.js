@@ -96,6 +96,46 @@
     return badge;
   }
 
+  function emptyTableRow(colspan, message) {
+    const row = documentRef.createElement('tr');
+    const cell = documentRef.createElement('td');
+    cell.colSpan = Number(colspan) || 1;
+    cell.textContent = String(message || '');
+    row.appendChild(cell);
+    return row;
+  }
+
+  function emptyItem(message) {
+    const item = documentRef.createElement('div');
+    item.className = 'item';
+    item.textContent = String(message || '');
+    return item;
+  }
+
+  function metadataRow(label, value) {
+    const row = documentRef.createElement('div');
+    const dt = documentRef.createElement('dt');
+    const dd = documentRef.createElement('dd');
+    dt.textContent = String(label || '');
+    dd.textContent = String(value);
+    row.appendChild(dt);
+    row.appendChild(dd);
+    return row;
+  }
+
+  function cell(value) {
+    const td = documentRef.createElement('td');
+    td.textContent = String(value);
+    return td;
+  }
+
+  function option(value, label) {
+    const item = documentRef.createElement('option');
+    item.value = String(value);
+    item.textContent = String(label || '');
+    return item;
+  }
+
   return Object.freeze({
     clear,
     emptyDiv,
@@ -104,5 +144,10 @@
     renderList,
     createPanel,
     createStatusBadge,
+    emptyTableRow,
+    emptyItem,
+    metadataRow,
+    cell,
+    option,
   });
 }));
