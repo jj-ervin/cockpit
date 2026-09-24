@@ -97,7 +97,7 @@ test('generic presentation primitives render supplied data only', () => {
   assert.equal(panel.children[0].children[0].textContent, 'Example');
 });
 
-test('navigation primitive changes presentation state only', () => {
+test('navigation primitive consumes an injected navigation model only', () => {
   const documentRef = makeDocument();
   const shell = createAppShell(documentRef);
   const buttons = ['one', 'two'].map((id) => {
@@ -111,7 +111,7 @@ test('navigation primitive changes presentation state only', () => {
     return panel;
   });
 
-  shell.setActiveTab(buttons, panels, 'two');
+  shell.setActiveTab(buttons, panels, { activeId: 'two' });
   assert.equal(buttons[0].classList.contains('is-active'), false);
   assert.equal(buttons[1].classList.contains('is-active'), true);
   assert.equal(panels[0].classList.contains('is-active'), false);
