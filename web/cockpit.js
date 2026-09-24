@@ -972,9 +972,14 @@
     const runCounts = backendState.run_counts || {};
 
     elements.status.textContent = workspace.statusLabel || (workspace.detected ? 'Detected' : 'Not detected');
-    elements.connectionBadge.textContent = hasRealHost ? 'Host connected' : 'Preview mode';
-    elements.connectionBadge.classList.toggle('is-live', hasRealHost);
-    elements.connectionBadge.classList.toggle('is-preview', !hasRealHost);
+    const statusBadge = window.AppShell.createStatusBadge(
+      hasRealHost ? 'Host connected' : 'Preview mode',
+      hasRealHost ? 'live' : 'preview'
+    );
+    statusBadge.classList.toggle('is-live', hasRealHost);
+    statusBadge.classList.toggle('is-preview', !hasRealHost);
+    elements.connectionBadge.replaceWith(statusBadge);
+    elements.connectionBadge = statusBadge;
     elements.totalRuns.textContent = String(backendState.total_runs || records.runs.length || 0);
     elements.escalations.textContent = String(backendState.escalation_queue_depth || records.escalations.length || 0);
     elements.artifacts.textContent = String(records.artifacts.length || 0);
