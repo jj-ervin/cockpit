@@ -178,3 +178,14 @@ test('renderList ignores a renderer when the list is empty and uses the empty st
   shell.renderList(container, []);
   assert.equal(container.children.length, 0);
 });
+
+test('createStatusBadge renders injected status data without domain semantics', () => {
+  const documentRef = makeDocument();
+  const shell = createAppShell(documentRef);
+  const badge = shell.createStatusBadge('Host connected', 'live');
+
+  assert.equal(badge.tagName, 'strong');
+  assert.equal(badge.className, 'connection-badge');
+  assert.equal(badge.textContent, 'Host connected');
+  assert.equal(badge.dataset.state, 'live');
+});
