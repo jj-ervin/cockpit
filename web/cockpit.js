@@ -2993,9 +2993,9 @@
     }).filter(Boolean))).sort();
     const current = state.runFilter;
     window.AppShell.clear(elements.runFilter);
-    elements.runFilter.appendChild(option('all', 'All'));
+    elements.runFilter.appendChild(window.AppShell.option('all', 'All'));
     states.forEach(function (item) {
-      elements.runFilter.appendChild(option(item, item));
+      elements.runFilter.appendChild(window.AppShell.option(item, item));
     });
     state.runFilter = states.indexOf(current) >= 0 ? current : 'all';
     elements.runFilter.value = state.runFilter;
@@ -3258,10 +3258,6 @@
 
   function emptyDiv(text) {
     return window.AppShell.emptyItem(text);
-  }
-
-  function option(value, text) {
-    return window.AppShell.option(value, text);
   }
 
 
