@@ -55,7 +55,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - name: Check cockpit.js syntax
-        run: node --check web/cockpit.js
+      - name: Check Cockpit JavaScript syntax
+        run: |
+          node --check web/cockpitApplication.js
+          node --check web/cockpit.js
       - name: Run App Shell tests
-        run: node --test web/tests/appShell.test.js web/tests/cockpitState.test.js
+        run: node --test web/tests/appShell.test.js web/tests/cockpitApplication.test.js web/tests/cockpitState.test.js

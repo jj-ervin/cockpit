@@ -560,11 +560,7 @@
       window.AppShell.setActiveTab(
         elements.tabs,
         elements.panels,
-        window.AppShell.createApplicationDefinition({
-          id: 'cockpit',
-          title: 'Cockpit',
-          navigation: { activeId: tab.dataset.tab },
-        })
+        window.CockpitApplication.createApplicationDefinition(tab.dataset.tab)
       );
       clearNotice();
     });
