@@ -38,9 +38,14 @@
     });
   }
 
-  function renderList(container, items, renderItem) {
+  function renderList(container, items, renderItem, emptyMessage) {
     clear(container);
-    (Array.isArray(items) ? items : []).forEach(function (item, index) {
+    const values = Array.isArray(items) ? items : [];
+    if (!values.length && emptyMessage) {
+      container.appendChild(emptyDiv(emptyMessage));
+      return container;
+    }
+    values.forEach(function (item, index) {
       container.appendChild(renderItem(item, index));
     });
     return container;
