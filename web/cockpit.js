@@ -3249,47 +3249,27 @@
   }
 
   function emptyTableRow(colspan, text) {
-    const row = document.createElement('tr');
-    const td = document.createElement('td');
-    td.colSpan = colspan;
-    td.textContent = text;
-    row.appendChild(td);
-    return row;
+    return window.AppShell.emptyTableRow(colspan, text);
   }
 
   function emptyDiv(text) {
-    const div = document.createElement('div');
-    div.className = 'item';
-    div.textContent = text;
-    return div;
+    return window.AppShell.emptyItem(text);
   }
 
   function emptyMetadata(label, text) {
-    return metadataRow(label, text);
+    return window.AppShell.metadataRow(label, text);
   }
 
   function metadataRow(label, value) {
-    const row = document.createElement('div');
-    const dt = document.createElement('dt');
-    const dd = document.createElement('dd');
-    dt.textContent = label;
-    dd.textContent = String(value);
-    row.appendChild(dt);
-    row.appendChild(dd);
-    return row;
+    return window.AppShell.metadataRow(label, value);
   }
 
   function cell(text) {
-    const td = document.createElement('td');
-    td.textContent = String(text);
-    return td;
+    return window.AppShell.cell(text);
   }
 
   function option(value, text) {
-    const item = document.createElement('option');
-    item.value = value;
-    item.textContent = text;
-    return item;
+    return window.AppShell.option(value, text);
   }
 
   function clear(element) {
