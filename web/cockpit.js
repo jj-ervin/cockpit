@@ -1630,16 +1630,16 @@
     box.appendChild(title);
 
     const dl = document.createElement('dl');
-    dl.appendChild(metadataRow('Source', resolved.source || 'unknown'));
+    dl.appendChild(window.AppShell.metadataRow('Source', resolved.source || 'unknown'));
     if (resolved.source === 'bundled-fallback' && resolved.fallback_reason) {
-      dl.appendChild(metadataRow('Fallback reason', resolved.fallback_reason));
+      dl.appendChild(window.AppShell.metadataRow('Fallback reason', resolved.fallback_reason));
     }
     const checksum = resolved.checksum;
-    dl.appendChild(metadataRow(
+    dl.appendChild(window.AppShell.metadataRow(
       'Checksum',
       checksum && checksum.value ? (checksum.algorithm || 'sha256') + ':' + checksum.value : 'not declared',
     ));
-    dl.appendChild(metadataRow('Cockpit provider', resolved.has_provider ? 'yes' : 'no'));
+    dl.appendChild(window.AppShell.metadataRow('Cockpit provider', resolved.has_provider ? 'yes' : 'no'));
     box.appendChild(dl);
 
     if (resolved.source === 'bundled-fallback') {
@@ -2126,7 +2126,7 @@
       ['Detected agents', agents.detected_count === null || agents.detected_count === undefined ? 'not supplied' : agents.detected_count],
       ['Assessed', assessment.assessed_at || '-'],
     ].forEach(function (entry) {
-      elements.doctorHealthDetails.appendChild(metadataRow(entry[0], entry[1]));
+      elements.doctorHealthDetails.appendChild(window.AppShell.metadataRow(entry[0], entry[1]));
     });
   }
 
@@ -2911,7 +2911,7 @@
       elements.workspaceSelectedTitle.textContent = 'Selection';
       elements.workspaceReveal.disabled = true;
       elements.workspaceStatusAction.disabled = true;
-      elements.workspaceMetadata.appendChild(emptyMetadata('Status', 'No workspace item selected.'));
+      elements.workspaceMetadata.appendChild(window.AppShell.window.AppShell.metadataRow('Status', 'No workspace item selected.'));
       return;
     }
 
@@ -2924,7 +2924,7 @@
       ['Depth', String(node.depth || 0)],
       ['Skipped', node.skipped ? 'yes' : 'no'],
     ].forEach(function (item) {
-      elements.workspaceMetadata.appendChild(metadataRow(item[0], item[1]));
+      elements.workspaceMetadata.appendChild(window.AppShell.metadataRow(item[0], item[1]));
     });
   }
 
@@ -3258,14 +3258,6 @@
 
   function emptyDiv(text) {
     return window.AppShell.emptyItem(text);
-  }
-
-  function emptyMetadata(label, text) {
-    return window.AppShell.metadataRow(label, text);
-  }
-
-  function metadataRow(label, value) {
-    return window.AppShell.metadataRow(label, value);
   }
 
   function cell(text) {
