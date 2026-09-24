@@ -189,3 +189,29 @@ test('createStatusBadge renders injected status data without domain semantics', 
   assert.equal(badge.textContent, 'Host connected');
   assert.equal(badge.dataset.state, 'live');
 });
+
+test('generic presentation primitives render injected values', () => {
+  const documentRef = makeDocument();
+  const shell = createAppShell(documentRef);
+
+  const tableRow = shell.emptyTableRow(3, 'No rows');
+  assert.equal(tableRow.tagName, 'tr');
+  assert.equal(tableRow.children[0].colSpan, 3);
+  assert.equal(tableRow.children[0].textContent, 'No rows');
+
+  const item = shell.emptyItem('Nothing here');
+  assert.equal(item.className, 'item');
+  assert.equal(item.textContent, 'Nothing here');
+
+  const metadata = shell.metadataRow('Status', 42);
+  assert.equal(metadata.children[0].textContent, 'Status');
+  assert.equal(metadata.children[1].textContent, '42');
+
+  const tableCell = shell.cell(42);
+  assert.equal(tableCell.tagName, 'td');
+  assert.equal(tableCell.textContent, '42');
+
+  const selectOption = shell.option('safe', 'Safe mode');
+  assert.equal(selectOption.value, 'safe');
+  assert.equal(selectOption.textContent, 'Safe mode');
+});
