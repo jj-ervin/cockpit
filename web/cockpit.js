@@ -3022,10 +3022,14 @@
     }
   }
 
-  function showNotice(message, isError, persist) {
-    window.AppShell.showNotice(elements.notice, message, {
+  function renderNotice(message, isError) {
+    return window.AppShell.showNotice(elements.notice, message, {
       kind: isError ? 'error' : 'info',
     });
+  }
+
+  function showNotice(message, isError, persist) {
+    renderNotice(message, isError);
     if (noticeTimer) {
       window.clearTimeout(noticeTimer);
       noticeTimer = null;
@@ -3040,8 +3044,7 @@
       window.clearTimeout(noticeTimer);
       noticeTimer = null;
     }
-    elements.notice.textContent = '';
-    elements.notice.classList.remove('is-error');
+    renderNotice('', false);
   }
 
   function post(message) {
