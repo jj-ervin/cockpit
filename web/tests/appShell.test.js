@@ -54,6 +54,7 @@ test('App Shell primitives expose a small generic surface', () => {
   assert.deepEqual(Object.keys(shell).sort(), [
     'cell',
     'clear',
+    'createApplicationDefinition',
     'createPanel',
     'createStatusBadge',
     'emptyDiv',
@@ -97,6 +98,19 @@ test('generic presentation primitives render supplied data only', () => {
   assert.equal(panel.children[0].children[0].textContent, 'Example');
 });
 
+test('application definition exposes navigation without owning tab inventory', () => {
+  const documentRef = makeDocument();
+  const shell = createAppShell(documentRef);
+  const definition = shell.createApplicationDefinition({
+    navigation: { activeId: 'runs' },
+  });
+
+  assert.deepEqual(definition, { navigation: { activeId: 'runs' } });
+  assert.equal(Object.isFrozen(definition), true);
+  assert.equal(Object.isFrozen(definition.navigation), true);
+  assert.equal('tabs' in definition, false);
+});
+
 test('navigation primitive consumes an injected navigation model only', () => {
   const documentRef = makeDocument();
   const shell = createAppShell(documentRef);
@@ -111,7 +125,9 @@ test('navigation primitive consumes an injected navigation model only', () => {
     return panel;
   });
 
-  shell.setActiveTab(buttons, panels, { activeId: 'two' });
+  shell.setActiveTab(buttons, panels, shell.createApplicationDefinition({
+    navigation: { activeId: 'two' },
+  }));
   assert.equal(buttons[0].classList.contains('is-active'), false);
   assert.equal(buttons[1].classList.contains('is-active'), true);
   assert.equal(panels[0].classList.contains('is-active'), false);
