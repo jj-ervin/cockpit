@@ -28,8 +28,9 @@
     return element;
   }
 
-  function setActiveTab(buttons, panels, tabId) {
-    const target = String(tabId || '');
+  function setActiveTab(buttons, panels, navigation) {
+    const model = navigation || {};
+    const target = String(model.activeId || '');
     buttons.forEach(function (button) {
       button.classList.toggle('is-active', button.getAttribute('data-tab') === target);
     });
