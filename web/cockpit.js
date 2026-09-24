@@ -557,7 +557,7 @@
 
   elements.tabs.forEach(function (tab) {
     tab.addEventListener('click', function () {
-      window.AppShell.setActiveTab(elements.tabs, elements.panels, tab.dataset.tab);
+      window.AppShell.setActiveTab(elements.tabs, elements.panels, { activeId: tab.dataset.tab });
       clearNotice();
     });
   });
