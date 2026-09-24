@@ -3255,10 +3255,6 @@
     return String(record.id || record.run_id || record.record_id || record.path || record.file || 'record');
   }
 
-  function emptyTableRow(colspan, text) {
-    return window.AppShell.emptyTableRow(colspan, text);
-  }
-
   function emptyDiv(text) {
     return window.AppShell.emptyItem(text);
   }
