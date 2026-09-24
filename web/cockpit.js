@@ -108,7 +108,7 @@
 
     window.AppShell.clear(elements.commandPaletteList);
     if (!commands.length) {
-      elements.commandPaletteList.appendChild(emptyDiv(
+      elements.commandPaletteList.appendChild(window.AppShell.emptyItem(
         providerCommandCatalog.providers.length
           ? 'No discovered commands match the filter.'
           : 'No provider commands have been discovered yet.'
@@ -3255,9 +3255,6 @@
     return String(record.id || record.run_id || record.record_id || record.path || record.file || 'record');
   }
 
-  function emptyDiv(text) {
-    return window.AppShell.emptyItem(text);
-  }
 
 
   function byId(id) {
