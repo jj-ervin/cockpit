@@ -980,9 +980,9 @@
       };
     });
     elements.runStateCount.textContent = String(runCountRows.length) + ' states';
-    renderList(elements.runCounts, runCountRows);
+    window.AppShell.renderList(elements.runCounts, runCountRows);
 
-    renderList(elements.records, [
+    window.AppShell.renderList(elements.records, [
       { title: 'Runs', detail: String(records.runs.length) },
       { title: 'Escalations', detail: String(records.escalations.length) },
       { title: 'Artifacts', detail: String(records.artifacts.length) },
@@ -1080,7 +1080,17 @@
     elements.escalationCount.textContent = String(escalations.length) + ' open';
     clear(elements.escalationList);
     if (!escalations.length) {
-      renderList(elements.escalationList, []);
+      window.AppShell.renderList(elements.escalationList, [], function (item) {
+      const row = document.createElement('div');
+      const title = document.createElement('strong');
+      const detail = document.createElement('span');
+      row.className = 'item';
+      title.textContent = item.title;
+      detail.textContent = item.detail;
+      row.appendChild(title);
+      if (item.detail) row.appendChild(detail);
+      return row;
+    }, 'No records found.');
       return;
     }
 
@@ -1175,7 +1185,17 @@
       elements.marlinApplyCommand.textContent = development.error || 'Install readiness is not available.';
       elements.marlinApply.disabled = true;
       elements.marlinApproval.textContent = 'Package mutation requires explicit human approval.';
-      renderList(elements.marlinSteps, []);
+      window.AppShell.renderList(elements.marlinSteps, [], function (item) {
+      const row = document.createElement('div');
+      const title = document.createElement('strong');
+      const detail = document.createElement('span');
+      row.className = 'item';
+      title.textContent = item.title;
+      detail.textContent = item.detail;
+      row.appendChild(title);
+      if (item.detail) row.appendChild(detail);
+      return row;
+    }, 'No records found.');
       return;
     }
 
@@ -1189,12 +1209,22 @@
       : 'Readiness did not declare human approval; apply is blocked.';
 
     const steps = Array.isArray(readiness.preview_steps) ? readiness.preview_steps : [];
-    renderList(elements.marlinSteps, steps.map(function (step) {
+    window.AppShell.renderList(elements.marlinSteps, steps.map(function (step) {
       return {
         title: step.name || 'step',
         detail: Array.isArray(step.command) ? step.command.join(' ') : '',
       };
-    }));
+    }}, function (item) {
+      const row = document.createElement('div');
+      const title = document.createElement('strong');
+      const detail = document.createElement('span');
+      row.className = 'item';
+      title.textContent = item.title;
+      detail.textContent = item.detail;
+      row.appendChild(title);
+      if (item.detail) row.appendChild(detail);
+      return row;
+    };
   }
 
   function renderGovernance(governance) {
@@ -1337,12 +1367,22 @@
 
     elements.modeCurrent.textContent = helm.current_mode || '-';
 
-    renderList(elements.modeHistory, history.slice().reverse().map(function (entry) {
+    window.AppShell.renderList(elements.modeHistory, history.slice().reverse().map(function (entry) {
       return {
         title: (entry.previous_mode || '-') + ' → ' + (entry.current_mode || '-'),
         detail: formatTimeLoc(entry.time_loc),
       };
-    }));
+    }}, function (item) {
+      const row = document.createElement('div');
+      const title = document.createElement('strong');
+      const detail = document.createElement('span');
+      row.className = 'item';
+      title.textContent = item.title;
+      detail.textContent = item.detail;
+      row.appendChild(title);
+      if (item.detail) row.appendChild(detail);
+      return row;
+    };
   }
 
   function renderWizard() {
@@ -1396,12 +1436,22 @@
     stepsHost.className = 'list';
     container.appendChild(stepsHost);
     const previewSteps = Array.isArray(readiness.preview_steps) ? readiness.preview_steps : [];
-    renderList(stepsHost, previewSteps.map(function (step) {
+    window.AppShell.renderList(stepsHost, previewSteps.map(function (step) {
       return {
         title: step.name || 'step',
         detail: Array.isArray(step.command) ? step.command.join(' ') : '',
       };
-    }));
+    }}, function (item) {
+      const row = document.createElement('div');
+      const title = document.createElement('strong');
+      const detail = document.createElement('span');
+      row.className = 'item';
+      title.textContent = item.title;
+      detail.textContent = item.detail;
+      row.appendChild(title);
+      if (item.detail) row.appendChild(detail);
+      return row;
+    };
 
     const approval = document.createElement('p');
     approval.className = 'panel-note';
@@ -2949,33 +2999,6 @@
       showNotice(error instanceof Error ? error.message : String(error), true);
       return { ok: false, value: null };
     }
-  }
-
-  function renderList(container, items) {
-    clear(container);
-    if (!items.length) {
-      const empty = document.createElement('div');
-      empty.className = 'item';
-      empty.textContent = 'No records found.';
-      container.appendChild(empty);
-      return;
-    }
-
-    items.forEach(function (item) {
-      const row = document.createElement('div');
-      const title = document.createElement('strong');
-      const detail = document.createElement('span');
-
-      row.className = 'item';
-      title.textContent = item.title;
-      detail.textContent = item.detail;
-
-      row.appendChild(title);
-      if (item.detail) {
-        row.appendChild(detail);
-      }
-      container.appendChild(row);
-    });
   }
 
   function showNotice(message, isError, persist) {
