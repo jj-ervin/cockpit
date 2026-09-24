@@ -24,6 +24,7 @@ const { JSDOM } = require('jsdom');
 const WEB_DIR = path.join(__dirname, '..', '..', 'web');
 const HTML_SOURCE = fs.readFileSync(path.join(WEB_DIR, 'cockpit.html'), 'utf-8');
 const STATE_SOURCE = fs.readFileSync(path.join(WEB_DIR, 'cockpitState.js'), 'utf-8');
+const APP_SHELL_SOURCE = fs.readFileSync(path.join(WEB_DIR, 'appShell.js'), 'utf-8');
 const SCRIPT_SOURCE = fs.readFileSync(path.join(WEB_DIR, 'cockpit.js'), 'utf-8');
 
 /**
@@ -78,6 +79,7 @@ function mountCockpit(responses) {
   };
 
   window.eval(STATE_SOURCE);
+  window.eval(APP_SHELL_SOURCE);
   window.eval(SCRIPT_SOURCE);
 
   return { window, document: window.document, posted };
