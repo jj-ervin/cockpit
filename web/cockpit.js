@@ -76,6 +76,18 @@
     return command.requires_confirmation === true || command.mutation === true || Boolean(fallback);
   }
 
+  function renderCockpitListItem(item) {
+    const row = document.createElement('div');
+    const title = document.createElement('strong');
+    const detail = document.createElement('span');
+    row.className = 'item';
+    title.textContent = String(item && item.title || '');
+    detail.textContent = String(item && item.detail || '');
+    row.appendChild(title);
+    if (item && item.detail) row.appendChild(detail);
+    return row;
+  }
+
   function renderCommandPalette() {
     const query = String(elements.commandPaletteFilter.value || '').trim().toLowerCase();
     const commands = [];
@@ -980,7 +992,7 @@
       };
     });
     elements.runStateCount.textContent = String(runCountRows.length) + ' states';
-    window.AppShell.renderList(elements.runCounts, runCountRows);
+    window.AppShell.renderList(elements.runCounts, runCountRows, renderCockpitListItem);
 
     window.AppShell.renderList(elements.records, [
       { title: 'Runs', detail: String(records.runs.length) },
