@@ -51,13 +51,22 @@
       ? renderItem
       : function (item) {
         const row = documentRef.createElement('div');
-        const title = documentRef.createElement('strong');
-        const detail = documentRef.createElement('span');
+        const value = documentRef.createElement('span');
+        let text;
+        if (item === null || item === undefined) {
+          text = '';
+        } else if (typeof item === 'object') {
+          try {
+            text = JSON.stringify(item);
+          } catch (error) {
+            text = String(item);
+          }
+        } else {
+          text = String(item);
+        }
         row.className = 'item';
-        title.textContent = String(item && item.title || '');
-        detail.textContent = String(item && item.detail || '');
-        row.appendChild(title);
-        if (item && item.detail) row.appendChild(detail);
+        value.textContent = text;
+        row.appendChild(value);
         return row;
       };
     values.forEach(function (item, index) {
