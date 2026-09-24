@@ -106,7 +106,7 @@
       });
     });
 
-    clear(elements.commandPaletteList);
+    window.AppShell.clear(elements.commandPaletteList);
     if (!commands.length) {
       elements.commandPaletteList.appendChild(emptyDiv(
         providerCommandCatalog.providers.length
@@ -1044,7 +1044,7 @@
 
   function renderRuns() {
     const runs = filteredRuns();
-    clear(elements.runTable);
+    window.AppShell.clear(elements.runTable);
     if (!runs.length) {
       elements.runTable.appendChild(emptyTableRow(4, 'No run records found.'));
       renderSelectedRun(null);
@@ -1099,7 +1099,7 @@
   function renderEscalations() {
     const escalations = state.snapshot.records.escalations || [];
     elements.escalationCount.textContent = String(escalations.length) + ' open';
-    clear(elements.escalationList);
+    window.AppShell.clear(elements.escalationList);
     if (!escalations.length) {
       window.AppShell.renderList(elements.escalationList, [], function (item) {
       const row = document.createElement('div');
@@ -1155,7 +1155,7 @@
   function renderArtifacts() {
     const artifacts = state.snapshot.records.artifacts || [];
     elements.artifactCount.textContent = String(artifacts.length) + ' artifacts';
-    clear(elements.artifactTable);
+    window.AppShell.clear(elements.artifactTable);
     if (!artifacts.length) {
       elements.artifactTable.appendChild(emptyTableRow(4, 'No artifacts found.'));
       return;
@@ -1258,7 +1258,7 @@
     elements.govHashMatch.textContent = gov.hash_match === true ? 'yes' : gov.hash_match === false ? 'no' : '-';
     elements.govIssueCount.textContent = String(issues.length);
 
-    clear(elements.govIssueTable);
+    window.AppShell.clear(elements.govIssueTable);
     if (!issues.length) {
       elements.govIssueTable.appendChild(emptyTableRow(4, 'No governance issues found.'));
       return;
@@ -1304,7 +1304,7 @@
       ? String(pipeline.total_entries || 0) + ' entries'
       : 'No PLAY.jsonl found for this workspace';
 
-    clear(elements.diagPipelineTable);
+    window.AppShell.clear(elements.diagPipelineTable);
     if (!agents.length) {
       elements.diagPipelineTable.appendChild(emptyTableRow(5, 'No agent pipeline activity found.'));
       return;
@@ -1374,7 +1374,7 @@
     const history = Array.isArray(helm.history) ? helm.history : [];
 
     if (elements.modeSelect.options.length !== availableModes.length) {
-      clear(elements.modeSelect);
+      window.AppShell.clear(elements.modeSelect);
       availableModes.forEach(function (name) {
         const option = document.createElement('option');
         option.value = name;
@@ -1416,7 +1416,7 @@
 
     elements.wizardStepLabel.textContent = 'Step ' + (state.wizardStep + 1) + ' of ' + WIZARD_STEPS.length;
 
-    clear(elements.wizardStepIndicator);
+    window.AppShell.clear(elements.wizardStepIndicator);
     WIZARD_STEPS.forEach(function (step, index) {
       const li = document.createElement('li');
       li.textContent = (index + 1) + '. ' + step.title;
@@ -1430,7 +1430,7 @@
     });
 
     const current = WIZARD_STEPS[state.wizardStep];
-    clear(elements.wizardContent);
+    window.AppShell.clear(elements.wizardContent);
     current.render(elements.wizardContent, state.snapshot);
 
     elements.wizardBack.disabled = state.wizardStep === 0;
@@ -1531,7 +1531,7 @@
   }
 
   function renderMarlinPackageResults(container) {
-    clear(container);
+    window.AppShell.clear(container);
     if (featureState.marlin.searchError) {
       const note = document.createElement('div');
       note.className = 'item is-error';
@@ -1581,7 +1581,7 @@
    * only clicking Confirm Install here ever sends confirm:true.
    */
   function renderMarlinPackageApproval(container) {
-    clear(container);
+    window.AppShell.clear(container);
     const approval = featureState.marlin.packageApproval;
     if (approval.status === 'idle') {
       return;
@@ -1703,7 +1703,7 @@
     }
 
     const previous = featureState.audit.target;
-    clear(elements.auditRepository);
+    window.AppShell.clear(elements.auditRepository);
     if (!choices.length) {
       const option = document.createElement('option');
       option.value = '';
@@ -1782,7 +1782,7 @@
       token: approvalToken(),
       scope: approvalScope('marlin', AUDIT_COMMANDS.apply, input),
     };
-    clear(elements.auditApprovalScope);
+    window.AppShell.clear(elements.auditApprovalScope);
     [
       ['Provider', featureState.audit.approval.providerId],
       ['Command', featureState.audit.approval.commandId],
@@ -1871,7 +1871,7 @@
     }
 
     const previous = featureState.doctor.target;
-    clear(elements.doctorRepository);
+    window.AppShell.clear(elements.doctorRepository);
     if (!choices.length) {
       const option = document.createElement('option');
       option.value = '';
@@ -1933,7 +1933,7 @@
       token: approvalToken(),
       scope: approvalScope('marlin', commandId, payload),
     };
-    clear(elements.doctorApprovalScope);
+    window.AppShell.clear(elements.doctorApprovalScope);
     const operationId = (payload.operation && payload.operation.id) || payload.operation_id || '-';
     [
       ['Provider', 'marlin'],
@@ -2131,7 +2131,7 @@
   }
 
   function renderDoctorOperationsTable() {
-    clear(elements.doctorOperationTable);
+    window.AppShell.clear(elements.doctorOperationTable);
     if (!featureState.doctor.operations.length) {
       elements.doctorOperationTable.appendChild(emptyTableRow(4, 'No Doctor operations registered.'));
       return;
@@ -2286,7 +2286,7 @@
       token: approvalToken(),
       scope: approvalScope('marlin', commandId, payload),
     };
-    clear(elements.agentApprovalScope);
+    window.AppShell.clear(elements.agentApprovalScope);
     const entries = [['Provider', 'marlin'], ['Command', commandId]];
     if (stage === 'detect') {
       // Detect runs a real, approval-editable process per template -- not
@@ -2437,7 +2437,7 @@
   }
 
   function renderAgentRosterTable() {
-    clear(elements.agentRosterTable);
+    window.AppShell.clear(elements.agentRosterTable);
     if (!featureState.agents.templates.length) {
       elements.agentRosterTable.appendChild(emptyTableRow(5, 'No agent templates loaded -- click "List templates".'));
       return;
@@ -2512,7 +2512,7 @@
   }
 
   function renderAuditResult(container, result, emptyText) {
-    clear(container);
+    window.AppShell.clear(container);
     if (!result) {
       const empty = document.createElement('div');
       empty.className = 'item';
@@ -2582,7 +2582,7 @@
     elements.nijiSchemes.textContent = String(providerState.scheme_count || 0);
     elements.nijiBase.textContent = preview.base_hex || providerState.default_base_hex || '-';
     elements.nijiScheme.textContent = preview.scheme || providerState.default_scheme || '-';
-    clear(elements.nijiSwatches);
+    window.AppShell.clear(elements.nijiSwatches);
 
     const swatches = Array.isArray(preview.swatches) ? preview.swatches : [];
     if (!swatches.length) {
@@ -2638,7 +2638,7 @@
       elements.nijiProofStatus.textContent = 'Not run';
     }
 
-    clear(elements.nijiProofSwatches);
+    window.AppShell.clear(elements.nijiProofSwatches);
     const palette = result && result.data && result.data.palette;
     const swatches = palette && Array.isArray(palette.swatches) ? palette.swatches : [];
     if (!swatches.length) {
@@ -2674,7 +2674,7 @@
     const token = approvalToken();
     const scope = approvalScope('sealdex', commandId, input);
     featureState.sealdex.pendingApproval = { commandId: commandId, input: input, token: token, scope: scope };
-    clear(elements.sealdexApprovalScope);
+    window.AppShell.clear(elements.sealdexApprovalScope);
     [
       ['Provider', 'sealdex'],
       ['Command', commandId],
@@ -2744,8 +2744,8 @@
       elements.sealdexPlanStatus.textContent = 'Not run';
     }
 
-    clear(elements.sealdexPlanSummary);
-    clear(elements.sealdexPlanChecks);
+    window.AppShell.clear(elements.sealdexPlanSummary);
+    window.AppShell.clear(elements.sealdexPlanChecks);
     if (!hasPendingPlan) {
       return;
     }
@@ -2831,7 +2831,7 @@
     }
 
     const tableNames = Object.keys(featureState.sealdex.entry.tables);
-    clear(elements.sealdexEntryTable);
+    window.AppShell.clear(elements.sealdexEntryTable);
     tableNames.forEach(function (name) {
       const option = document.createElement('option');
       option.value = name;
@@ -2845,7 +2845,7 @@
   }
 
   function renderSealdexEntryFields() {
-    clear(elements.sealdexEntryFields);
+    window.AppShell.clear(elements.sealdexEntryFields);
     const table = featureState.sealdex.entry.selectedTable;
     const columns = featureState.sealdex.entry.tables[table] || {};
     Object.keys(columns).forEach(function (name) {
@@ -2864,8 +2864,8 @@
 
   function renderWorkspaceExplorer(workspace) {
     const tree = workspace.workspaceTree;
-    clear(elements.workspaceTree);
-    clear(elements.workspaceMetadata);
+    window.AppShell.clear(elements.workspaceTree);
+    window.AppShell.clear(elements.workspaceMetadata);
     if (!tree || !Array.isArray(tree.nodes)) {
       elements.workspaceTreeStatus.textContent = workspace.error || 'Workspace tree not loaded.';
       elements.workspaceTree.appendChild(emptyDiv('No workspace tree available from the host yet.'));
@@ -2906,7 +2906,7 @@
   }
 
   function renderWorkspaceSelection(node) {
-    clear(elements.workspaceMetadata);
+    window.AppShell.clear(elements.workspaceMetadata);
     if (!node) {
       elements.workspaceSelectedTitle.textContent = 'Selection';
       elements.workspaceReveal.disabled = true;
@@ -2930,7 +2930,7 @@
 
   function renderWorkspaceRepos(workspace) {
     const repos = Array.isArray(workspace.repoStatus) ? workspace.repoStatus : [];
-    clear(elements.workspaceRepos);
+    window.AppShell.clear(elements.workspaceRepos);
     if (!repos.length) {
       elements.workspaceRepos.appendChild(emptyDiv('No repository status records available.'));
       return;
@@ -2992,7 +2992,7 @@
       return run.state || run.status || '';
     }).filter(Boolean))).sort();
     const current = state.runFilter;
-    clear(elements.runFilter);
+    window.AppShell.clear(elements.runFilter);
     elements.runFilter.appendChild(option('all', 'All'));
     states.forEach(function (item) {
       elements.runFilter.appendChild(option(item, item));
@@ -3276,9 +3276,6 @@
     return window.AppShell.option(value, text);
   }
 
-  function clear(element) {
-    element.textContent = '';
-  }
 
   function byId(id) {
     return document.getElementById(id);
