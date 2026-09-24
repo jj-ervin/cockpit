@@ -1060,10 +1060,10 @@
       const row = document.createElement('tr');
       row.className = id === state.selectedRunId ? 'is-selected' : '';
       row.tabIndex = 0;
-      row.appendChild(cell(id));
-      row.appendChild(cell(run.state || run.status || '-'));
-      row.appendChild(cell(run.updated_at || run.completed_at || run.started_at || '-'));
-      row.appendChild(cell(run.pass_name_or_id || run.pass_id || run.pass || '-'));
+      row.appendChild(window.AppShell.cell(id));
+      row.appendChild(window.AppShell.cell(run.state || run.status || '-'));
+      row.appendChild(window.AppShell.cell(run.updated_at || run.completed_at || run.started_at || '-'));
+      row.appendChild(window.AppShell.cell(run.pass_name_or_id || run.pass_id || run.pass || '-'));
       row.addEventListener('click', function () {
         state.selectedRunId = id;
         renderRuns();
@@ -1167,9 +1167,9 @@
       const actionCell = document.createElement('td');
       const open = document.createElement('button');
       const del = document.createElement('button');
-      row.appendChild(cell(artifactPath || '-'));
-      row.appendChild(cell(artifact.type || artifact.kind || '-'));
-      row.appendChild(cell(artifact.updated_at || artifact.created_at || '-'));
+      row.appendChild(window.AppShell.cell(artifactPath || '-'));
+      row.appendChild(window.AppShell.cell(artifact.type || artifact.kind || '-'));
+      row.appendChild(window.AppShell.cell(artifact.updated_at || artifact.created_at || '-'));
       open.type = 'button';
       open.textContent = 'Open';
       open.disabled = !artifactPath;
@@ -1265,10 +1265,10 @@
     }
     issues.forEach(function (issue) {
       const row = document.createElement('tr');
-      row.appendChild(cell(issue.severity || '-'));
-      row.appendChild(cell(issue.rule || '-'));
-      row.appendChild(cell(issue.message || '-'));
-      row.appendChild(cell(issue.file || '-'));
+      row.appendChild(window.AppShell.cell(issue.severity || '-'));
+      row.appendChild(window.AppShell.cell(issue.rule || '-'));
+      row.appendChild(window.AppShell.cell(issue.message || '-'));
+      row.appendChild(window.AppShell.cell(issue.file || '-'));
       elements.govIssueTable.appendChild(row);
     });
   }
@@ -1311,11 +1311,11 @@
     }
     agents.forEach(function (agent) {
       const row = document.createElement('tr');
-      row.appendChild(cell(agent.agent || '-'));
-      row.appendChild(cell(String(agent.pass_count || 0)));
-      row.appendChild(cell(agent.last_play_id || '-'));
-      row.appendChild(cell(agent.last_status || '-'));
-      row.appendChild(cell(formatTimeLoc(agent.last_declared_at) || agent.last_declared_at || '-'));
+      row.appendChild(window.AppShell.cell(agent.agent || '-'));
+      row.appendChild(window.AppShell.cell(String(agent.pass_count || 0)));
+      row.appendChild(window.AppShell.cell(agent.last_play_id || '-'));
+      row.appendChild(window.AppShell.cell(agent.last_status || '-'));
+      row.appendChild(window.AppShell.cell(formatTimeLoc(agent.last_declared_at) || agent.last_declared_at || '-'));
       elements.diagPipelineTable.appendChild(row);
     });
   }
@@ -3258,10 +3258,6 @@
 
   function emptyDiv(text) {
     return window.AppShell.emptyItem(text);
-  }
-
-  function cell(text) {
-    return window.AppShell.cell(text);
   }
 
   function option(value, text) {
