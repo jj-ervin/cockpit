@@ -32,6 +32,8 @@
     const source = definition || {};
     const navigation = source.navigation || {};
     return Object.freeze({
+      id: String(source.id || ''),
+      title: String(source.title || ''),
       navigation: Object.freeze({
         activeId: String(navigation.activeId || ''),
       }),
