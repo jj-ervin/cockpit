@@ -52,10 +52,15 @@ const createAppShell = require('../appShell.js');
 test('App Shell primitives expose a small generic surface', () => {
   const shell = createAppShell(makeDocument());
   assert.deepEqual(Object.keys(shell).sort(), [
+    'cell',
     'clear',
     'createPanel',
     'createStatusBadge',
     'emptyDiv',
+    'emptyItem',
+    'emptyTableRow',
+    'metadataRow',
+    'option',
     'renderList',
     'setActiveTab',
     'showNotice',
