@@ -1214,7 +1214,7 @@
         title: step.name || 'step',
         detail: Array.isArray(step.command) ? step.command.join(' ') : '',
       };
-    }}, function (item) {
+    }), function (item) {
       const row = document.createElement('div');
       const title = document.createElement('strong');
       const detail = document.createElement('span');
@@ -1224,7 +1224,7 @@
       row.appendChild(title);
       if (item.detail) row.appendChild(detail);
       return row;
-    };
+    });
   }
 
   function renderGovernance(governance) {
@@ -1372,7 +1372,7 @@
         title: (entry.previous_mode || '-') + ' → ' + (entry.current_mode || '-'),
         detail: formatTimeLoc(entry.time_loc),
       };
-    }}, function (item) {
+    }), function (item) {
       const row = document.createElement('div');
       const title = document.createElement('strong');
       const detail = document.createElement('span');
@@ -1382,7 +1382,7 @@
       row.appendChild(title);
       if (item.detail) row.appendChild(detail);
       return row;
-    };
+    });
   }
 
   function renderWizard() {
@@ -1441,7 +1441,7 @@
         title: step.name || 'step',
         detail: Array.isArray(step.command) ? step.command.join(' ') : '',
       };
-    }}, function (item) {
+    }), function (item) {
       const row = document.createElement('div');
       const title = document.createElement('strong');
       const detail = document.createElement('span');
@@ -1451,7 +1451,7 @@
       row.appendChild(title);
       if (item.detail) row.appendChild(detail);
       return row;
-    };
+    });
 
     const approval = document.createElement('p');
     approval.className = 'panel-note';
