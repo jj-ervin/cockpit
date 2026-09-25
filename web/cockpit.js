@@ -1369,22 +1369,16 @@
 
     elements.modeCurrent.textContent = helm.current_mode || '-';
 
-    window.AppShell.renderList(elements.modeHistory, history.slice().reverse().map(function (entry) {
-      return {
-        title: (entry.previous_mode || '-') + ' → ' + (entry.current_mode || '-'),
-        detail: formatTimeLoc(entry.time_loc),
-      };
-    }), function (item) {
-      const row = document.createElement('div');
-      const title = document.createElement('strong');
-      const detail = document.createElement('span');
-      row.className = 'item';
-      title.textContent = item.title;
-      detail.textContent = item.detail;
-      row.appendChild(title);
-      if (item.detail) row.appendChild(detail);
-      return row;
-    });
+    window.AppShell.renderList(
+      elements.modeHistory,
+      history.slice().reverse().map(function (entry) {
+        return {
+          title: (entry.previous_mode || '-') + ' → ' + (entry.current_mode || '-'),
+          detail: formatTimeLoc(entry.time_loc),
+        };
+      }),
+      renderCockpitListItem
+    );
   }
 
   function renderWizard() {
