@@ -104,29 +104,17 @@
   }
 
   function renderCommandPaletteItem(entry) {
-    const item = document.createElement('article');
-    const title = document.createElement('strong');
-    const commandId = document.createElement('code');
-    const action = document.createElement('small');
-    const input = document.createElement('small');
-    const badge = document.createElement('span');
-    item.className = 'command-palette-item';
-    title.textContent = entry.provider.name + ' — ' + entry.command.title;
-    commandId.textContent = entry.command.id;
-    action.textContent = 'Action: ' + entry.command.action;
-    input.textContent = providerCommandInputSummary(entry.command);
-    badge.className = 'command-palette-badge';
-    badge.textContent = providerCommandRequiresConfirmation(
-      entry.provider.id,
+    return window.AppShell.createCommandItem(
+      entry.provider.name + ' — ' + entry.command.title,
       entry.command.id,
-      false
-    ) ? 'Approval required' : 'Read-only';
-    item.appendChild(title);
-    item.appendChild(commandId);
-    item.appendChild(action);
-    item.appendChild(input);
-    item.appendChild(badge);
-    return item;
+      'Action: ' + entry.command.action,
+      providerCommandInputSummary(entry.command),
+      providerCommandRequiresConfirmation(
+        entry.provider.id,
+        entry.command.id,
+        false
+      ) ? 'Approval required' : 'Read-only'
+    );
   }
 
   function renderCommandPalette() {
