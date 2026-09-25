@@ -77,12 +77,9 @@
   }
 
   function renderCockpitListItem(item) {
-    return window.AppShell.renderItem(
-      {
-        className: 'item',
-        title: String(item && item.title || ''),
-        detail: String(item && item.detail || ''),
-      }
+    return window.AppShell.createListItem(
+      String(item && item.title || ''),
+      String(item && item.detail || '')
     );
   }
 
