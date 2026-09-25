@@ -55,6 +55,7 @@ test('App Shell primitives expose a small generic surface', () => {
     'cell',
     'clear',
     'createApplicationDefinition',
+    'createListItem',
     'createPanel',
     'createStatusBadge',
     'emptyDiv',
@@ -239,6 +240,11 @@ test('generic presentation primitives render injected values', () => {
   const item = shell.emptyItem('Nothing here');
   assert.equal(item.className, 'item');
   assert.equal(item.textContent, 'Nothing here');
+
+  const listItem = shell.createListItem('Title', 'Detail');
+  assert.equal(listItem.className, 'item');
+  assert.equal(listItem.children[0].textContent, 'Title');
+  assert.equal(listItem.children[1].textContent, 'Detail');
 
   const metadata = shell.metadataRow('Status', 42);
   assert.equal(metadata.children[0].textContent, 'Status');
