@@ -126,6 +126,18 @@
     return item;
   }
 
+  function createListItem(title, detail) {
+    const item = documentRef.createElement('div');
+    const heading = documentRef.createElement('strong');
+    const description = documentRef.createElement('span');
+    item.className = 'item';
+    heading.textContent = String(title || '');
+    description.textContent = String(detail || '');
+    item.appendChild(heading);
+    if (detail) item.appendChild(description);
+    return item;
+  }
+
   function metadataRow(label, value) {
     const row = documentRef.createElement('div');
     const dt = documentRef.createElement('dt');
@@ -161,6 +173,7 @@
     createStatusBadge,
     emptyTableRow,
     emptyItem,
+    createListItem,
     metadataRow,
     cell,
     option,
