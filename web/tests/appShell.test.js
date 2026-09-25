@@ -56,6 +56,7 @@ test('App Shell primitives expose a small generic surface', () => {
     'clear',
     'createApplicationDefinition',
     'createListItem',
+    'createCommandItem',
     'createPanel',
     'createStatusBadge',
     'emptyDiv',
@@ -245,6 +246,22 @@ test('generic presentation primitives render injected values', () => {
   assert.equal(listItem.className, 'item');
   assert.equal(listItem.children[0].textContent, 'Title');
   assert.equal(listItem.children[1].textContent, 'Detail');
+
+  const commandItem = shell.createCommandItem(
+    'Provider — Command',
+    'command.example',
+    'Action: run',
+    'Input: none',
+    'Read-only'
+  );
+  assert.equal(commandItem.tagName, 'article');
+  assert.equal(commandItem.className, 'command-palette-item');
+  assert.equal(commandItem.children[0].textContent, 'Provider — Command');
+  assert.equal(commandItem.children[1].textContent, 'command.example');
+  assert.equal(commandItem.children[2].textContent, 'Action: run');
+  assert.equal(commandItem.children[3].textContent, 'Input: none');
+  assert.equal(commandItem.children[4].textContent, 'Read-only');
+  assert.equal(commandItem.children[4].className, 'command-palette-badge');
 
   const metadata = shell.metadataRow('Status', 42);
   assert.equal(metadata.children[0].textContent, 'Status');
