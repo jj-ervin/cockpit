@@ -77,15 +77,13 @@
   }
 
   function renderCockpitListItem(item) {
-    const row = document.createElement('div');
-    const title = document.createElement('strong');
-    const detail = document.createElement('span');
-    row.className = 'item';
-    title.textContent = String(item && item.title || '');
-    detail.textContent = String(item && item.detail || '');
-    row.appendChild(title);
-    if (item && item.detail) row.appendChild(detail);
-    return row;
+    return window.AppShell.renderItem(
+      {
+        className: 'item',
+        title: String(item && item.title || ''),
+        detail: String(item && item.detail || ''),
+      }
+    );
   }
 
   function renderCommandPalette() {
