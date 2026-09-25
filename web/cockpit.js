@@ -16,7 +16,7 @@
           if (message.type === 'eco.cockpit.ready' || message.type === 'eco.cockpit.refresh') {
             window.postMessage({
               type: 'eco.cockpit.state',
-              payload: staticPreviewSnapshot(),
+              payload: window.CockpitPreview.staticSnapshot(),
             }, '*');
           }
           if (window.console && typeof window.console.info === 'function') {
