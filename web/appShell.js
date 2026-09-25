@@ -137,6 +137,28 @@
     if (detail) item.appendChild(description);
     return item;
   }
+  function createCommandItem(title, commandId, action, input, badge) {
+    const item = documentRef.createElement('article');
+    const heading = documentRef.createElement('strong');
+    const id = documentRef.createElement('code');
+    const actionText = documentRef.createElement('small');
+    const inputText = documentRef.createElement('small');
+    const status = documentRef.createElement('span');
+    item.className = 'command-palette-item';
+    heading.textContent = String(title || '');
+    id.textContent = String(commandId || '');
+    actionText.textContent = String(action || '');
+    inputText.textContent = String(input || '');
+    status.className = 'command-palette-badge';
+    status.textContent = String(badge || '');
+    item.appendChild(heading);
+    item.appendChild(id);
+    item.appendChild(actionText);
+    item.appendChild(inputText);
+    item.appendChild(status);
+    return item;
+  }
+
 
   function metadataRow(label, value) {
     const row = documentRef.createElement('div');
@@ -174,6 +196,7 @@
     emptyTableRow,
     emptyItem,
     createListItem,
+    createCommandItem,
     metadataRow,
     cell,
     option,
