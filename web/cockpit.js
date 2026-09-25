@@ -1198,17 +1198,12 @@
       elements.marlinApplyCommand.textContent = development.error || 'Install readiness is not available.';
       elements.marlinApply.disabled = true;
       elements.marlinApproval.textContent = 'Package mutation requires explicit human approval.';
-      window.AppShell.renderList(elements.marlinSteps, [], function (item) {
-      const row = document.createElement('div');
-      const title = document.createElement('strong');
-      const detail = document.createElement('span');
-      row.className = 'item';
-      title.textContent = item.title;
-      detail.textContent = item.detail;
-      row.appendChild(title);
-      if (item.detail) row.appendChild(detail);
-      return row;
-    }, 'No records found.');
+      window.AppShell.renderList(
+        elements.marlinSteps,
+        [],
+        renderCockpitListItem,
+        'No records found.'
+      );
       return;
     }
 
@@ -1222,22 +1217,16 @@
       : 'Readiness did not declare human approval; apply is blocked.';
 
     const steps = Array.isArray(readiness.preview_steps) ? readiness.preview_steps : [];
-    window.AppShell.renderList(elements.marlinSteps, steps.map(function (step) {
-      return {
-        title: step.name || 'step',
-        detail: Array.isArray(step.command) ? step.command.join(' ') : '',
-      };
-    }), function (item) {
-      const row = document.createElement('div');
-      const title = document.createElement('strong');
-      const detail = document.createElement('span');
-      row.className = 'item';
-      title.textContent = item.title;
-      detail.textContent = item.detail;
-      row.appendChild(title);
-      if (item.detail) row.appendChild(detail);
-      return row;
-    });
+    window.AppShell.renderList(
+      elements.marlinSteps,
+      steps.map(function (step) {
+        return {
+          title: step.name || 'step',
+          detail: Array.isArray(step.command) ? step.command.join(' ') : '',
+        };
+      }),
+      renderCockpitListItem
+    );
   }
 
   function renderGovernance(governance) {
@@ -2903,7 +2892,7 @@
       elements.workspaceSelectedTitle.textContent = 'Selection';
       elements.workspaceReveal.disabled = true;
       elements.workspaceStatusAction.disabled = true;
-      elements.workspaceMetadata.appendChild(window.AppShell.window.AppShell.metadataRow('Status', 'No workspace item selected.'));
+      elements.workspaceMetadata.appendChild(window.AppShell.metadataRow('Status', 'No workspace item selected.'));
       return;
     }
 
