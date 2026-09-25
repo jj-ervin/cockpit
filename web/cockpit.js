@@ -83,8 +83,8 @@
     );
   }
 
-  function renderCommandPalette() {
-    const query = String(elements.commandPaletteFilter.value || '').trim().toLowerCase();
+  function getCommandPaletteEntries(query) {
+    const normalizedQuery = String(query || '').trim().toLowerCase();
     const commands = [];
     providerCommandCatalog.providers.forEach(function (provider) {
       (Array.isArray(provider.commands) ? provider.commands : []).forEach(function (command) {
@@ -95,11 +95,30 @@
           command.title,
           command.action,
         ].join(' ').toLowerCase();
-        if (!query || haystack.indexOf(query) !== -1) {
+        if (!normalizedQuery || haystack.indexOf(normalizedQuery) !== -1) {
           commands.push({ provider: provider, command: command });
         }
       });
     });
+    return commands;
+  }
+
+  function renderCommandPaletteItem(entry) {
+    return window.AppShell.createCommandItem(
+      entry.provider.name + ' — ' + entry.command.title,
+      entry.command.id,
+      'Action: ' + entry.command.action,
+      providerCommandInputSummary(entry.command),
+      providerCommandRequiresConfirmation(
+        entry.provider.id,
+        entry.command.id,
+        false
+      ) ? 'Approval required' : 'Read-only'
+    );
+  }
+
+  function renderCommandPalette() {
+    const commands = getCommandPaletteEntries(elements.commandPaletteFilter.value);
 
     window.AppShell.clear(elements.commandPaletteList);
     if (!commands.length) {
@@ -115,35 +134,13 @@
     }
 
     commands.forEach(function (entry) {
-      const item = document.createElement('article');
-      const title = document.createElement('strong');
-      const commandId = document.createElement('code');
-      const action = document.createElement('small');
-      const badge = document.createElement('span');
-      item.className = 'command-palette-item';
-      title.textContent = entry.provider.name + ' — ' + entry.command.title;
-      commandId.textContent = entry.command.id;
-      action.textContent = 'Action: ' + entry.command.action;
-      input.textContent = providerCommandInputSummary(entry.command);
-      badge.className = 'command-palette-badge';
-      badge.textContent = providerCommandRequiresConfirmation(
-        entry.provider.id,
-        entry.command.id,
-        false
-      ) ? 'Approval required' : 'Read-only';
-      item.appendChild(title);
-      item.appendChild(commandId);
-      item.appendChild(action);
-      item.appendChild(input);
-      item.appendChild(badge);
-      elements.commandPaletteList.appendChild(item);
+      elements.commandPaletteList.appendChild(renderCommandPaletteItem(entry));
     });
 
     elements.commandPaletteNote.textContent =
       commands.length + ' discovered command' + (commands.length === 1 ? '' : 's') +
       '. The palette is a discovery surface; provider workflows supply command-specific input and execution approval.';
   }
-
   const featureState = {
     marlin: {
       searchResults: [],
