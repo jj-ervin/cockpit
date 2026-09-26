@@ -64,6 +64,7 @@ test('App Shell primitives expose a small generic surface', () => {
     'emptyTableRow',
     'metadataRow',
     'option',
+    'renderDetail',
     'renderList',
     'setActiveTab',
     'showNotice',
@@ -274,4 +275,10 @@ test('generic presentation primitives render injected values', () => {
   const selectOption = shell.option('safe', 'Safe mode');
   assert.equal(selectOption.value, 'safe');
   assert.equal(selectOption.textContent, 'Safe mode');
+
+  const detailTitle = documentRef.createElement('h2');
+  const detailContent = documentRef.createElement('pre');
+  shell.renderDetail(detailTitle, detailContent, 'Run 42', '{"state":"succeeded"}');
+  assert.equal(detailTitle.textContent, 'Run 42');
+  assert.equal(detailContent.textContent, '{"state":"succeeded"}');
 });

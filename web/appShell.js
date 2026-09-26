@@ -177,6 +177,12 @@
     return td;
   }
 
+  function renderDetail(titleElement, contentElement, title, content) {
+    titleElement.textContent = String(title || '');
+    contentElement.textContent = String(content || '');
+    return { titleElement, contentElement };
+  }
+
   function option(value, label) {
     const item = documentRef.createElement('option');
     item.value = String(value);
@@ -200,5 +206,6 @@
     metadataRow,
     cell,
     option,
+    renderDetail,
   });
 }));
