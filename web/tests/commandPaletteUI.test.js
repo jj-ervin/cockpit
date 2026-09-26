@@ -142,9 +142,6 @@ test('review and explicit approval invoke only through the existing host intent 
     }],
   };
 
-  const d = doc();
-  const root = d.createElement('div');
-  const list = d.createElement('div');
   const { ui, root } = makeUI(posted, catalog);
 
   ui.select('demo.install');
