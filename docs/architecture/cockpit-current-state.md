@@ -1,7 +1,7 @@
 # Cockpit — Current State & Execution Authority
 
 **Status:** CURRENT / EXECUTION AUTHORITY  
-**Updated:** 2026-09-23  
+**Updated:** 2026-09-26  
 **Repository:** `jj-ervin/cockpit`  
 **Default branch:** `main`
 
@@ -135,6 +135,23 @@ The platform-boundary record still names three useful proof/release gaps, but th
 These items therefore remain **candidate future work**, with different owners and decision surfaces. None is currently selected as CKP.20.00.
 
 The recent Marlin Package Search update/remove mutation UI gap belongs to **Marlin INIT.19.06**, not automatically to a new Cockpit PASS.
+
+### App Shell proof result — 2026-09-26
+
+PR #19, **CKP: prove App Shell with derived application**, is merged and CI-verified.
+
+The proof application:
+- consumes the existing App Shell application-definition and presentation contracts;
+- does not import Cockpit application code;
+- owns its own state and host adapter;
+- verifies that App Shell does not expose Cockpit state/host globals;
+- exercises the shell through a small independent application rather than by renaming or cloning Cockpit.
+
+This establishes the minimum claim that the App Shell abstraction is independently consumable. It does **not** establish that every item in the historical extraction inventory should be moved into App Shell.
+
+**Architectural stopping rule:** further shell extraction requires a concrete reusable consumer, a contract gap, or a demonstrated duplication problem. Do not extract a function merely because it can be generalized.
+
+The reusable-shell hypothesis is therefore **proven at minimum scope**. The next Cockpit work should be selected from actual product/architecture needs rather than continuing renderer-by-renderer extraction.
 
 ### Current backlog status
 
