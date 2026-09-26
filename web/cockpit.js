@@ -104,7 +104,7 @@
   }
 
   function renderCommandPaletteItem(entry) {
-    return window.AppShell.createCommandItem(
+    const item = window.AppShell.createCommandItem(
       entry.provider.name + ' — ' + entry.command.title,
       entry.command.id,
       'Action: ' + entry.command.action,
@@ -115,6 +115,11 @@
         false
       ) ? 'Approval required' : 'Read-only'
     );
+    item.dataset.providerId = entry.provider.id;
+    item.dataset.commandId = entry.command.id;
+    item.tabIndex = 0;
+    item.setAttribute('role', 'button');
+    return item;
   }
 
   function renderCommandPalette() {
@@ -545,7 +550,11 @@
     elements.commandPalette.hidden = true;
   });
 
+  const commandPaletteUI = window.CockpitCommandPaletteUI({ document: document, root: elements.commandPalette, list: elements.commandPaletteList, flowFactory: window.CockpitCommandPaletteFlow, commandInterfaceFactory: window.CockpitCommandInterface, resolverFactory: window.CockpitCatalogResolver, parameterInteractionFactory: window.CockpitParameterInteraction, reviewFactory: window.CockpitCommandReview, catalog: providerCommandCatalog, host: host, onInvoke: function () { renderCommandPalette(); } });
+
   elements.commandPaletteFilter.addEventListener('input', renderCommandPalette);
+  elements.commandPaletteList.addEventListener('click', function (event) { const item = event.target.closest ? event.target.closest('[data-command-id]') : null; if (!item || !elements.commandPaletteList.contains(item)) return; commandPaletteUI.select(item.dataset.commandId); });
+  elements.commandPaletteList.addEventListener('keydown', function (event) { if (event.key !== 'Enter' && event.key !== ' ') return; const item = event.target.closest ? event.target.closest('[data-command-id]') : null; if (!item || !elements.commandPaletteList.contains(item)) return; event.preventDefault(); commandPaletteUI.select(item.dataset.commandId); });
 
   elements.tabs.forEach(function (tab) {
     tab.addEventListener('click', function () {
@@ -856,6 +865,7 @@
         providerCommandCatalog.schema_version = payload.schema_version;
         providerCommandCatalog.providers = payload.providers;
         renderCommandPalette();
+        commandPaletteUI.refresh();
         renderNijiProof();
       }
       return;
