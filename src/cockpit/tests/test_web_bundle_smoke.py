@@ -141,6 +141,12 @@ def cockpit_page(page, tmp_path: Path):
     shutil.copy(WEB_DIR / "appShell.js", tmp_path / "appShell.js")
     shutil.copy(WEB_DIR / "cockpitApplication.js", tmp_path / "cockpitApplication.js")
     shutil.copy(WEB_DIR / "cockpitPreview.js", tmp_path / "cockpitPreview.js")
+    shutil.copy(WEB_DIR / "commandInterface.js", tmp_path / "commandInterface.js")
+    shutil.copy(WEB_DIR / "catalogResolver.js", tmp_path / "catalogResolver.js")
+    shutil.copy(WEB_DIR / "parameterInteraction.js", tmp_path / "parameterInteraction.js")
+    shutil.copy(WEB_DIR / "commandReview.js", tmp_path / "commandReview.js")
+    shutil.copy(WEB_DIR / "commandPaletteFlow.js", tmp_path / "commandPaletteFlow.js")
+    shutil.copy(WEB_DIR / "commandPaletteUI.js", tmp_path / "commandPaletteUI.js")
     shutil.copy(WEB_DIR / "cockpit.js", tmp_path / "cockpit.js")
 
     html = (WEB_DIR / "cockpit.html").read_text(encoding="utf-8")
