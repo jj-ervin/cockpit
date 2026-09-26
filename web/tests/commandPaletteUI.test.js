@@ -71,7 +71,7 @@ function makeUI(posted, catalog) {
   const root = d.createElement('div');
   const list = d.createElement('div');
 
-  return UI({
+  const ui = UI({
     document: d,
     root,
     list,
@@ -83,6 +83,7 @@ function makeUI(posted, catalog) {
     reviewFactory: CommandReview,
     flowFactory: PaletteFlow,
   });
+  return { ui, root };
 }
 
 test('selecting a discovered command opens parameter review without invocation', () => {
@@ -144,7 +145,7 @@ test('review and explicit approval invoke only through the existing host intent 
   const d = doc();
   const root = d.createElement('div');
   const list = d.createElement('div');
-  const ui = makeUI(posted, catalog);
+  const { ui, root } = makeUI(posted, catalog);
 
   ui.select('demo.install');
 
