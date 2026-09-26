@@ -1,14 +1,14 @@
 # Cockpit GUI / Reusable App Shell Inventory
 
 **Status:** CURRENT ARCHITECTURE INVENTORY / EXTRACTION INPUT  
-**Updated:** 2026-09-23  
+**Updated:** 2026-09-26  
 **Current-state authority:** `docs/architecture/cockpit-current-state.md`
 
 ## Purpose
 
-Inventory the existing browser GUI before creating a reusable App Shell implementation PASS. The goal is to distinguish reusable shell infrastructure from Cockpit product/domain surfaces and identify the smallest safe extraction seam.
+Inventory the existing browser GUI and record the boundary decisions established while proving a reusable App Shell. The goal is to distinguish reusable shell infrastructure from Cockpit product/domain surfaces and identify the smallest safe extraction seam.
 
-This document is an inventory and boundary decision aid. It does not claim that a reusable App Shell has been extracted or that Mode 2 is proven.
+This document remains an inventory and boundary decision aid. A minimum independent derived-app proof is now complete; this document does not authorize further extraction by itself.
 
 ## Evidence inspected
 
@@ -193,51 +193,45 @@ Reusable App Shell
 
 The existing `window.cockpitHost` seam is already close to the required host adapter boundary. The main missing separation is that `cockpit.js` currently contains both reusable rendering/infrastructure and Cockpit/provider feature behavior in one very large bundle.
 
-## Recommended extraction order
-
-Do **not** extract the whole GUI immediately.
+## Reconciled extraction strategy
 
 ### Phase 1 — classify
 
-Inventory functions/renderers/event handlers in `cockpit.js` into:
+**Completed.** Functions, renderers, and event handlers were classified into shell infrastructure, generic UI primitives, Cockpit core, provider features, and compatibility code.
 
-- shell infrastructure
-- generic UI primitive
-- Cockpit core
-- provider feature
-- compatibility code
+### Phase 2 — define and exercise minimum contracts
 
-### Phase 2 — define contracts
+**Completed at minimum scope.** The App Shell now has an application-definition contract and a set of reusable presentation/navigation primitives sufficient to support an independent consumer.
 
-Define minimal interfaces for:
+### Phase 3 — extract only evidence-backed primitives
 
-- application definition
-- navigation item
-- host adapter
-- state adapter
-- feature surface
-- approval presentation
-- lifecycle/status presentation
-
-### Phase 3 — extract primitives
-
-Move only demonstrably generic pieces behind those interfaces.
+**Completed for the currently justified set.** The extraction work established reusable primitives without moving Cockpit domain semantics into App Shell.
 
 ### Phase 4 — prove a derived app
 
-Build one separately branded, intentionally small application using the extracted shell.
+**Completed.** PR #19 created a small derived application proof that consumes App Shell directly without importing Cockpit code. CI passed and the PR was merged on 2026-09-26.
 
-The derived application should contain enough navigation and workflow behavior to prove reuse, but should not simply rename Cockpit.
+The proof establishes reuse, not completeness. It deliberately does not require a generic host adapter, generic state store, feature-slot framework, wizard framework, approval framework, CSS package, or standalone HTML frame.
+
+### Phase 5 — demand-driven expansion
+
+**Now the default.** Additional App Shell work requires one of:
+
+1. a concrete second application that needs the capability;
+2. a contract gap discovered while integrating such an application;
+3. duplicated implementation that is clearly generic and worth centralizing.
+
+Do not create shell abstractions solely to complete the inventory.
 
 ## Important architectural conclusion
 
-The existing GUI is **already partially host-agnostic and partially shell-like**, but it is not yet a reusable App Shell.
+The derived-app proof changes the status from **candidate reusable architecture** to **proven minimum reusable boundary**.
 
-The correct extraction target is therefore:
+The correct extraction target remains:
 
 > **the reusable interaction infrastructure underneath Cockpit's current product surface — not Cockpit itself.**
 
-Cockpit remains one application of that shell.
+Cockpit is now demonstrably one application of that shell. The proof does not imply that every generic-looking Cockpit function belongs in App Shell.
 
 This preserves the current product identity:
 
