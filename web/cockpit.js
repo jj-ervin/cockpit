@@ -1075,15 +1075,18 @@
   function renderSelectedRun(run) {
     if (!run) {
       state.selectedRunId = '';
-      elements.runDetailTitle.textContent = 'Run Detail';
-      elements.runJson.textContent = '{}';
+      window.AppShell.renderDetail(elements.runDetailTitle, elements.runJson, 'Run Detail', '{}');
       elements.copyRun.disabled = true;
       elements.rerunRecord.disabled = true;
       return;
     }
 
-    elements.runDetailTitle.textContent = recordId(run);
-    elements.runJson.textContent = JSON.stringify(run, null, 2);
+    window.AppShell.renderDetail(
+      elements.runDetailTitle,
+      elements.runJson,
+      recordId(run),
+      JSON.stringify(run, null, 2)
+    );
     elements.copyRun.disabled = false;
     elements.rerunRecord.disabled = false;
   }
