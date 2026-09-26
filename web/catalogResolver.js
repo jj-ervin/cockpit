@@ -21,6 +21,9 @@
             commandId: command.id,
             parameters: {},
             requiresConfirmation: command.requires_confirmation === true || command.mutation === true,
+            ...(command.input && typeof command.input === 'object' && !Array.isArray(command.input)
+              ? { parameterSchema: command.input }
+              : {}),
           };
         }
       }
