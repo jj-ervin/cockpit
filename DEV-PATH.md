@@ -1652,3 +1652,8 @@ Live-checkout verification found that Cockpit's CommonJS web tests inherited the
 The full Python/browser run reached 193 passes and one skip, then exposed two Niji browser failures. One was a transient page-load timeout while host suites ran concurrently. The other was an invalid test assumption: the real Niji 1.1.1 artifact truthfully publishes a `cockpit-provider-v1` manifest without structured input metadata, while the fixture intentionally exercises `v1.1` with two fields. The regression now asserts `Input: 2 fields` for the v1.1 fixture and `Input: unavailable (v1 catalog)` for the real v1 artifact instead of inventing metadata. The focused two-test browser proof passes afterward.
 
 Host-web remains 64/64 passing. Host-cloud remains 65 passing with the existing Windows symlink-permission skip. No provider manifest, execution authority, remote branch, or release state changed.
+
+
+## PR #27 coverage recovery — 2026-10-06
+
+The still-useful portion of open PR #27 is retained as a local regression test on current main: the command-palette UI must remain inert through selection and review, then invoke only after explicit approval through the existing host intent seam. The broader CI and placeholder-test changes in that branch are superseded by the preceding catch-up repair and were not duplicated. The complete web suite passes 42/42. No remote branch was merged, rebased, pushed, or closed.

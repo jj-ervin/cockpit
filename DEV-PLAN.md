@@ -1982,3 +1982,8 @@ The first post-reconciliation implementation slice closes two proof-boundary def
 The focused Niji fixture/real-provider browser tests pass 2/2 after the correction. Host-web passes 64/64. Host-cloud passes 65 with one existing Windows symlink-permission skip. The earlier full Python run otherwise reached 193 passes and one skip; no unrelated failure remains unaccounted for.
 
 Canonical reconciliation evidence is now `C:\dev\docs\reviews\2026-10-06-cockpit-reconciliation.md`, with raw proof retained in the portfolio archive. This slice changes no release claim and does not create a new product PASS.
+
+
+## 2026-10-06 PR #27 coverage recovery
+
+Port the branch's unique command-palette approval-flow coverage onto corrected current main, without adopting its superseded CI enumeration or altering the remote branch. Result: the web suite passes 42/42 and verifies that review alone never invokes a provider command; only explicit approval reaches `eco.cockpit.invokeProviderCommand`. This is regression-proof recovery, not a new implementation PASS or release claim.
