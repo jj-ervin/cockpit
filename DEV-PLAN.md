@@ -1959,3 +1959,26 @@ There is currently **no queued, unstarted single Cockpit implementation PASS** a
 
 **Next state:** architecture hardening is reconciled; the v1.1 provider-proof condition is satisfied; Cockpit has no new governed implementation PASS queued. The next implementation must be explicitly selected from the product/backlog scope rather than inferred from the stale v1.1 release checkbox.
 
+
+
+## Portfolio reconciliation — 2026-10-06
+
+Current-main fb71dae and historical Run #74 were verified successful on GitHub. Broader local checks exposed parameter-schema propagation and removed-helper call regressions, plus stale/invalid test fixtures. Scoped repairs preserve catalog metadata, use existing AppShell.emptyDiv, correct fixtures, add empty-workspace browser regression coverage and select all web test files in CI. Isolated verification: 192 Python tests passed / four skipped; 41 web tests passed; 64 host-web tests passed; 65 cloud-host tests passed / one skipped. These results prove source behavior, not a public installer or production cloud service.
+
+PR #27 remains open, six ahead of main, with failed broader CI; rebase/recheck it against the scoped corrections before adoption. The divergent command-interface-proof branch's three files already match main; its history is duplicate content. Reddit publishing remains distinct dormant work. No branch was merged/deleted and no push/publication was performed.
+
+The derived-app minimum proof and CKP.19.00 closure remain authoritative. Old extraction queues do not create new work. There is no newly queued CKP implementation PASS; Marlin INIT.19.06 remains Marlin-owned. GitHub tags/releases were empty at inspection. Package/provider validation and ordinary-user installer proof are separate gates.
+
+Evidence: the portfolio reconciliation chat's outputs/cockpit-reconciliation-2026-10-06/reconciliation-report.md and adjacent source-test/remote evidence. Corrections are uncommitted working-tree edits; hosted CI has not yet tested them.
+
+
+## 2026-10-06 implementation catch-up — deterministic local proof
+
+The first post-reconciliation implementation slice closes two proof-boundary defects without adding product scope:
+
+1. `web/package.json` declares the browser bundle's CommonJS module boundary, preventing the parent `C:\dev\package.json` from changing Cockpit's test semantics. The complete web suite now runs from the live checkout: 41/41 passing.
+2. The Niji browser proof distinguishes declared provider-contract versions. The v1.1 fixture must expose two structured input fields; the real published v1 Niji manifest must remain explicitly unavailable for parameter entry. Cockpit does not infer or synthesize provider parameters.
+
+The focused Niji fixture/real-provider browser tests pass 2/2 after the correction. Host-web passes 64/64. Host-cloud passes 65 with one existing Windows symlink-permission skip. The earlier full Python run otherwise reached 193 passes and one skip; no unrelated failure remains unaccounted for.
+
+Canonical reconciliation evidence is now `C:\dev\docs\reviews\2026-10-06-cockpit-reconciliation.md`, with raw proof retained in the portfolio archive. This slice changes no release claim and does not create a new product PASS.

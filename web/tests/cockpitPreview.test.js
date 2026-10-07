@@ -10,7 +10,7 @@ test('CockpitPreview exposes the static snapshot contract', () => {
   assert.equal(typeof preview.staticSnapshot, 'function');
   const snapshot = preview.staticSnapshot();
   assert.deepEqual(Object.keys(snapshot).sort(), [
-    'development', 'diagnostics', 'governance', 'health', 'installIntent',
+    'development', 'diagnostics', 'governance', 'health',
     'marlin', 'mode', 'niji', 'records', 'state', 'workspace',
   ].sort());
   assert.equal(snapshot.state.statusLabel, 'Preview');

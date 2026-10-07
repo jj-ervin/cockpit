@@ -801,3 +801,16 @@ def test_marlin_doctor_agent_roster_ui_detects_registers_and_removes_templates(c
     assert remove_request["input"] == {"template_id": "lmstudio"}
     assert remove_request["approval"]["scope"] == '{"command_id":"marlin.doctor.agents.unregister","input":{"template_id":"lmstudio"},"provider_id":"marlin"}'
     assert cockpit_page.cockpit_errors == []
+
+
+@pytest.mark.parametrize("workspace,expected", [
+    ({"workspaceTree": None, "repoStatus": []}, "No workspace tree available"),
+    ({"workspaceTree": {"nodes": []}, "repoStatus": []}, "No workspace entries found"),
+])
+def test_empty_workspace_uses_app_shell_without_runtime_errors(cockpit_page, workspace, expected):
+    snapshot = _sample_snapshot()
+    snapshot["workspace"] = workspace
+    _send_state(cockpit_page, snapshot)
+    _wait_for_js_condition(cockpit_page, "document.body.textContent.includes(" + repr(expected) + ")")
+    assert "No repository status records" in cockpit_page.locator("body").text_content()
+    assert cockpit_page.cockpit_errors == []

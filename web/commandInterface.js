@@ -29,6 +29,7 @@
       commandId: String(resolved.commandId),
       parameters: resolved.parameters === undefined ? {} : resolved.parameters,
       requiresConfirmation: resolved.requiresConfirmation === true,
+      ...(resolved.parameterSchema === undefined ? {} : { parameterSchema: resolved.parameterSchema }),
     };
   }
 
