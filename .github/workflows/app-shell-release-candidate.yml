@@ -1,0 +1,44 @@
+name: App Shell Release Candidate
+on:
+  pull_request:
+    paths:
+      - 'web/appShell.js'
+      - 'web/scripts/prepare-app-shell-release.js'
+      - 'web/scripts/verify-app-shell-release.js'
+      - 'web/tests/appShellDistribution.test.js'
+      - 'web/tests/appShellReleasePrep.test.js'
+      - 'web/tests/appShellVerifyRelease.test.js'
+      - '.github/workflows/app-shell-release-candidate.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  candidate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Contract and verification tests
+        run: node --test web/tests/appShellDistribution.test.js web/tests/appShellReleasePrep.test.js web/tests/appShellVerifyRelease.test.js
+      - name: Prepare candidate
+        run: node web/scripts/prepare-app-shell-release.js 0.1.0-rc.1
+      - name: Verify candidate
+        run: node web/scripts/verify-app-shell-release.js 0.1.0-rc.1
+      - name: Record digest and source commit
+        run: |
+          sha256sum web/dist/cockpit-app-shell-0.1.0-rc.1.js
+          git rev-parse HEAD
+      - name: Upload non-distributable candidate for inspection
+        uses: actions/upload-artifact@v4
+        with:
+          name: cockpit-app-shell-candidate-unapproved
+          path: |
+            web/dist/cockpit-app-shell-0.1.0-rc.1.js
+            web/dist/manifest-0.1.0-rc.1.json
+          retention-days: 7
