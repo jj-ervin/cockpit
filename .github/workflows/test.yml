@@ -59,27 +59,7 @@ jobs:
         run: |
           node --check web/cockpitApplication.js
           node --check web/cockpit.js
-          node --check web/commandInterface.js
-          node --check web/catalogResolver.js
-          node --check web/parameterInteraction.js
-          node --check web/commandReview.js
-          node --check web/commandPaletteFlow.js
-          node --check web/commandPaletteUI.js
-      - name: Run Cockpit JavaScript tests
-        run: |
-          set -e
-          for test_file in \
-            web/tests/appShell.test.js \
-            web/tests/cockpitApplication.test.js \
-            web/tests/cockpitState.test.js \
-            web/tests/commandInterface.test.js \
-            web/tests/catalogResolver.test.js \
-            web/tests/parameterInteraction.test.js \
-            web/tests/commandReview.test.js \
-            web/tests/commandPaletteFlow.test.js \
-            web/tests/commandPaletteUI.test.js; do
-            echo "=== $test_file ==="
-            node --test "$test_file"
-          done
+      - name: Run App Shell tests
+        run: node --test web/tests/*.test.js
 
 # CI trigger verification

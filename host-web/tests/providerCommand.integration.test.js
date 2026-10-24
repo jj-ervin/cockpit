@@ -109,6 +109,7 @@ test(
           providerId: 'fake',
           commandId: 'fake.read',
           input: { hello: 'world' },
+          confirm: false,
         }),
       });
       const messages = await response.json();
@@ -179,7 +180,7 @@ test(
       // dispatch() catches bridge errors and reports actionResult(false, ...)
       assert.equal(messages[0].type, 'eco.cockpit.actionResult');
       assert.equal(messages[0].payload.ok, false);
-      assert.match(messages[0].payload.message, /requires_confirmation/);
+      assert.match(messages[0].payload.message, /confirm must be a boolean/);
     } finally {
       if (originalMarlinHome === undefined) delete process.env.COCKPIT_MARLIN_HOME;
       else process.env.COCKPIT_MARLIN_HOME = originalMarlinHome;

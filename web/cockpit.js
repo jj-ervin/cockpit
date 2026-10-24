@@ -2856,14 +2856,14 @@
     window.AppShell.clear(elements.workspaceMetadata);
     if (!tree || !Array.isArray(tree.nodes)) {
       elements.workspaceTreeStatus.textContent = workspace.error || 'Workspace tree not loaded.';
-      elements.workspaceTree.appendChild(emptyDiv('No workspace tree available from the host yet.'));
+      elements.workspaceTree.appendChild(window.AppShell.emptyDiv('No workspace tree available from the host yet.'));
       renderWorkspaceSelection(null);
       return;
     }
 
     elements.workspaceTreeStatus.textContent = tree.truncated ? 'Read-only, truncated' : 'Read-only';
     if (!tree.nodes.length) {
-      elements.workspaceTree.appendChild(emptyDiv('No workspace entries found.'));
+      elements.workspaceTree.appendChild(window.AppShell.emptyDiv('No workspace entries found.'));
       renderWorkspaceSelection(null);
       return;
     }
@@ -2920,7 +2920,7 @@
     const repos = Array.isArray(workspace.repoStatus) ? workspace.repoStatus : [];
     window.AppShell.clear(elements.workspaceRepos);
     if (!repos.length) {
-      elements.workspaceRepos.appendChild(emptyDiv('No repository status records available.'));
+      elements.workspaceRepos.appendChild(window.AppShell.emptyDiv('No repository status records available.'));
       return;
     }
 

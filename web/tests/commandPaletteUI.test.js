@@ -103,21 +103,7 @@ test('selecting a discovered command opens parameter review without invocation',
     }],
   };
 
-  const d = doc();
-  const root = d.createElement('div');
-  const list = d.createElement('div');
-  const ui = UI({
-    document: d,
-    root,
-    list,
-    catalog,
-    host: { postMessage: (message) => posted.push(message) },
-    resolverFactory: Resolver,
-    commandInterfaceFactory: CommandInterface,
-    parameterInteractionFactory: ParameterInteraction,
-    reviewFactory: CommandReview,
-    flowFactory: PaletteFlow,
-  });
+  const { ui, root } = makeUI(posted, catalog);
 
   ui.select('demo.install');
 

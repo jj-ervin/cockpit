@@ -1630,3 +1630,30 @@ The current Cockpit documentation does **not** contain a queued, unstarted singl
 
 **Current next state:** architecture hardening reconciled; v1.1 provider-proof condition met; no new Cockpit implementation PASS is presently queued. The next actionable work is either the separately-scoped Marlin package-management mutation UI or a new Cockpit PASS explicitly selected from the product ladder/backlog.
 
+
+
+## Portfolio reconciliation — 2026-10-06
+
+Current-main fb71dae and historical Run #74 were verified successful on GitHub. Broader local checks exposed parameter-schema propagation and removed-helper call regressions, plus stale/invalid test fixtures. Scoped repairs preserve catalog metadata, use existing AppShell.emptyDiv, correct fixtures, add empty-workspace browser regression coverage and select all web test files in CI. Isolated verification: 192 Python tests passed / four skipped; 41 web tests passed; 64 host-web tests passed; 65 cloud-host tests passed / one skipped. These results prove source behavior, not a public installer or production cloud service.
+
+PR #27 remains open, six ahead of main, with failed broader CI; rebase/recheck it against the scoped corrections before adoption. The divergent command-interface-proof branch's three files already match main; its history is duplicate content. Reddit publishing remains distinct dormant work. No branch was merged/deleted and no push/publication was performed.
+
+The derived-app minimum proof and CKP.19.00 closure remain authoritative. Old extraction queues do not create new work. There is no newly queued CKP implementation PASS; Marlin INIT.19.06 remains Marlin-owned. GitHub tags/releases were empty at inspection. Package/provider validation and ordinary-user installer proof are separate gates.
+
+Evidence: the portfolio reconciliation chat's outputs/cockpit-reconciliation-2026-10-06/reconciliation-report.md and adjacent source-test/remote evidence. Corrections are uncommitted working-tree edits; hosted CI has not yet tested them.
+
+
+## Implementation catch-up — local test and provider-metadata boundaries (2026-10-06)
+
+The reconciliation evidence above has moved to the canonical portfolio review at `C:\dev\docs\reviews\2026-10-06-cockpit-reconciliation.md`; raw proof is preserved under `C:\dev\_archive\2026-10-05-project-reconciliation-outputs\cockpit-reconciliation-2026-10-06`.
+
+Live-checkout verification found that Cockpit's CommonJS web tests inherited the portfolio root's unrelated ESM package setting. `web/package.json` now declares Cockpit's own CommonJS boundary and test command. All 41 web tests then pass directly from `C:\dev\cockpit`.
+
+The full Python/browser run reached 193 passes and one skip, then exposed two Niji browser failures. One was a transient page-load timeout while host suites ran concurrently. The other was an invalid test assumption: the real Niji 1.1.1 artifact truthfully publishes a `cockpit-provider-v1` manifest without structured input metadata, while the fixture intentionally exercises `v1.1` with two fields. The regression now asserts `Input: 2 fields` for the v1.1 fixture and `Input: unavailable (v1 catalog)` for the real v1 artifact instead of inventing metadata. The focused two-test browser proof passes afterward.
+
+Host-web remains 64/64 passing. Host-cloud remains 65 passing with the existing Windows symlink-permission skip. No provider manifest, execution authority, remote branch, or release state changed.
+
+
+## PR #27 coverage recovery — 2026-10-06
+
+The still-useful portion of open PR #27 is retained as a local regression test on current main: the command-palette UI must remain inert through selection and review, then invoke only after explicit approval through the existing host intent seam. The broader CI and placeholder-test changes in that branch are superseded by the preceding catch-up repair and were not duplicated. The complete web suite passes 42/42. No remote branch was merged, rebased, pushed, or closed.

@@ -145,7 +145,12 @@ def _install_real_niji_provider(home: Path) -> None:
     (version_dir / "attestation.json").write_text(json.dumps(attestation), encoding="utf-8")
 
 
-def _run_host_and_click_niji_proof(page, tmp_path: Path, marlin_home: Path):
+def _run_host_and_click_niji_proof(
+    page,
+    tmp_path: Path,
+    marlin_home: Path,
+    expected_input_summary: str,
+):
     port = _free_port()
     env = os.environ.copy()
     env.update({
@@ -187,7 +192,7 @@ def _run_host_and_click_niji_proof(page, tmp_path: Path, marlin_home: Path):
         expect(page.locator("#command-palette-list")).to_contain_text("niji.palette.preview")
         expect(page.locator("#command-palette-list")).to_contain_text("Action: palette.preview")
         expect(page.locator("#command-palette-list")).to_contain_text("Read-only")
-        expect(page.locator("#command-palette-list")).to_contain_text("Input: 2 fields")
+        expect(page.locator("#command-palette-list")).to_contain_text(expected_input_summary)
         page.locator("#command-palette-filter").fill("niji.palette.preview")
         expect(page.locator("#command-palette-list")).to_contain_text("Niji — Preview palette")
         page.locator("#command-palette-filter").fill("does-not-exist")
@@ -215,7 +220,12 @@ def test_browser_renders_real_swatches_from_fixture_provider(page, tmp_path: Pat
     """
     marlin_home = tmp_path / "marlin-home"
     _write_fixture_provider(marlin_home)
-    tiles = _run_host_and_click_niji_proof(page, tmp_path, marlin_home)
+    tiles = _run_host_and_click_niji_proof(
+        page,
+        tmp_path,
+        marlin_home,
+        "Input: 2 fields",
+    )
     assert len(tiles) == 2
     assert "Fixture Core" in tiles[0]
     assert "#2952a3" in tiles[0]
@@ -236,7 +246,12 @@ def test_browser_renders_real_swatches_from_real_niji_provider(page, tmp_path: P
     """
     marlin_home = tmp_path / "marlin-home"
     _install_real_niji_provider(marlin_home)
-    tiles = _run_host_and_click_niji_proof(page, tmp_path, marlin_home)
+    tiles = _run_host_and_click_niji_proof(
+        page,
+        tmp_path,
+        marlin_home,
+        "Input: unavailable (v1 catalog)",
+    )
     assert len(tiles) >= 1
     for tile in tiles:
         assert "#" in tile

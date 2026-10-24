@@ -1,8 +1,8 @@
 # Cockpit
 
-Cockpit is eco's operator command surface: the place one person manages an eco
-workspace, sees governance state, launches governed runs, reviews artifacts, and
-approves escalations.
+Cockpit is the universal UI host and reusable application shell. Providers own
+domain commands and execution authority; Cockpit presents their state, workflows
+and human approval interfaces. See the [current execution authority](docs/architecture/cockpit-current-state.md).
 
 This standalone repo now owns the Phase 1 Python package boundary for Cockpit.
 The VS Code host consumes that package through a read-only JSON bridge.
@@ -55,6 +55,7 @@ python -m venv .venv                   # cockpit-local venv - do not reuse anoth
 pip install -e ".[test]"
 python -m playwright install chromium  # one-time, needed for the web bundle smoke tests
 python -m pytest
+npm --prefix web test                  # browser-side CommonJS unit tests
 ```
 
 Cockpit must work regardless of which venv or platform runs it. Installing
@@ -62,6 +63,10 @@ into another repo's shared venv (e.g. running these commands with `eco`'s
 `.venv` active instead of cockpit's own) works by accident but breaks the
 "self-contained, portable" standard this portfolio holds every repo to -
 always use a dedicated `cockpit/.venv`.
+
+The `web/package.json` boundary is intentional: it keeps Cockpit's CommonJS
+browser tests independent from package settings in any parent control-plane
+directory.
 
 Phase 1 package install automation:
 
