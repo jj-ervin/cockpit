@@ -1,0 +1,5 @@
+# CKP-CORE-006 governance repair evidence
+
+On 2026-11-22, Cockpit's missing review grammar adapter was restored as a pointer to the portfolio's canonical grammar. The append-only `PLAY.jsonl` gained one correction PLAY bound by SHA-256 to the five historical lines with incomplete validation profiles and the line with a duplicate PLAY ID. Those earlier lines remain unchanged. Their missing checks are still unproved and are reported as warnings, not retroactively claimed as completed.
+
+The correction mechanism is documented in DEV-ACCORD.06, validated by GC-AUDIT's `validate-playbook.ps1`, and covered by two Pester regression tests: valid hash-bound corrections pass with warnings; a mismatched source hash fails. `gc-audit.release` at Level 4 for Cockpit passes, `gc-audit.validate` at Level 1 for Cockpit CLI passes, and the GC-AUDIT zero-trust posture check passes with 60 checks, zero errors, and two existing warnings about `validate-portfolio-health.ps1`. These checks establish governance-record integrity; they do not prove Core host isolation or authorize publication.

@@ -1987,3 +1987,7 @@ Canonical reconciliation evidence is now `C:\dev\docs\reviews\2026-10-06-cockpit
 ## 2026-10-06 PR #27 coverage recovery
 
 Port the branch's unique command-palette approval-flow coverage onto corrected current main, without adopting its superseded CI enumeration or altering the remote branch. Result: the web suite passes 42/42 and verifies that review alone never invokes a provider command; only explicit approval reaches `eco.cockpit.invokeProviderCommand`. This is regression-proof recovery, not a new implementation PASS or release claim.
+
+## CKP-CORE-006 governance reconciliation — 2026-11-22
+
+The missing local review grammar adapter is restored. An append-only, hash-bound PLAY correction records the five incomplete historical validation profiles and the duplicate historical PLAY identifier without asserting that omitted checks ran. The Level 4 release-readiness audit now passes with visible historical warnings. Cockpit Core's v1 API freeze and the CLI production host decision are tracked in their owning repositories; this Cockpit plan does not authorize a Core release.
